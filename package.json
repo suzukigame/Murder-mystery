@@ -1,0 +1,13 @@
+{
+    "name": "nexus-war-monorepo",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "build": "cd nexus-war-app && npm install && npm run build && cd ../nexus-war-server && npm install && npm run build",
+        "start": "cd nexus-war-server && npm start"
+    },
+    "engines": {
+        "node": ">=20.0.0"
+    }
+}

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './App.css';
-import { Terminal, Shield, AlertTriangle, MessageSquare, Zap, Cpu, Eye, Skull, Lock, Send, X, Wifi, Database, Search, RotateCcw, Trophy, Clock, User } from 'lucide-react';
+import { Terminal, Shield, AlertTriangle, MessageSquare, Zap, Cpu, Eye, Skull, Lock, Send, X, Database, Search, RotateCcw, Trophy, User } from 'lucide-react';
 import io from 'socket.io-client';
 
 // ソケット接続 (開発環境用URL)
-const socket = io('http://localhost:3000');
+// ソケット接続 (本番環境では相対パス、開発環境では localhost:3000)
+const socket = io(import.meta.env.MODE === 'production' ? '/' : 'http://localhost:3000');
 
 // --- 型定義 ---
 interface LogEntry {
@@ -47,7 +48,7 @@ function App() {
     const [msgTarget, setMsgTarget] = useState('');
     const [msgText, setMsgText] = useState('');
     const [isAlert, setIsAlert] = useState(false);
-    const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
     // --- ログ ---
     const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -177,7 +178,6 @@ function App() {
         if (ap < 1) return;
 
         setAp(prev => prev - 1);
-        const target = PLAYERS.find(p => p.id === msgTarget);
         socket.emit('chat_message', { targetId: msgTarget, message: msgText, senderName: 'ME' });
 
         setMsgText('');
@@ -188,24 +188,10 @@ function App() {
 
     // --- リスタート ---
     const resetGame = () => {
-        // 本来はサーバーにリセット要求を送るべきだが、簡易的にリロード
-        window.location.reload();
+        socket.emit('reset_game');
     };
 
-    // --- 長押し検出（ハッカーメニュー） ---
-    const handleLongPressStart = () => {
-        longPressTimer.current = setTimeout(() => {
-            if (isHacker) {
-                setShowHackerMenu(true);
-            }
-        }, 800);
-    };
 
-    const handleLongPressEnd = () => {
-        if (longPressTimer.current) {
-            clearTimeout(longPressTimer.current);
-        }
-    };
 
     // --- フェーズ変更時のアラート ---
     useEffect(() => {

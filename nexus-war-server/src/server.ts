@@ -2,9 +2,16 @@ import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import path from 'path';
 
 const app = express();
 app.use(cors());
+
+// フロントエンドのビルド成果物のパス
+const clientDistPath = path.resolve(__dirname, '../../nexus-war-app/dist');
+
+// フロントエンドのビルド成果物を配信
+app.use(express.static(clientDistPath));
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -15,16 +22,22 @@ const io = new Server(server, {
 });
 
 // ゲーム状態
-let gameState = {
+// 定数
+const TURN_DURATION = 15 * 60; // 15分
+
+// ゲーム状態初期化関数
+const getInitialState = () => ({
     hp: 100,
     leak: 0,
     turn: 1, // 1-8
-    timeLeft: 60, // 秒 (デバッグ用: 1分)
+    timeLeft: TURN_DURATION,
     phase: 'discussion', // discussion, action, resolve
     isPaused: false,
     logs: [] as { id: string, time: string, level: string, content: string }[],
     players: [] as { id: string, name: string, role: string }[]
-};
+});
+
+let gameState = getInitialState();
 
 // ログ追加関数
 const addLog = (content: string, level: 'info' | 'warn' | 'critical' | 'system' = 'info') => {
@@ -50,14 +63,17 @@ setInterval(() => {
         console.log(`[DEBUG] Turn: ${gameState.turn}, Time: ${gameState.timeLeft}, Phase: ${gameState.phase}`);
     }
 
-    // フェーズ遷移ロジック (簡易版: 60秒デバッグ)
-    const elapsed = 60 - gameState.timeLeft;
-    if (elapsed < 40) {
+    // フェーズ遷移ロジック (15分対応)
+    const elapsed = TURN_DURATION - gameState.timeLeft;
+    const ACTION_START = 10 * 60;
+    const RESOLVE_START = 14 * 60;
+
+    if (elapsed < ACTION_START) {
         if (gameState.phase !== 'discussion') {
             gameState.phase = 'discussion';
             io.emit('state_update', gameState);
         }
-    } else if (elapsed < 50) {
+    } else if (elapsed < RESOLVE_START) {
         if (gameState.phase !== 'action') {
             gameState.phase = 'action';
             addLog('>>> ACTION PHASE STARTED. INPUT YOUR COMMANDS. <<<', 'system');
@@ -74,7 +90,7 @@ setInterval(() => {
     // ターン終了
     if (gameState.timeLeft <= 0) {
         gameState.turn++;
-        gameState.timeLeft = 60; // デバッグ用: 1分
+        gameState.timeLeft = TURN_DURATION;
         gameState.phase = 'discussion';
         addLog(`TURN ${gameState.turn - 1} COMPLETED. STARTING TURN ${gameState.turn}.`, 'system');
         io.emit('state_update', gameState);
@@ -147,6 +163,20 @@ io.on('connection', (socket) => {
         }
         console.log('Client disconnected:', socket.id);
     });
+
+    // ゲームリセット要求
+    socket.on('reset_game', () => {
+        const currentPlayers = gameState.players;
+        gameState = getInitialState();
+        gameState.players = currentPlayers; // プレイヤーリストは維持
+        addLog('SYSTEM REBOOT INITIATED... NEW SESSION STARTED.', 'system');
+        io.emit('state_update', gameState);
+        io.emit('log_history', []);
+    });
+});
+// 全てのリクエストをフロントエンドにリダイレクト (SPA対応)
+app.use((req, res) => {
+    res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
 const PORT = 3000;
