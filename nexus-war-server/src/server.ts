@@ -95,6 +95,9 @@ setInterval(() => {
         addLog(`TURN ${gameState.turn - 1} COMPLETED. STARTING TURN ${gameState.turn}.`, 'system');
         io.emit('state_update', gameState);
     }
+
+    // 毎秒の状態を全クライアントに通知 (タイマー同期のため)
+    io.emit('state_update', gameState);
 }, 1000); // 実時間進行 (デバッグ時はここを変更)
 
 io.on('connection', (socket) => {
