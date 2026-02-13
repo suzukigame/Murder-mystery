@@ -21,12 +21,36 @@ const io = new Server(server, {
     }
 });
 
-// ゲーム状態
-// 定数
 const TURN_DURATION = 15 * 60; // 15分
 
+// 型定義
+type TurnPhase = 'discussion' | 'action' | 'resolve';
+
+interface Player {
+    id: string;
+    name: string;
+    role: string;
+    isHacker: boolean;
+    secret?: string;      // キャラクター固有の秘密
+    isIsolated: boolean; // 投票により隔離されているか
+    votes: number;       // 獲得票数
+}
+
+interface GameState {
+    hp: number;
+    leak: number;
+    turn: number;
+    timeLeft: number;
+    phase: TurnPhase;
+    isPaused: boolean;
+    logs: any[];
+    players: Player[];
+    totalPublicAp: number; // 公開ログ上のAP合計
+    totalActualAp: number; // 実際のAP消費合計（不一致が証拠になる）
+}
+
 // ゲーム状態初期化関数
-const getInitialState = () => ({
+const getInitialState = (): GameState => ({
     hp: 100,
     leak: 0,
     turn: 1, // 1-8
@@ -34,7 +58,9 @@ const getInitialState = () => ({
     phase: 'discussion', // discussion, action, resolve
     isPaused: false,
     logs: [] as { id: string, time: string, level: string, content: string }[],
-    players: [] as { id: string, name: string, role: string, isHacker: boolean }[]
+    players: [],
+    totalPublicAp: 0,
+    totalActualAp: 0
 });
 
 let gameState = getInitialState();
@@ -89,9 +115,43 @@ setInterval(() => {
 
     // ターン終了
     if (gameState.timeLeft <= 0) {
+        // 投票集計と隔離
+        let mostVotedPlayer: Player | null = null;
+        let maxVotes = 0;
+        gameState.players.forEach(p => {
+            if (p.votes > maxVotes) {
+                maxVotes = p.votes;
+                mostVotedPlayer = p;
+            }
+        });
+
+        if (mostVotedPlayer && maxVotes > 0) {
+            mostVotedPlayer.isIsolated = true;
+            addLog(`VOTING RESULT: ${mostVotedPlayer.name} HAS BEEN ISOLATED. NETWORK PRIVILEGES RESTRICTED.`, 'warn');
+        }
+
+        // AP不一致のログ出力
+        const variance = gameState.totalActualAp - gameState.totalPublicAp;
+        addLog(`[TURN REPORT] PUBLIC AP: ${gameState.totalPublicAp} | ACTUAL SYSTEM LOAD: ${gameState.totalActualAp}`, 'system');
+        if (variance > 0) {
+            addLog(`WARNING: ${variance} AP VARIANCE DETECTED. SUSPICIOUS BACKGROUND PROCESSES IDENTIFIED.`, 'critical');
+        }
+
+        // 次ターンの準備
         gameState.turn++;
         gameState.timeLeft = TURN_DURATION;
         gameState.phase = 'discussion';
+        gameState.totalPublicAp = 0;
+        gameState.totalActualAp = 0;
+        gameState.players.forEach(p => {
+            p.votes = 0;
+            if (p.isIsolated && gameState.phase === 'discussion') {
+                // 前ターンの隔離を解除（あるいは継続ルールにするか検討）
+                // 一旦、隔離は1ターンのみとする
+                setTimeout(() => { p.isIsolated = false; }, 100);
+            }
+        });
+
         addLog(`TURN ${gameState.turn - 1} COMPLETED. STARTING TURN ${gameState.turn}.`, 'system');
         io.emit('state_update', gameState);
     }
@@ -115,7 +175,9 @@ io.on('connection', (socket) => {
                 id: socket.id,
                 name: data.name,
                 role: data.role,
-                isHacker: false // 初期値は偽。開始時に割り当てる
+                isHacker: false, // 初期値は偽。開始時に割り当てる
+                isIsolated: false,
+                votes: 0
             });
             addLog(`NEW CONNECTION: ${data.name} [${data.role}] ESTABLISHED.`, 'system');
 
@@ -133,25 +195,37 @@ io.on('connection', (socket) => {
         }
     });
 
+    // キャラクターごとの秘密情報の定義
+    const CHARACTER_SECRETS: { [key: string]: string } = {
+        'Network Admin': '過去に社内サーバーを私的に利用し、仮想通貨のマイニングを行っていた形跡がある。',
+        'Security Analyst': '殺害された主任開発者と、次期CTOの座を巡って激しく対立しており、更迭を画策していた。',
+        'DB Engineer': '多額の個人的な借金があり、機密データを外部のブローカーに売却することを検討していた。',
+        'Sys Operator': '半年前のシステムダウンの際、自分の操作ミスが原因であることを隠蔽するためにログを改ざんした。',
+        'Infra Lead': '競合他社から高額な報酬でヘッドハンティングされており、手土産として設計図を持ち出す約束をしていた。',
+        'Dev Ops': '自動化スクリプトの中に、自分だけがアクセスできるバックドアを密かに仕込んでいる。'
+    };
+
     // 役割割り当て関数
     function assignRoles() {
-        // 全プレイヤーのインデックスを取得してシャッフル
-        const indices = gameState.players.map((_, i) => i);
-        for (let i = indices.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [indices[i], indices[j]] = [indices[j], indices[i]];
-        }
+        const shuffled = [...gameState.players].sort(() => Math.random() - 0.5);
+        const hackerCount = Math.max(1, Math.floor(gameState.players.length / 3));
 
-        // 最初の2人をハッカーにする
-        const hackerIndices = indices.slice(0, 2);
-        gameState.players.forEach((p, i) => {
-            p.isHacker = hackerIndices.includes(i);
+        gameState.players.forEach(p => {
+            const indexInShuffled = shuffled.findIndex(s => s.id === p.id);
+            p.isHacker = indexInShuffled < hackerCount;
+            p.isIsolated = false;
+            p.votes = 0;
+            p.secret = CHARACTER_SECRETS[p.role] || '特に目立った不審点はない。';
 
-            // 各プレイヤーに自分の役割を個別に通知
-            io.to(p.id).emit('role_assigned', { isHacker: p.isHacker });
+            // 各プレイヤーに自分の役割と秘密を個別に通知
+            io.to(p.id).emit('role_assigned', {
+                isHacker: p.isHacker,
+                roleName: p.role,
+                secret: p.secret
+            });
         });
 
-        addLog('ROLES ASSIGNED. THE OPERATION BEGINS.', 'system');
+        addLog('ROLES AND ENCRYPTED INTEL DISTRIBUTED. THE INVESTIGATION BEGINS.', 'system');
     }
 
     // アクション受信
@@ -159,7 +233,17 @@ io.on('connection', (socket) => {
         const player = gameState.players.find(p => p.id === socket.id);
         if (!player) return;
 
+        if (player.isIsolated) {
+            socket.emit('error', 'ACCESS DENIED: ACCOUNT ISOLATED BY VOTE.');
+            return;
+        }
+
         const isHackerAction = ['INJECT_MALWARE', 'EXFILTRATE', 'COVER_TRACKS'].includes(data.type);
+        const publicCost = isHackerAction ? 0 : data.cost; // ハッカーアクションは表向き0APに見える
+
+        gameState.totalPublicAp += publicCost;
+        gameState.totalActualAp += data.cost;
+
         const executorName = player.name;
 
         // 権限チェック: 非ハッカーがハッカーアクションをしようとした場合
@@ -244,6 +328,18 @@ io.on('connection', (socket) => {
         addLog('SYSTEM REBOOT INITIATED... NEW SESSION STARTED.', 'system');
         io.emit('state_update', gameState);
         io.emit('log_history', []);
+    });
+
+    // 投票受付
+    socket.on('vote', (data: { targetId: string }) => {
+        const voter = gameState.players.find(p => p.id === socket.id);
+        const target = gameState.players.find(p => p.id === data.targetId);
+
+        if (voter && target && gameState.phase === 'discussion') {
+            target.votes++;
+            addLog('ANONYMOUS VOTE RECORDED.', 'system');
+            io.emit('state_update', gameState);
+        }
     });
 
     // 強制ゲーム開始 (デバッグ用)

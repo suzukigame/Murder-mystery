@@ -42,7 +42,10 @@ function App() {
     const [isJoined, setIsJoined] = useState(false);
     const [myPlayerName, setMyPlayerName] = useState('');
     const [myRole, setMyRole] = useState('');
+    const [mySecret, setMySecret] = useState('');
     const [isHacker, setIsHacker] = useState(false);
+    const [isIsolated, setIsIsolated] = useState(false);
+    const [players, setPlayers] = useState<any[]>([]);
     const [showHackerMenu, setShowHackerMenu] = useState(false);
     const [showMsgModal, setShowMsgModal] = useState(false);
     const [msgTarget, setMsgTarget] = useState('');
@@ -67,9 +70,13 @@ function App() {
 
             setSystemHp(newState.hp);
             setDataLeak(newState.leak);
-            // setTurn は上記で実施済み
             setTimeLeft(newState.timeLeft);
             setPhase(newState.phase);
+            setPlayers(newState.players);
+
+            // 自分の隔離状態を確認
+            const me = newState.players.find((p: any) => p.id === socket.id);
+            if (me) setIsIsolated(me.isIsolated);
 
             // サーバー側でゲーム終了判定があれば受け取る（未実装ならクライアント判定のままにするか要検討）
             if (newState.timeLeft <= 0 && newState.turn >= 8) {
@@ -89,9 +96,10 @@ function App() {
             addLog(`PRIVATE DECRYPTED: ${data.message}`, 'warn');
         });
 
-        socket.on('role_assigned', (data: { isHacker: boolean }) => {
+        socket.on('role_assigned', (data: { isHacker: boolean, roleName: string, secret: string }) => {
             setIsHacker(data.isHacker);
-            addLog(`RESTRICTED DATA RECEIVED: Role verified.`, 'system');
+            setMySecret(data.secret);
+            addLog(`RESTRICTED DATA RECEIVED: Role verified. Intel decrypted.`, 'system');
         });
 
         return () => {
@@ -202,6 +210,11 @@ function App() {
     };
 
 
+
+    // 投票
+    const handleVote = (targetId: string) => {
+        socket.emit('vote', { targetId });
+    };
 
     // --- リスタート ---
     const resetGame = () => {
@@ -329,6 +342,17 @@ function App() {
                 </div>
             </div>
 
+            {/* --- Personal Secret --- */}
+            <div className="secret-intel-box">
+                <div className="secret-header"><Lock size={12} /> CLASSIFIED INTEL (Your Secret)</div>
+                <div className="secret-body">{mySecret || 'Waiting for mission start...'}</div>
+                {isIsolated && (
+                    <div className="isolated-alert text-red-500 font-bold flex items-center gap-2 mt-2">
+                        <AlertTriangle size={16} /> ACCOUNT ISOLATED: ACTIONS PROHIBITED
+                    </div>
+                )}
+            </div>
+
             {/* --- Main Dashboard --- */}
             <main className="dashboard">
                 {/* Log Screen */}
@@ -342,6 +366,25 @@ function App() {
                             <div key={log.id} className={`log-entry ${log.level}`}>
                                 <span className="log-time">[{log.time}]</span>
                                 <span className="log-msg">{log.content}</span>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+                {/* Player List & Voting */}
+                <section className="player-list-section">
+                    <div className="screen-header"><User size={14} /> ACTIVE_PERSONNEL</div>
+                    <div className="player-grid">
+                        {players.map(p => (
+                            <div key={p.id} className={`player-card ${p.isIsolated ? 'isolated' : ''}`}>
+                                <div className="p-info">
+                                    <div className="p-name">{p.name}</div>
+                                    <div className="p-role text-xs opacity-50">{p.role}</div>
+                                    {p.votes > 0 && <div className="p-votes">⚠️ SUSPICION: {p.votes}</div>}
+                                </div>
+                                {phase === 'discussion' && p.id !== socket.id && !isIsolated && (
+                                    <button onClick={() => handleVote(p.id)} className="btn-vote">VOTE</button>
+                                )}
                             </div>
                         ))}
                     </div>

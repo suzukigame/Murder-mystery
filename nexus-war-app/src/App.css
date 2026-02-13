@@ -88,6 +88,66 @@
     font-weight: bold;
 }
 
+/* === Secret Intel === */
+.secret-intel-box {
+    padding: 10px;
+    border: 1px solid var(--accent-cyan);
+    background: rgba(0, 242, 255, 0.05);
+    font-size: 0.75rem;
+    position: relative;
+    overflow: hidden;
+    animation: pulse-cyan 4s infinite ease-in-out;
+}
+
+.secret-header {
+    font-size: 0.65rem;
+    font-weight: bold;
+    color: var(--accent-cyan);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.8;
+}
+
+.secret-body {
+    line-height: 1.5;
+    color: var(--text-active);
+}
+
+@keyframes pulse-cyan {
+    0% {
+        border-color: rgba(0, 242, 255, 0.3);
+        box-shadow: 0 0 5px rgba(0, 242, 255, 0.1);
+    }
+
+    50% {
+        border-color: rgba(0, 242, 255, 0.8);
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+    }
+
+    100% {
+        border-color: rgba(0, 242, 255, 0.3);
+        box-shadow: 0 0 5px rgba(0, 242, 255, 0.1);
+    }
+}
+
+.isolated-alert {
+    animation: blink-red 1s infinite steps(2);
+}
+
+@keyframes blink-red {
+    from {
+        color: var(--accent-red);
+        opacity: 1;
+    }
+
+    to {
+        color: transparent;
+        opacity: 0.5;
+    }
+}
+
 /* === Dashboard === */
 .dashboard {
     flex: 1;
@@ -154,6 +214,78 @@
     color: var(--text-dim);
     margin-right: 6px;
     font-size: 0.7rem;
+}
+
+/* === Player List & Voting === */
+.player-list-section {
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+}
+
+.player-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.player-card {
+    border: 1px solid #333;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s;
+}
+
+.player-card.isolated {
+    border-color: var(--accent-red);
+    background: rgba(255, 0, 68, 0.1);
+    animation: glitch-border 0.5s infinite;
+}
+
+.p-name {
+    font-weight: bold;
+    font-size: 0.85rem;
+    color: var(--text-active);
+}
+
+.p-votes {
+    font-size: 0.65rem;
+    color: var(--accent-yellow);
+    margin-top: 2px;
+}
+
+.btn-vote {
+    background: rgba(255, 230, 0, 0.1);
+    border: 1px solid var(--accent-yellow);
+    color: var(--accent-yellow);
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    transition: all 0.2s;
+}
+
+.btn-vote:hover {
+    background: var(--accent-yellow);
+    color: black;
+}
+
+@keyframes glitch-border {
+    0% {
+        border-color: var(--accent-red);
+    }
+
+    50% {
+        border-color: transparent;
+    }
+
+    100% {
+        border-color: var(--accent-red);
+    }
 }
 
 /* === Action Panel === */
