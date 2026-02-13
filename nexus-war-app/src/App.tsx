@@ -402,14 +402,14 @@ function App() {
                                 className="btn-action"
                                 disabled={phase === 'resolve'}
                             >
-                                <Shield size={18} /> <span>RESTORE</span><span className="ap-cost">2AP → HP+10%</span>
+                                <Shield size={18} /> <span>RESTORE</span><span className="ap-cost">2AP {'->'} HP+10%</span>
                             </button>
                             <button
                                 onClick={() => handleAction('ENCRYPT_DATA', 2)}
                                 className="btn-action"
                                 disabled={phase === 'resolve'}
                             >
-                                <Lock size={18} /> <span>ENCRYPT</span><span className="ap-cost">2AP → LEAK-10%</span>
+                                <Lock size={18} /> <span>ENCRYPT</span><span className="ap-cost">2AP {'->'} LEAK-10%</span>
                             </button>
                             <button
                                 onClick={() => setShowMsgModal(true)}
@@ -476,21 +476,21 @@ function App() {
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve'}
                             >
-                                <Skull size={18} /> <span>INJECT</span><span className="ap-cost">1AP → HP-15%</span>
+                                <Skull size={18} /> <span>INJECT</span><span className="ap-cost">1AP {'->'} HP-15%</span>
                             </button>
                             <button
                                 onClick={() => handleHackerAction('EXFILTRATE', 2)}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve'}
                             >
-                                <Database size={18} /> <span>EXFIL</span><span className="ap-cost">2AP → LEAK+20%</span>
+                                <Database size={18} /> <span>EXFIL</span><span className="ap-cost">2AP {'->'} LEAK+20%</span>
                             </button>
                             <button
                                 onClick={() => handleHackerAction('COVER_TRACKS', 1)}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve'}
                             >
-                                <Lock size={18} /> <span>COVER</span><span className="ap-cost">1AP → 痕跡消去</span>
+                                <Lock size={18} /> <span>COVER</span><span className="ap-cost">1AP {'->'} 痕跡消去</span>
                             </button>
 
                             {/* --- ハッカー側ユニークアクション --- */}
