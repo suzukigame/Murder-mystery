@@ -21,7 +21,7 @@ const io = new Server(server, {
     }
 });
 
-const TURN_DURATION = 15 * 60; // 15分
+const TURN_DURATION = 10 * 60; // 10分に変
 
 // 型定義
 type TurnPhase = 'discussion' | 'action' | 'resolve';
@@ -99,10 +99,10 @@ setInterval(() => {
         console.log(`[DEBUG] Turn: ${gameState.turn}, Time: ${gameState.timeLeft}, Phase: ${gameState.phase}`);
     }
 
-    // フェーズ遷移ロジック (15分対応)
+    // フェーズ遷移ロジック (15分対応 -> 10分調整)
     const elapsed = TURN_DURATION - gameState.timeLeft;
-    const ACTION_START = 10 * 60;
-    const RESOLVE_START = 14 * 60;
+    const ACTION_START = 7 * 60;   // 7分経過でアクション開始 (残3分)
+    const RESOLVE_START = 9 * 60;  // 9分経過で解決開始 (残1分)
 
     if (elapsed < ACTION_START) {
         if (gameState.phase !== 'discussion') {

@@ -32,7 +32,7 @@ function App() {
     // --- ゲーム状態 (サーバー同期) ---
     const [ap, setAp] = useState(3);
     const [turn, setTurn] = useState<number>(1);
-    const [timeLeft, setTimeLeft] = useState(15 * 60);
+    const [timeLeft, setTimeLeft] = useState(10 * 60);
     const [phase, setPhase] = useState<TurnPhase>('discussion');
     const [systemHp, setSystemHp] = useState(100);
     const [dataLeak, setDataLeak] = useState(0);
@@ -240,13 +240,13 @@ function App() {
 
     // --- フェーズ変更時のアラート ---
     useEffect(() => {
-        const elapsed = 15 * 60 - timeLeft;
-        if (elapsed === 10 * 60) {
+        const elapsed = 10 * 60 - timeLeft;
+        if (elapsed === 7 * 60) {
             addLog('>>> ACTION PHASE STARTED. INPUT YOUR COMMANDS. <<<', 'system');
             setIsAlert(true);
             setTimeout(() => setIsAlert(false), 3000);
         }
-        if (elapsed === 14 * 60) {
+        if (elapsed === 9 * 60) {
             addLog('>>> RESOLVE PHASE. PROCESSING ALL ACTIONS... <<<', 'system');
         }
     }, [timeLeft, addLog]);
