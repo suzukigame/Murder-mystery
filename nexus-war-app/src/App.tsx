@@ -89,10 +89,17 @@ function App() {
             addLog(`PRIVATE DECRYPTED: ${data.message}`, 'warn');
         });
 
+        socket.on('role_assigned', (data: { isHacker: boolean }) => {
+            setIsHacker(data.isHacker);
+            addLog(`RESTRICTED DATA RECEIVED: Role verified.`, 'system');
+        });
+
         return () => {
             socket.off('state_update');
             socket.off('log_update');
             socket.off('log_history');
+            socket.off('private_message');
+            socket.off('role_assigned');
         };
     }, []);
 
@@ -331,26 +338,24 @@ function App() {
 
                 {/* Action Panel */}
                 <section className={`action-panel ${isHacker ? 'hacker-panel' : ''}`}>
-                    <div className="panel-title">
-                        {isHacker ? '💀 ATTACK CONSOLE [ROOT ACCESS]' : '🛡️ ACTIONS'}
-                    </div>
+                    <div className="panel-title">{isHacker ? 'HACKER_CONSOLE' : 'SECURITY_TERMINAL'}</div>
 
-                    {/* === 防衛側ボタン === */}
-                    {!isHacker && (
+                    {!isHacker ? (
+                        /* === 防衛側ボタン === */
                         <div className="action-grid">
                             <button
-                                onClick={() => handleAction('NETWORK_SCAN', 1)}
+                                onClick={() => handleAction('RESTORE_SYSTEM', 2)}
                                 className="btn-action"
                                 disabled={phase === 'resolve'}
                             >
-                                <Search size={18} /> <span>SCAN</span><span className="ap-cost">1AP</span>
+                                <Shield size={18} /> <span>RESTORE</span><span className="ap-cost">2AP → HP+10%</span>
                             </button>
                             <button
-                                onClick={() => handleAction('SECURITY_PATCH', 2)}
+                                onClick={() => handleAction('ENCRYPT_DATA', 2)}
                                 className="btn-action"
                                 disabled={phase === 'resolve'}
                             >
-                                <Shield size={18} /> <span>PATCH</span><span className="ap-cost">2AP</span>
+                                <Lock size={18} /> <span>ENCRYPT</span><span className="ap-cost">2AP → LEAK-10%</span>
                             </button>
                             <button
                                 onClick={() => setShowMsgModal(true)}
@@ -366,6 +371,39 @@ function App() {
                             >
                                 <Eye size={18} /> <span>AUDIT</span><span className="ap-cost">1AP</span>
                             </button>
+
+                            {/* --- 防衛側ユニークアクション --- */}
+                            {myRole === 'Network Admin' && (
+                                <button onClick={() => handleAction('TRAFFIC_TRACE', 1)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                    <Search size={18} /> <span>TRACE</span><span className="ap-cost">1AP</span>
+                                </button>
+                            )}
+                            {myRole === 'Security Analyst' && (
+                                <button onClick={() => handleAction('MALWARE_SHIELD', 1)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                    <Shield size={18} /> <span>SHIELD</span><span className="ap-cost">1AP</span>
+                                </button>
+                            )}
+                            {myRole === 'DB Engineer' && (
+                                <button onClick={() => handleAction('DB_OPTIMIZE', 2)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                    <Database size={18} /> <span>OPTIMIZE</span><span className="ap-cost">2AP</span>
+                                </button>
+                            )}
+                            {myRole === 'Sys Operator' && (
+                                <button onClick={() => handleAction('REBOOT_CORE', 2)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                    <RotateCcw size={18} /> <span>REBOOT</span><span className="ap-cost">2AP</span>
+                                </button>
+                            )}
+                            {myRole === 'Infra Lead' && (
+                                <button onClick={() => handleAction('GRID_LOCK', 3)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                    <Lock size={18} /> <span>LOCK</span><span className="ap-cost">3AP</span>
+                                </button>
+                            )}
+                            {myRole === 'Dev Ops' && (
+                                <button onClick={() => handleAction('AUTO_DOCKER', 1)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                    <Zap size={18} /> <span>SCALE</span><span className="ap-cost">1AP</span>
+                                </button>
+                            )}
+
                             <button
                                 onContextMenu={(e) => { e.preventDefault(); setIsHacker(!isHacker); }}
                                 onClick={() => {
@@ -376,10 +414,8 @@ function App() {
                                 <AlertTriangle size={18} /> <span>STATUS</span>
                             </button>
                         </div>
-                    )}
-
-                    {/* === ハッカー側ボタン === */}
-                    {isHacker && (
+                    ) : (
+                        /* === ハッカー側ボタン === */
                         <div className="action-grid hacker-grid">
                             <button
                                 onClick={() => handleHackerAction('INJECT_MALWARE', 1)}
@@ -402,6 +438,39 @@ function App() {
                             >
                                 <Lock size={18} /> <span>COVER</span><span className="ap-cost">1AP → 痕跡消去</span>
                             </button>
+
+                            {/* --- ハッカー側ユニークアクション --- */}
+                            {myRole === 'Network Admin' && (
+                                <button onClick={() => handleAction('TRAFFIC_TRACE', 1)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
+                                    <Search size={18} /> <span>TRACE</span><span className="ap-cost">1AP</span>
+                                </button>
+                            )}
+                            {myRole === 'Security Analyst' && (
+                                <button onClick={() => handleAction('MALWARE_SHIELD', 1)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
+                                    <Shield size={18} /> <span>SHIELD</span><span className="ap-cost">1AP</span>
+                                </button>
+                            )}
+                            {myRole === 'DB Engineer' && (
+                                <button onClick={() => handleAction('DB_OPTIMIZE', 2)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
+                                    <Database size={18} /> <span>OPTIMIZE</span><span className="ap-cost">2AP</span>
+                                </button>
+                            )}
+                            {myRole === 'Sys Operator' && (
+                                <button onClick={() => handleAction('REBOOT_CORE', 2)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
+                                    <RotateCcw size={18} /> <span>REBOOT</span><span className="ap-cost">2AP</span>
+                                </button>
+                            )}
+                            {myRole === 'Infra Lead' && (
+                                <button onClick={() => handleAction('GRID_LOCK', 3)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
+                                    <Lock size={18} /> <span>LOCK</span><span className="ap-cost">3AP</span>
+                                </button>
+                            )}
+                            {myRole === 'Dev Ops' && (
+                                <button onClick={() => handleAction('AUTO_DOCKER', 1)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
+                                    <Zap size={18} /> <span>SCALE</span><span className="ap-cost">1AP</span>
+                                </button>
+                            )}
+
                             <button
                                 onClick={() => setShowMsgModal(true)}
                                 className="btn-action btn-hacker-action"
@@ -414,7 +483,7 @@ function App() {
                                 onClick={() => {
                                     addLog(`STATUS: HP=${systemHp}% | LEAK=${dataLeak}% | AP=${ap}/3`, 'info');
                                 }}
-                                className="btn-action btn-hacker btn-status"
+                                className="btn-action btn-status"
                             >
                                 <AlertTriangle size={18} /> <span>BACK</span>
                             </button>

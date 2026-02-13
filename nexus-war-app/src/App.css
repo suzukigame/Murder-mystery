@@ -230,6 +230,17 @@
     box-shadow: 0 0 8px rgba(255, 0, 68, 0.3);
 }
 
+.btn-special {
+    border-color: var(--accent-yellow) !important;
+    color: var(--accent-yellow) !important;
+    box-shadow: 0 0 8px rgba(255, 230, 0, 0.2);
+    font-weight: bold;
+}
+
+.btn-special .ap-cost {
+    color: var(--text-active);
+}
+
 .hacker-text {
     color: var(--accent-red);
     text-shadow: 0 0 5px var(--accent-red);

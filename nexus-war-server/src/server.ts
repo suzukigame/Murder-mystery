@@ -34,7 +34,7 @@ const getInitialState = () => ({
     phase: 'discussion', // discussion, action, resolve
     isPaused: false,
     logs: [] as { id: string, time: string, level: string, content: string }[],
-    players: [] as { id: string, name: string, role: string }[]
+    players: [] as { id: string, name: string, role: string, isHacker: boolean }[]
 });
 
 let gameState = getInitialState();
@@ -114,9 +114,16 @@ io.on('connection', (socket) => {
             gameState.players.push({
                 id: socket.id,
                 name: data.name,
-                role: data.role
+                role: data.role,
+                isHacker: false // 初期値は偽。開始時に割り当てる
             });
             addLog(`NEW CONNECTION: ${data.name} [${data.role}] ESTABLISHED.`, 'system');
+
+            // 6人揃ったら役割を割り当てる
+            if (gameState.players.length === 6) {
+                assignRoles();
+            }
+
             io.emit('state_update', gameState);
         } else {
             // 名前変更などの場合
@@ -126,11 +133,42 @@ io.on('connection', (socket) => {
         }
     });
 
-    // アクション受信
-    socket.on('action', (data: { type: string, cost: number, effect?: any }) => {
-        const player = gameState.players.find(p => p.id === socket.id);
-        const executorName = player ? player.name : 'Unknown User';
+    // 役割割り当て関数
+    function assignRoles() {
+        // 全プレイヤーのインデックスを取得してシャッフル
+        const indices = gameState.players.map((_, i) => i);
+        for (let i = indices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
 
+        // 最初の2人をハッカーにする
+        const hackerIndices = indices.slice(0, 2);
+        gameState.players.forEach((p, i) => {
+            p.isHacker = hackerIndices.includes(i);
+
+            // 各プレイヤーに自分の役割を個別に通知
+            io.to(p.id).emit('role_assigned', { isHacker: p.isHacker });
+        });
+
+        addLog('ROLES ASSIGNED. THE OPERATION BEGINS.', 'system');
+    }
+
+    // アクション受信
+    socket.on('action', (data: { type: string, cost: number, targetId?: string }) => {
+        const player = gameState.players.find(p => p.id === socket.id);
+        if (!player) return;
+
+        const isHackerAction = ['INJECT_MALWARE', 'EXFILTRATE', 'COVER_TRACKS'].includes(data.type);
+        const executorName = player.name;
+
+        // 権限チェック: 非ハッカーがハッカーアクションをしようとした場合
+        if (isHackerAction && !player.isHacker) {
+            socket.emit('error', 'UNAUTHORIZED ACCESS: ROOT PRIVILEGES REQUIRED.');
+            return;
+        }
+
+        // 基本アクション
         if (data.type === 'INJECT_MALWARE') {
             gameState.hp = Math.max(0, gameState.hp - 15);
             addLog(`CRITICAL ALERT: MALWARE DETECTED. SOURCE: [ENCRYPTED]. HP DROPPED.`, 'critical');
@@ -144,6 +182,25 @@ io.on('connection', (socket) => {
             addLog(`SYSTEM SCAN EXECUTED by ${executorName}. Result: Secure.`, 'info');
         } else if (data.type === 'VIEW_AUDIT_LOG') {
             addLog(`AUDIT LOG ACCESSED by ${executorName}. Monitoring active.`, 'info');
+        } else if (data.type === 'COVER_TRACKS') {
+            addLog(`LOG PURGE DETECTED. SYSTEM TRACES REMOVED.`, 'warn');
+        }
+        // --- ユニークアクション (Special Skills) ---
+        else if (data.type === 'TRAFFIC_TRACE' && player.role === 'Network Admin') {
+            addLog(`TRAFFIC ANALYSIS REQUESTED by ${executorName}. Deep packet inspection active.`, 'info');
+            // クライアント側で追加情報を表示するなどのフラグを立てることも可能
+        } else if (data.type === 'MALWARE_SHIELD' && player.role === 'Security Analyst') {
+            addLog(`DYNAMIC SHIELD DEPLOYED by ${executorName}. Integrity reinforced.`, 'info');
+        } else if (data.type === 'DB_OPTIMIZE' && player.role === 'DB Engineer') {
+            gameState.leak = Math.max(0, gameState.leak - 10);
+            addLog(`DB OPTIMIZATION COMPLETE by ${executorName}. DATA EXPOSURE REDUCED.`, 'info');
+        } else if (data.type === 'REBOOT_CORE' && player.role === 'Sys Operator') {
+            gameState.hp = Math.min(100, gameState.hp + 15);
+            addLog(`CORE SYSTEM REBOOT by ${executorName}. RESOURCES REALLOCATED.`, 'info');
+        } else if (data.type === 'GRID_LOCK' && player.role === 'Infra Lead') {
+            addLog(`GRID LOCK ACTIVATED by ${executorName}. SYSTEM STATE FROZEN.`, 'warn');
+        } else if (data.type === 'AUTO_DOCKER' && player.role === 'Dev Ops') {
+            addLog(`AUTO-SCALING INITIATED by ${executorName}. RESOURCE POOL EXPANDED.`, 'info');
         }
 
         io.emit('state_update', gameState);
