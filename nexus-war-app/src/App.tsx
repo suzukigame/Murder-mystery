@@ -410,9 +410,8 @@ function App() {
                     </div>
                 </section>
 
-                {/* Action Panel */}
                 <section className={`action-panel ${isHacker ? 'hacker-panel' : ''}`}>
-                    <div className="panel-title">{isHacker ? 'HACKER_CONSOLE' : 'SECURITY_TERMINAL'}</div>
+                    <div className="panel-title">{isHacker ? 'ハッカーコンソール' : '社員用のコンソール'}</div>
 
                     {!isHacker ? (
                         /* === 防衛側ボタン === */
