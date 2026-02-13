@@ -317,7 +317,7 @@ io.on('connection', (socket) => {
             return;
         }
 
-        const isHackerAction = ['INJECT_MALWARE', 'EXFILTRATE', 'COVER_TRACKS', 'TAMPER_EVIDENCE', 'DDOS'].includes(data.type);
+        const isHackerAction = ['INJECT_MALWARE', 'EXFILTRATE', 'COVER_TRACKS', 'TAMPER_EVIDENCE', 'DDOS', 'FALSE_FLAG'].includes(data.type);
         const publicCost = isHackerAction ? 0 : data.cost; // ハッカーアクションは表向き0APに見える
 
         gameState.totalPublicAp += publicCost;
@@ -388,6 +388,23 @@ io.on('connection', (socket) => {
                         senderId: 'SYSTEM',
                         senderName: 'SystemAlert',
                         message: `YOUR TERMINAL HAS BEEN TARGETED BY DDOS. NEXT TURN AP -1.`
+                    });
+                }
+            } else {
+                socket.emit('error', 'UNAUTHORIZED ACCESS: ROOT PRIVILEGES REQUIRED.');
+            }
+        } else if (data.type === 'FALSE_FLAG') {
+            // ハッカースキル: 証拠偽装（ターゲットのTRACE_LOG結果をPOSITIVEに偽装）
+            if (player.isHacker) {
+                const target = gameState.players.find(p => p.id === data.targetId);
+                if (target) {
+                    target.performedHackerAction = true;
+                    addLog(`SUSPICIOUS DATA PATTERN DETECTED IN NETWORK LOGS.`, 'warn');
+                    // ハッカー本人にだけ通知
+                    io.to(player.id).emit('private_message', {
+                        senderId: 'SYSTEM',
+                        senderName: 'HackerOS',
+                        message: `FALSE FLAG PLANTED ON ${target.name}. TRACE_LOG WILL SHOW POSITIVE.`
                     });
                 }
             } else {

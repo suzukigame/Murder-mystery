@@ -50,6 +50,7 @@ function App() {
     const [players, setPlayers] = useState<any[]>([]);
     const [isTraceMode, setIsTraceMode] = useState(false); // Trace mode state
     const [isDdosMode, setIsDdosMode] = useState(false); // DDOS target selection mode
+    const [isFalseFlagMode, setIsFalseFlagMode] = useState(false); // False flag targeting mode
     const [showHackerMenu, setShowHackerMenu] = useState(false);
     const [isAlert, setIsAlert] = useState(false);
 
@@ -402,7 +403,7 @@ function App() {
                                 </div>
                                 {phase === 'discussion' && p.id !== socket.id && (
                                     <>
-                                        {!isTraceMode && !isDdosMode && (
+                                        {!isTraceMode && !isDdosMode && !isFalseFlagMode && (
                                             <button onClick={() => handleVote(p.id)} className="btn-vote">VOTE</button>
                                         )}
                                         {isTraceMode && myRole === 'Network Admin' && (
@@ -427,6 +428,18 @@ function App() {
                                                 style={{ borderColor: '#ff4444', color: '#ff4444' }}
                                             >
                                                 DDOS
+                                            </button>
+                                        )}
+                                        {isFalseFlagMode && isHacker && (
+                                            <button
+                                                onClick={() => {
+                                                    handleAction('FALSE_FLAG', 1, p.id);
+                                                    setIsFalseFlagMode(false);
+                                                }}
+                                                className="btn-vote"
+                                                style={{ borderColor: '#ff00ff', color: '#ff00ff' }}
+                                            >
+                                                FAKE
                                             </button>
                                         )}
                                     </>
@@ -543,67 +556,49 @@ function App() {
                         /* === ハッカー側ボタン === */
                         <div className="action-grid hacker-grid">
                             <button
-                                onClick={() => handleHackerAction('INJECT_MALWARE', 1)}
+                                onClick={() => handleAction('INJECT_MALWARE', 1)}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve'}
                             >
                                 <Skull size={18} /> <span>INJECT</span><span className="ap-cost">1AP {'->'} HP-15%</span>
                             </button>
                             <button
-                                onClick={() => handleHackerAction('EXFILTRATE', 2)}
+                                onClick={() => handleAction('EXFILTRATE', 2)}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve'}
                             >
                                 <Database size={18} /> <span>EXFIL</span><span className="ap-cost">2AP {'->'} LEAK+20%</span>
                             </button>
                             <button
-                                onClick={() => handleHackerAction('COVER_TRACKS', 1)}
+                                onClick={() => handleAction('COVER_TRACKS', 1)}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve'}
                             >
                                 <Lock size={18} /> <span>COVER</span><span className="ap-cost">1AP {'->'} 痕跡消去</span>
                             </button>
-
-                            {/* --- ハッカー側ユニークアクション (偽装用) --- */}
-                            {myRole === 'Network Admin' && (
-                                <button className="btn-action btn-hacker-action" disabled title="Hacker cannot use Trace Log">
-                                    <Search size={18} /> <span>TRACE_LOG</span><span className="ap-cost">DISABLED</span>
-                                </button>
-                            )}
-                            {myRole === 'Security Analyst' && (
-                                <button onClick={() => handleAction('FIREWALL', 2)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
-                                    <Shield size={18} /> <span>FIREWALL</span><span className="ap-cost">2AP</span>
-                                </button>
-                            )}
-                            {myRole === 'DB Engineer' && (
-                                <button onClick={() => handleAction('DATA_RECOVERY', 2)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
-                                    <Database size={18} /> <span>RECOVERY</span><span className="ap-cost">2AP</span>
-                                </button>
-                            )}
-                            {myRole === 'Sys Operator' && (
-                                <button onClick={() => handleAction('SYS_ROLLBACK', 3)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
-                                    <RotateCcw size={18} /> <span>ROLLBACK</span><span className="ap-cost">3AP</span>
-                                </button>
-                            )}
-                            {myRole === 'Infra Lead' && (
-                                <button onClick={() => handleAction('SERVER_BOOST', 2)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
-                                    <Zap size={18} /> <span>BOOST</span><span className="ap-cost">2AP</span>
-                                </button>
-                            )}
-                            {myRole === 'Dev Ops' && (
-                                <button onClick={() => handleAction('DEPLOY_BOT', 1)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
-                                    <Cpu size={18} /> <span>DEPLOY_BOT</span><span className="ap-cost">1AP</span>
-                                </button>
-                            )}
-
                             <button
-                                onClick={() => setIsDdosMode(!isDdosMode)}
+                                onClick={() => {
+                                    setIsDdosMode(!isDdosMode);
+                                    setIsFalseFlagMode(false);
+                                }}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve'}
                                 style={isDdosMode ? { backgroundColor: 'rgba(255, 0, 0, 0.3)', borderColor: '#ff4444' } : {}}
                             >
-                                <Zap size={18} /> <span>DDOS</span><span className="ap-cost">2AP {'->'}  AP-1</span>
+                                <Zap size={18} /> <span>DDOS</span><span className="ap-cost">2AP {'->'} AP-1</span>
                             </button>
+                            <button
+                                onClick={() => {
+                                    setIsFalseFlagMode(!isFalseFlagMode);
+                                    setIsDdosMode(false);
+                                }}
+                                className="btn-action btn-hacker-action"
+                                disabled={phase === 'resolve'}
+                                style={isFalseFlagMode ? { backgroundColor: 'rgba(255, 0, 255, 0.2)', borderColor: '#ff00ff' } : {}}
+                            >
+                                <AlertTriangle size={18} /> <span>FALSE_FLAG</span><span className="ap-cost">1AP {'->'} POSITIVE偽装</span>
+                            </button>
+
                             <button
                                 onContextMenu={(e) => { e.preventDefault(); setIsHacker(!isHacker); }}
                                 onClick={() => {
