@@ -52,6 +52,7 @@ interface GameState {
     totalActualAp: number; // 実際のAP消費合計（不一致が証拠になる）
     devOpsBots: number;    // 新: DevOpsのボット数
     firewallActive: boolean; // 新: Firewall状態
+    votedPlayers: { [voterId: string]: string }; // 投票追跡
 }
 
 // ゲーム状態初期化関数
@@ -68,7 +69,8 @@ const getInitialState = (): GameState => ({
     totalPublicAp: 0,
     totalActualAp: 0,
     devOpsBots: 0,
-    firewallActive: false
+    firewallActive: false,
+    votedPlayers: {}
 });
 
 let gameState = getInitialState();
@@ -166,6 +168,7 @@ setInterval(() => {
         gameState.totalPublicAp = 0;
         gameState.totalActualAp = 0;
         gameState.firewallActive = false; // Firewallリセット
+        gameState.votedPlayers = {}; // 投票リセット
         gameState.players.forEach(p => {
             p.votes = 0;
             p.performedHackerAction = false; // フラグリセット
@@ -307,7 +310,7 @@ io.on('connection', (socket) => {
             return;
         }
 
-        const isHackerAction = ['INJECT_MALWARE', 'EXFILTRATE', 'COVER_TRACKS'].includes(data.type);
+        const isHackerAction = ['INJECT_MALWARE', 'EXFILTRATE', 'COVER_TRACKS', 'TAMPER_EVIDENCE'].includes(data.type);
         const publicCost = isHackerAction ? 0 : data.cost; // ハッカーアクションは表向き0APに見える
 
         gameState.totalPublicAp += publicCost;
@@ -320,7 +323,8 @@ io.on('connection', (socket) => {
         const executorName = player.name;
 
         // 権限チェック: 非ハッカーがハッカーアクションをしようとした場合
-        if (isHackerAction && !player.isHacker) {
+        // TAMPER_EVIDENCE は殺人犯用なので例外
+        if (isHackerAction && !player.isHacker && data.type !== 'TAMPER_EVIDENCE') {
             socket.emit('error', 'UNAUTHORIZED ACCESS: ROOT PRIVILEGES REQUIRED.');
             return;
         }
@@ -339,11 +343,8 @@ io.on('connection', (socket) => {
             addLog(`SYSTEM PATCH APPLIED by ${executorName}. HP RESTORED.`, 'info');
         } else if (data.type === 'EXFILTRATE' || data.type === 'EXFIL') {
             if (gameState.firewallActive) {
-                // FirewallはLeakも少し防ぐ設定にするか？ 今回はHPのみとするか、あるいは両方か。
-                // 仕様: Firewall blocks HP damage. For leak, maybe reduced? 
-                // 今回はHP専守とするが、強力すぎるなら調整。
-                gameState.leak = Math.min(100, gameState.leak + 20);
-                addLog(`DATA EXFILTRATION DETECTED. ORIGIN: [UNKNOWN].`, 'critical');
+                addLog(`EXFILTRATION BLOCKED BY FIREWALL.`, 'info');
+                gameState.firewallActive = false;
             } else {
                 gameState.leak = Math.min(100, gameState.leak + 20);
                 addLog(`DATA EXFILTRATION DETECTED. ORIGIN: [UNKNOWN].`, 'critical');
@@ -364,6 +365,15 @@ io.on('connection', (socket) => {
             addLog(`DATA ENCRYPTION COMPLETE by ${executorName}. LEAK PROGRESS REDUCED.`, 'info');
         } else if (data.type === 'COVER_TRACKS') {
             addLog(`LOG PURGE DETECTED. SYSTEM TRACES REMOVED.`, 'warn');
+        } else if (data.type === 'TAMPER_EVIDENCE') {
+            // 殺人犯スキル: 証拠改ざん
+            if (player.isMurderer) {
+                gameState.evidenceAnalysisProgress = Math.max(0, gameState.evidenceAnalysisProgress - 15);
+                addLog(`WARNING: DATA CORRUPTION DETECTED IN EVIDENCE LOGS.`, 'critical');
+                player.performedHackerAction = true;
+            } else {
+                socket.emit('error', 'UNAUTHORIZED ACTION.');
+            }
         }
         // --- ユニークアクション (Special Skills: Redeisgned) ---
         else if (data.type === 'TRACE_LOG' && player.role === 'Network Admin') {
@@ -448,13 +458,23 @@ io.on('connection', (socket) => {
         io.emit('log_history', []);
     });
 
-    // 投票受付
+    // 投票受付（1ターン1票、変更可能）
     socket.on('vote', (data: { targetId: string }) => {
         const voter = gameState.players.find(p => p.id === socket.id);
         const target = gameState.players.find(p => p.id === data.targetId);
 
         if (voter && target && gameState.phase === 'discussion') {
+            // 以前の投票があれば取り消す
+            const previousTargetId = gameState.votedPlayers[socket.id];
+            if (previousTargetId) {
+                const prevTarget = gameState.players.find(p => p.id === previousTargetId);
+                if (prevTarget) prevTarget.votes = Math.max(0, prevTarget.votes - 1);
+            }
+
+            // 新しい投票
+            gameState.votedPlayers[socket.id] = data.targetId;
             target.votes++;
+
             addLog('ANONYMOUS VOTE RECORDED.', 'system');
             io.emit('state_update', gameState);
         }

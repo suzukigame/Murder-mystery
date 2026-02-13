@@ -53,6 +53,7 @@ function App() {
     const [msgTarget, setMsgTarget] = useState('');
     const [msgText, setMsgText] = useState('');
     const [isAlert, setIsAlert] = useState(false);
+    const [isTraceMode, setIsTraceMode] = useState(false);
 
 
     // --- ログ ---
@@ -178,14 +179,13 @@ function App() {
 
 
     // --- 防衛側アクション ---
-    const handleAction = (name: string, cost: number) => {
+    const handleAction = (name: string, cost: number, targetId?: string) => {
         if (gameResult !== 'playing') return;
-        // if (phase === 'resolve') return; // テスト用に制限を一時緩和
 
         if (ap >= cost) {
             setAp(prev => prev - cost);
-            socket.emit('action', { type: name, cost });
-            addLog(`COMMAND SENT: ${name}`, 'system'); // クライアント側の反応を確認しやすく
+            socket.emit('action', { type: name, cost, targetId });
+            addLog(`COMMAND SENT: ${name}`, 'system');
         } else {
             addLog(`ERROR: INSUFFICIENT ACTION POINTS.`, 'warn');
         }
@@ -393,7 +393,10 @@ function App() {
 
                 {/* Player List & Voting */}
                 <section className="player-list-section">
-                    <div className="screen-header"><User size={14} /> ACTIVE_PERSONNEL</div>
+                    <div className="screen-header">
+                        <User size={14} /> ACTIVE_PERSONNEL
+                        {isTraceMode && <span style={{ color: '#ffff00', marginLeft: '10px' }}>[ TRACE MODE ACTIVE ]</span>}
+                    </div>
                     <div className="player-grid">
                         {players.map(p => (
                             <div key={p.id} className={`player-card ${p.isIsolated ? 'isolated' : ''}`}>
@@ -403,7 +406,23 @@ function App() {
                                     {p.votes > 0 && <div className="p-votes">ALERT: SUSPICION: {p.votes}</div>}
                                 </div>
                                 {phase === 'discussion' && p.id !== socket.id && !isIsolated && (
-                                    <button onClick={() => handleVote(p.id)} className="btn-vote">VOTE</button>
+                                    <>
+                                        {!isTraceMode && (
+                                            <button onClick={() => handleVote(p.id)} className="btn-vote">VOTE</button>
+                                        )}
+                                        {isTraceMode && myRole === 'Network Admin' && (
+                                            <button
+                                                onClick={() => {
+                                                    handleAction('TRACE_LOG', 1, p.id);
+                                                    setIsTraceMode(false);
+                                                }}
+                                                className="btn-vote"
+                                                style={{ borderColor: '#ffff00', color: '#ffff00' }}
+                                            >
+                                                TRACE
+                                            </button>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         ))}
@@ -412,7 +431,7 @@ function App() {
 
                 {/* Action Panel */}
                 <section className={`action-panel ${isHacker ? 'hacker-panel' : ''}`}>
-                    <div className="panel-title">{isHacker ? 'HACKER_CONSOLE' : 'SECURITY_TERMINAL'}</div>
+                    <div className="panel-title">{isHacker ? 'ハッカーコンソール' : '社員用のコンソール'}</div>
 
                     {!isHacker ? (
                         /* === 防衛側ボタン === */
@@ -440,13 +459,6 @@ function App() {
                                 <Lock size={18} /> <span>ENCRYPT</span><span className="ap-cost">2AP {'->'} LEAK-10%</span>
                             </button>
                             <button
-                                onClick={() => setShowMsgModal(true)}
-                                className="btn-action"
-                                disabled={phase === 'resolve'}
-                            >
-                                <MessageSquare size={18} /> <span>MSG</span><span className="ap-cost">1AP</span>
-                            </button>
-                            <button
                                 onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
                                 className="btn-action"
                                 disabled={phase === 'resolve'}
@@ -454,27 +466,26 @@ function App() {
                                 <Eye size={18} /> <span>AUDIT</span><span className="ap-cost">1AP</span>
                             </button>
 
+                            {/* --- 殺人犯スキル --- */}
+                            {isMurderer && (
+                                <button
+                                    onClick={() => handleAction('TAMPER_EVIDENCE', 2)}
+                                    className="btn-action btn-analyze"
+                                    disabled={phase === 'resolve'}
+                                    style={{ borderColor: '#ff00ff', color: '#ff00ff' }}
+                                    title="証拠解析の進行を妨害する"
+                                >
+                                    <Skull size={18} /> <span>TAMPER</span><span className="ap-cost">2AP {'->'}  EVID-15%</span>
+                                </button>
+                            )}
+
                             {/* --- 防衛側ユニークアクション --- */}
                             {myRole === 'Network Admin' && (
-                                <button onClick={() => setShowMsgModal(true)} className="btn-action btn-special" disabled={phase === 'resolve'} title="Select target to trace">
-                                    <Search size={18} /> <span>TRACE_LOG</span><span className="ap-cost">1AP (Target)</span>
-                                </button>
-                                // Trace Log requires targetId. Using MSG modal logic is tricky. 
-                                // Simplified: Use handleAction with prompt or custom modal. 
-                                // For now, I'll use a prompt or just let them use the generic MSG modal to "Simulate" it? 
-                                // No, server expects targetId. 
-                                // Let's use handleVote logic (click player card) or add a specific selector.
-                                // Quick fix: Add specific 'TRACE' mode to player selection?
-                                // Actually, for now, let's keep it simple. Network Admin needs to select a target.
-                                // I will add a 'Trace Target' mode.
-                            )}
-                            {/* Re-implementing TRACE LOG button to open a modal or mode */}
-                            {myRole === 'Network Admin' && (
                                 <button
-                                    onClick={() => { setMsgText('TRACE_LOG'); setShowMsgModal(true); }} // Hack: Reusing msg modal to select target? No.
-                                    // Better: Add a state 'actionTargetMode'
+                                    onClick={() => setIsTraceMode(!isTraceMode)}
                                     className="btn-action btn-special"
                                     disabled={phase === 'resolve'}
+                                    style={isTraceMode ? { backgroundColor: 'rgba(255, 255, 0, 0.2)', borderColor: '#ffff00' } : {}}
                                 >
                                     <Search size={18} /> <span>TRACE_LOG</span><span className="ap-cost">1AP (Target)</span>
                                 </button>
