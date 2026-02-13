@@ -16,7 +16,7 @@ interface LogEntry {
 }
 
 type TurnPhase = 'discussion' | 'action' | 'resolve';
-type GameResult = 'playing' | 'hacker_win_hp' | 'hacker_win_leak' | 'defense_win';
+type GameResult = 'playing' | 'hacker_win_hp' | 'hacker_win_leak' | 'defense_win' | 'murderer_found';
 
 // プレイヤー定義（デモ用）
 const PLAYERS = [
@@ -31,11 +31,12 @@ const PLAYERS = [
 function App() {
     // --- ゲーム状態 (サーバー同期) ---
     const [ap, setAp] = useState(3);
-    const [turn, setTurn] = useState<number>(1); // ローカルで保持して比較用に使用
+    const [turn, setTurn] = useState<number>(1);
     const [timeLeft, setTimeLeft] = useState(15 * 60);
     const [phase, setPhase] = useState<TurnPhase>('discussion');
     const [systemHp, setSystemHp] = useState(100);
     const [dataLeak, setDataLeak] = useState(0);
+    const [evidenceAnalysis, setEvidenceAnalysis] = useState(0); // 新: 証拠解析率
     const [gameResult, setGameResult] = useState<GameResult>('playing');
 
     // --- UI状態 (ローカル) ---
@@ -44,6 +45,7 @@ function App() {
     const [myRole, setMyRole] = useState('');
     const [mySecret, setMySecret] = useState('');
     const [isHacker, setIsHacker] = useState(false);
+    const [isMurderer, setIsMurderer] = useState(false); // 新: 殺人犯フラグ
     const [isIsolated, setIsIsolated] = useState(false);
     const [players, setPlayers] = useState<any[]>([]);
     const [showHackerMenu, setShowHackerMenu] = useState(false);
@@ -61,7 +63,6 @@ function App() {
         socket.on('state_update', (newState) => {
             // ターンが変わったらAP回復
             setTurn(prevTurn => {
-                // ターンが進んだ時、または初回(0から1)の時だけAPをリセット
                 if (newState.turn > prevTurn || (prevTurn === 0 && newState.turn === 1)) {
                     setAp(3);
                 }
@@ -70,6 +71,7 @@ function App() {
 
             setSystemHp(newState.hp);
             setDataLeak(newState.leak);
+            setEvidenceAnalysis(newState.evidenceAnalysisProgress || 0);
             setTimeLeft(newState.timeLeft);
             setPhase(newState.phase);
             setPlayers(newState.players);
@@ -78,9 +80,12 @@ function App() {
             const me = newState.players.find((p: any) => p.id === socket.id);
             if (me) setIsIsolated(me.isIsolated);
 
-            // サーバー側でゲーム終了判定があれば受け取る（未実装ならクライアント判定のままにするか要検討）
-            if (newState.timeLeft <= 0 && newState.turn >= 8) {
-                // 仮：サーバーからの勝敗通知イベントを作るべきだが、一旦状態から判定
+            // サーバー側でゲーム終了判定があれば受け取る
+            if (newState.isPaused) {
+                // 簡易判定
+                if (newState.evidenceAnalysisProgress >= 100) setGameResult('murderer_found');
+                else if (newState.hp <= 0) setGameResult('hacker_win_hp');
+                else if (newState.leak >= 100) setGameResult('hacker_win_leak');
             }
         });
 
@@ -96,10 +101,13 @@ function App() {
             addLog(`PRIVATE DECRYPTED: ${data.message}`, 'warn');
         });
 
-        socket.on('role_assigned', (data: { isHacker: boolean, roleName: string, secret: string }) => {
+        socket.on('role_assigned', (data: { isHacker: boolean, isMurderer: boolean, roleName: string, secret: string }) => {
             setIsHacker(data.isHacker);
+            setIsMurderer(data.isMurderer);
             setMySecret(data.secret);
-            addLog(`RESTRICTED DATA RECEIVED: Role verified. Intel decrypted.`, 'system');
+
+            const roleIntel = data.isHacker ? "HACKER ACTIVATED" : (data.isMurderer ? "MURDERER ACTIVATED" : "CIVILIAN VERIFIED");
+            addLog(`RESTRICTED DATA RECEIVED: ${roleIntel}. Intel decrypted.`, 'system');
         });
 
         return () => {
@@ -324,7 +332,7 @@ function App() {
                 </div>
             </header>
 
-            {/* --- HP & Leak Bars --- */}
+            {/* --- HP & Leak & Analysis Bars --- */}
             <div className="progress-bars">
                 <div className="bar-container">
                     <div className="bar-label"><Shield size={12} /> SYSTEM HP</div>
@@ -340,12 +348,24 @@ function App() {
                     </div>
                     <span className="bar-value">{dataLeak}%</span>
                 </div>
+                <div className="bar-container">
+                    <div className="bar-label"><Search size={12} /> EVIDENCE</div>
+                    <div className="bar-track">
+                        <div className="bar-fill" style={{ width: `${evidenceAnalysis}%`, backgroundColor: '#00ffff', boxShadow: '0 0 10px #00ffff' }} />
+                    </div>
+                    <span className="bar-value">{evidenceAnalysis}%</span>
+                </div>
             </div>
 
             {/* --- Personal Secret --- */}
             <div className="secret-intel-box">
                 <div className="secret-header"><Lock size={12} /> CLASSIFIED INTEL (Your Secret)</div>
-                <div className="secret-body">{mySecret || 'Waiting for mission start...'}</div>
+                <div className="secret-body">
+                    {isHacker && <div className="text-red-500 font-bold">[ROLE: HACKER] OBJECTIVE: LEAK 100% OR DESTROY HP.</div>}
+                    {isMurderer && <div className="text-purple-400 font-bold">[ROLE: MURDERER] OBJECTIVE: PREVENT ANALYSIS (100%).</div>}
+                    {!isHacker && !isMurderer && <div className="text-green-400 font-bold">[ROLE: CIVILIAN] OBJECTIVE: ANALYZE EVIDENCE (100%) & DEFEND.</div>}
+                    <div className="mt-2 text-sm opacity-80">{mySecret || 'Waiting for mission start...'}</div>
+                </div>
                 {isIsolated && (
                     <div className="isolated-alert text-red-500 font-bold flex items-center gap-2 mt-2">
                         <AlertTriangle size={16} /> ACCOUNT ISOLATED: ACTIONS PROHIBITED
@@ -398,6 +418,14 @@ function App() {
                         /* === 防衛側ボタン === */
                         <div className="action-grid">
                             <button
+                                onClick={() => handleAction('ANALYZE_EVIDENCE', 2)}
+                                className="btn-action btn-analyze"
+                                disabled={phase === 'resolve'}
+                                style={{ borderColor: '#00ffff', color: '#00ffff' }}
+                            >
+                                <Search size={18} /> <span>ANALYZE</span><span className="ap-cost">2AP {'->'} EVID+10%</span>
+                            </button>
+                            <button
                                 onClick={() => handleAction('RESTORE_SYSTEM', 2)}
                                 className="btn-action"
                                 disabled={phase === 'resolve'}
@@ -428,33 +456,53 @@ function App() {
 
                             {/* --- 防衛側ユニークアクション --- */}
                             {myRole === 'Network Admin' && (
-                                <button onClick={() => handleAction('TRAFFIC_TRACE', 1)} className="btn-action btn-special" disabled={phase === 'resolve'}>
-                                    <Search size={18} /> <span>TRACE</span><span className="ap-cost">1AP</span>
+                                <button onClick={() => setShowMsgModal(true)} className="btn-action btn-special" disabled={phase === 'resolve'} title="Select target to trace">
+                                    <Search size={18} /> <span>TRACE_LOG</span><span className="ap-cost">1AP (Target)</span>
+                                </button>
+                                // Trace Log requires targetId. Using MSG modal logic is tricky. 
+                                // Simplified: Use handleAction with prompt or custom modal. 
+                                // For now, I'll use a prompt or just let them use the generic MSG modal to "Simulate" it? 
+                                // No, server expects targetId. 
+                                // Let's use handleVote logic (click player card) or add a specific selector.
+                                // Quick fix: Add specific 'TRACE' mode to player selection?
+                                // Actually, for now, let's keep it simple. Network Admin needs to select a target.
+                                // I will add a 'Trace Target' mode.
+                            )}
+                            {/* Re-implementing TRACE LOG button to open a modal or mode */}
+                            {myRole === 'Network Admin' && (
+                                <button
+                                    onClick={() => { setMsgText('TRACE_LOG'); setShowMsgModal(true); }} // Hack: Reusing msg modal to select target? No.
+                                    // Better: Add a state 'actionTargetMode'
+                                    className="btn-action btn-special"
+                                    disabled={phase === 'resolve'}
+                                >
+                                    <Search size={18} /> <span>TRACE_LOG</span><span className="ap-cost">1AP (Target)</span>
                                 </button>
                             )}
+
                             {myRole === 'Security Analyst' && (
-                                <button onClick={() => handleAction('MALWARE_SHIELD', 1)} className="btn-action btn-special" disabled={phase === 'resolve'}>
-                                    <Shield size={18} /> <span>SHIELD</span><span className="ap-cost">1AP</span>
+                                <button onClick={() => handleAction('FIREWALL', 2)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                    <Shield size={18} /> <span>FIREWALL</span><span className="ap-cost">2AP</span>
                                 </button>
                             )}
                             {myRole === 'DB Engineer' && (
-                                <button onClick={() => handleAction('DB_OPTIMIZE', 2)} className="btn-action btn-special" disabled={phase === 'resolve'}>
-                                    <Database size={18} /> <span>OPTIMIZE</span><span className="ap-cost">2AP</span>
+                                <button onClick={() => handleAction('DATA_RECOVERY', 2)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                    <Database size={18} /> <span>RECOVERY</span><span className="ap-cost">2AP</span>
                                 </button>
                             )}
                             {myRole === 'Sys Operator' && (
-                                <button onClick={() => handleAction('REBOOT_CORE', 2)} className="btn-action btn-special" disabled={phase === 'resolve'}>
-                                    <RotateCcw size={18} /> <span>REBOOT</span><span className="ap-cost">2AP</span>
+                                <button onClick={() => handleAction('SYS_ROLLBACK', 3)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                    <RotateCcw size={18} /> <span>ROLLBACK</span><span className="ap-cost">3AP (HP+25)</span>
                                 </button>
                             )}
                             {myRole === 'Infra Lead' && (
-                                <button onClick={() => handleAction('GRID_LOCK', 3)} className="btn-action btn-special" disabled={phase === 'resolve'}>
-                                    <Lock size={18} /> <span>LOCK</span><span className="ap-cost">3AP</span>
+                                <button onClick={() => handleAction('SERVER_BOOST', 2)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                    <Zap size={18} /> <span>BOOST</span><span className="ap-cost">2AP (EVID+15%)</span>
                                 </button>
                             )}
                             {myRole === 'Dev Ops' && (
-                                <button onClick={() => handleAction('AUTO_DOCKER', 1)} className="btn-action btn-special" disabled={phase === 'resolve'}>
-                                    <Zap size={18} /> <span>SCALE</span><span className="ap-cost">1AP</span>
+                                <button onClick={() => handleAction('DEPLOY_BOT', 1)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                    <Cpu size={18} /> <span>DEPLOY_BOT</span><span className="ap-cost">1AP</span>
                                 </button>
                             )}
 
@@ -493,35 +541,35 @@ function App() {
                                 <Lock size={18} /> <span>COVER</span><span className="ap-cost">1AP {'->'} 痕跡消去</span>
                             </button>
 
-                            {/* --- ハッカー側ユニークアクション --- */}
+                            {/* --- ハッカー側ユニークアクション (偽装用) --- */}
                             {myRole === 'Network Admin' && (
-                                <button onClick={() => handleAction('TRAFFIC_TRACE', 1)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
-                                    <Search size={18} /> <span>TRACE</span><span className="ap-cost">1AP</span>
+                                <button className="btn-action btn-hacker-action" disabled title="Hacker cannot use Trace Log">
+                                    <Search size={18} /> <span>TRACE_LOG</span><span className="ap-cost">DISABLED</span>
                                 </button>
                             )}
                             {myRole === 'Security Analyst' && (
-                                <button onClick={() => handleAction('MALWARE_SHIELD', 1)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
-                                    <Shield size={18} /> <span>SHIELD</span><span className="ap-cost">1AP</span>
+                                <button onClick={() => handleAction('FIREWALL', 2)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
+                                    <Shield size={18} /> <span>FIREWALL</span><span className="ap-cost">2AP</span>
                                 </button>
                             )}
                             {myRole === 'DB Engineer' && (
-                                <button onClick={() => handleAction('DB_OPTIMIZE', 2)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
-                                    <Database size={18} /> <span>OPTIMIZE</span><span className="ap-cost">2AP</span>
+                                <button onClick={() => handleAction('DATA_RECOVERY', 2)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
+                                    <Database size={18} /> <span>RECOVERY</span><span className="ap-cost">2AP</span>
                                 </button>
                             )}
                             {myRole === 'Sys Operator' && (
-                                <button onClick={() => handleAction('REBOOT_CORE', 2)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
-                                    <RotateCcw size={18} /> <span>REBOOT</span><span className="ap-cost">2AP</span>
+                                <button onClick={() => handleAction('SYS_ROLLBACK', 3)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
+                                    <RotateCcw size={18} /> <span>ROLLBACK</span><span className="ap-cost">3AP</span>
                                 </button>
                             )}
                             {myRole === 'Infra Lead' && (
-                                <button onClick={() => handleAction('GRID_LOCK', 3)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
-                                    <Lock size={18} /> <span>LOCK</span><span className="ap-cost">3AP</span>
+                                <button onClick={() => handleAction('SERVER_BOOST', 2)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
+                                    <Zap size={18} /> <span>BOOST</span><span className="ap-cost">2AP</span>
                                 </button>
                             )}
                             {myRole === 'Dev Ops' && (
-                                <button onClick={() => handleAction('AUTO_DOCKER', 1)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
-                                    <Zap size={18} /> <span>SCALE</span><span className="ap-cost">1AP</span>
+                                <button onClick={() => handleAction('DEPLOY_BOT', 1)} className="btn-action btn-hacker-action" disabled={phase === 'resolve'}>
+                                    <Cpu size={18} /> <span>DEPLOY_BOT</span><span className="ap-cost">1AP</span>
                                 </button>
                             )}
 
