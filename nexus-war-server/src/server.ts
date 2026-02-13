@@ -139,6 +139,11 @@ setInterval(() => {
             checkWinCondition();
         }
 
+        // 投票集計の前に、前ターンの隔離を解除
+        gameState.players.forEach(p => {
+            p.isIsolated = false;
+        });
+
         // 投票集計と隔離
         let mostVotedPlayer: Player | null = null;
         let maxVotes = 0;
@@ -179,11 +184,6 @@ setInterval(() => {
                 // クライアント側にデバフ情報を送信
                 io.to(p.id).emit('ap_debuff', { amount: p.apDebuff });
                 p.apDebuff = 0; // デバフをリセット
-            }
-            if (p.isIsolated && gameState.phase === 'discussion') {
-                // 前ターンの隔離を解除（あるいは継続ルールにするか検討）
-                // 一旦、隔離は1ターンのみとする
-                setTimeout(() => { p.isIsolated = false; }, 100);
             }
         });
 

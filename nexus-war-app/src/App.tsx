@@ -400,7 +400,7 @@ function App() {
                                     <div className="p-role text-xs opacity-50">{p.role}</div>
                                     {p.votes > 0 && <div className="p-votes">ALERT: SUSPICION: {p.votes}</div>}
                                 </div>
-                                {phase === 'discussion' && p.id !== socket.id && !isIsolated && (
+                                {phase === 'discussion' && p.id !== socket.id && (
                                     <>
                                         {!isTraceMode && !isDdosMode && (
                                             <button onClick={() => handleVote(p.id)} className="btn-vote">VOTE</button>
@@ -439,7 +439,13 @@ function App() {
                 <section className={`action-panel ${isHacker ? 'hacker-panel' : ''}`}>
                     <div className="panel-title">{isHacker ? 'ハッカーコンソール' : '社員用のコンソール'}</div>
 
-                    {!isHacker ? (
+                    {isIsolated ? (
+                        <div style={{ padding: '20px', textAlign: 'center', color: '#ff4444', border: '1px solid #ff4444', borderRadius: '8px', margin: '10px 0' }}>
+                            <AlertTriangle size={32} style={{ marginBottom: '8px' }} />
+                            <div style={{ fontSize: '14px', fontWeight: 'bold' }}>⚠ ACCOUNT ISOLATED BY VOTE ⚠</div>
+                            <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>CONSOLE ACCESS DENIED THIS TURN. VOTING ONLY.</div>
+                        </div>
+                    ) : !isHacker ? (
                         /* === 防衛側ボタン === */
                         <div className="action-grid">
                             <button
