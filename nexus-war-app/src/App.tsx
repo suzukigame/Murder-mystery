@@ -58,9 +58,8 @@ function App() {
         socket.on('state_update', (newState) => {
             // ターンが変わったらAP回復
             setTurn(prevTurn => {
-                if (newState.turn > prevTurn) {
+                if (newState.turn > prevTurn || newState.turn === 1) {
                     setAp(3);
-                    // 音を鳴らすなどの通知もここで可能
                 }
                 return newState.turn;
             });
@@ -188,6 +187,7 @@ function App() {
 
     // --- リスタート ---
     const resetGame = () => {
+        setAp(3);
         socket.emit('reset_game');
     };
 
