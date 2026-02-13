@@ -399,7 +399,6 @@ io.on('connection', (socket) => {
                 const target = gameState.players.find(p => p.id === data.targetId);
                 if (target) {
                     target.performedHackerAction = true;
-                    addLog(`SUSPICIOUS DATA PATTERN DETECTED IN NETWORK LOGS.`, 'warn');
                     // ハッカー本人にだけ通知
                     io.to(player.id).emit('private_message', {
                         senderId: 'SYSTEM',
