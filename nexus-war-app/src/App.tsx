@@ -58,7 +58,8 @@ function App() {
         socket.on('state_update', (newState) => {
             // ターンが変わったらAP回復
             setTurn(prevTurn => {
-                if (newState.turn > prevTurn || newState.turn === 1) {
+                // ターンが進んだ時、または初回(0から1)の時だけAPをリセット
+                if (newState.turn > prevTurn || (prevTurn === 0 && newState.turn === 1)) {
                     setAp(3);
                 }
                 return newState.turn;
