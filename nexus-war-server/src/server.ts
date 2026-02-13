@@ -172,16 +172,19 @@ io.on('connection', (socket) => {
         if (data.type === 'INJECT_MALWARE') {
             gameState.hp = Math.max(0, gameState.hp - 15);
             addLog(`CRITICAL ALERT: MALWARE DETECTED. SOURCE: [ENCRYPTED]. HP DROPPED.`, 'critical');
-        } else if (data.type === 'SECURITY_PATCH') {
+        } else if (data.type === 'SECURITY_PATCH' || data.type === 'RESTORE_SYSTEM') {
             gameState.hp = Math.min(100, gameState.hp + 10);
             addLog(`SYSTEM PATCH APPLIED by ${executorName}. HP RESTORED.`, 'info');
-        } else if (data.type === 'EXFILTRATE') {
+        } else if (data.type === 'EXFILTRATE' || data.type === 'EXFIL') {
             gameState.leak = Math.min(100, gameState.leak + 20);
             addLog(`DATA EXFILTRATION DETECTED. ORIGIN: [UNKNOWN].`, 'critical');
-        } else if (data.type === 'NETWORK_SCAN') {
+        } else if (data.type === 'NETWORK_SCAN' || data.type === 'SECURITY_LOG_SCAN') {
             addLog(`SYSTEM SCAN EXECUTED by ${executorName}. Result: Secure.`, 'info');
-        } else if (data.type === 'VIEW_AUDIT_LOG') {
+        } else if (data.type === 'VIEW_AUDIT_LOG' || data.type === 'AUDIT') {
             addLog(`AUDIT LOG ACCESSED by ${executorName}. Monitoring active.`, 'info');
+        } else if (data.type === 'ENCRYPT_DATA') {
+            gameState.leak = Math.max(0, gameState.leak - 10);
+            addLog(`DATA ENCRYPTION COMPLETE by ${executorName}. LEAK PROGRESS REDUCED.`, 'info');
         } else if (data.type === 'COVER_TRACKS') {
             addLog(`LOG PURGE DETECTED. SYSTEM TRACES REMOVED.`, 'warn');
         }
@@ -241,6 +244,15 @@ io.on('connection', (socket) => {
         addLog('SYSTEM REBOOT INITIATED... NEW SESSION STARTED.', 'system');
         io.emit('state_update', gameState);
         io.emit('log_history', []);
+    });
+
+    // 強制ゲーム開始 (デバッグ用)
+    socket.on('start_game_force', () => {
+        if (gameState.players.length > 0) {
+            assignRoles();
+            addLog('SYSTEM OVERRIDE: GAME STARTED BY OPERATOR.', 'system');
+            io.emit('state_update', gameState);
+        }
     });
 });
 // 全てのリクエストをフロントエンドにリダイレクト (SPA対応)

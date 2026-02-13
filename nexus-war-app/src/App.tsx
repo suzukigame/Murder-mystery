@@ -164,21 +164,27 @@ function App() {
     // --- 防衛側アクション ---
     const handleAction = (name: string, cost: number) => {
         if (gameResult !== 'playing') return;
-        if (phase === 'resolve') return;
+        // if (phase === 'resolve') return; // テスト用に制限を一時緩和
 
         if (ap >= cost) {
-            setAp(prev => prev - cost); // APはとりあえずローカル管理
+            setAp(prev => prev - cost);
             socket.emit('action', { type: name, cost });
+            addLog(`COMMAND SENT: ${name}`, 'system'); // クライアント側の反応を確認しやすく
         } else {
-            // ローカルエラーログ
+            addLog(`ERROR: INSUFFICIENT ACTION POINTS.`, 'warn');
         }
     };
 
     // --- ハッカー専用アクション ---
     const handleHackerAction = (name: string, cost: number) => {
+        if (gameResult !== 'playing') return;
+
         if (ap >= cost) {
             setAp(prev => prev - cost);
             socket.emit('action', { type: name, cost });
+            addLog(`HACKER COMMAND SENT: ${name}`, 'system');
+        } else {
+            addLog(`ERROR: ROOT PRIVILEGES - INSUFFICIENT POWER.`, 'warn');
         }
         setShowHackerMenu(false);
     };
@@ -201,6 +207,11 @@ function App() {
     const resetGame = () => {
         setAp(3);
         socket.emit('reset_game');
+    };
+
+    // 強制開始 (デバッグ用)
+    const forceStart = () => {
+        socket.emit('start_game_force');
     };
 
 
@@ -497,6 +508,25 @@ function App() {
                 <div className="turn-info">
                     TURN {turn} / 8 | {formatTime(timeLeft)} | {getPhaseLabel()}
                 </div>
+                <button
+                    onClick={forceStart}
+                    style={{
+                        marginLeft: 'auto',
+                        background: 'rgba(255, 100, 100, 0.1)',
+                        border: '1px solid rgba(255, 100, 100, 0.3)',
+                        color: 'rgba(255, 150, 150, 0.7)',
+                        padding: '2px 8px',
+                        fontSize: '10px',
+                        cursor: 'pointer',
+                        borderRadius: '2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        marginRight: '8px'
+                    }}
+                >
+                    <Zap size={10} /> FORCE START (Assign Roles)
+                </button>
                 <button
                     onClick={resetGame}
                     style={{
