@@ -133,13 +133,13 @@ io.on('connection', (socket) => {
 
         if (data.type === 'INJECT_MALWARE') {
             gameState.hp = Math.max(0, gameState.hp - 15);
-            addLog(`CRITICAL ALERT: MALWARE DETECTED by ${executorName}. HP DROPPED.`, 'critical');
+            addLog(`CRITICAL ALERT: MALWARE DETECTED. SOURCE: [ENCRYPTED]. HP DROPPED.`, 'critical');
         } else if (data.type === 'SECURITY_PATCH') {
             gameState.hp = Math.min(100, gameState.hp + 10);
             addLog(`SYSTEM PATCH APPLIED by ${executorName}. HP RESTORED.`, 'info');
         } else if (data.type === 'EXFILTRATE') {
             gameState.leak = Math.min(100, gameState.leak + 20);
-            addLog(`DATA EXFILTRATION DETECTED by ${executorName}.`, 'critical');
+            addLog(`DATA EXFILTRATION DETECTED. ORIGIN: [UNKNOWN].`, 'critical');
         } else if (data.type === 'NETWORK_SCAN') {
             addLog(`SYSTEM SCAN EXECUTED by ${executorName}. Result: Secure.`, 'info');
         } else if (data.type === 'VIEW_AUDIT_LOG') {
