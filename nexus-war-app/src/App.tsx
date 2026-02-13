@@ -161,11 +161,10 @@ function App() {
     // --- フェーズ名取得 ---
     const getPhaseLabel = () => {
         if (stateCheckGameOver()) return 'GAME OVER';
-        const suffix = ' (10m)';
         switch (phase) {
-            case 'discussion': return 'DISCUSSION' + suffix;
-            case 'action': return 'ACTION INPUT' + suffix;
-            case 'resolve': return 'RESOLVING' + suffix;
+            case 'discussion': return 'DISCUSSION';
+            case 'action': return 'ACTION INPUT';
+            case 'resolve': return 'RESOLVING';
         }
     };
 
