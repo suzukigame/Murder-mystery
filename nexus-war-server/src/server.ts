@@ -365,6 +365,7 @@ io.on('connection', (socket) => {
             gameState.leak = Math.max(0, gameState.leak - 10);
             addLog(`DATA ENCRYPTION COMPLETE by ${executorName}. LEAK PROGRESS REDUCED.`, 'info');
         } else if (data.type === 'COVER_TRACKS') {
+            player.performedHackerAction = false;
             addLog(`LOG PURGE DETECTED. SYSTEM TRACES REMOVED.`, 'warn');
         } else if (data.type === 'TAMPER_EVIDENCE') {
             // 殺人犯スキル: 証拠改ざん
