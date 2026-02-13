@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './App.css';
 import { Terminal, Shield, AlertTriangle, MessageSquare, Zap, Cpu, Eye, Skull, Lock, Send, X, Wifi, Database, Search, RotateCcw, Trophy, Clock } from 'lucide-react';
+import io from 'socket.io-client';
+
+// ソケット接続 (開発環境用URL)
+const socket = io('http://localhost:3000');
 
 // --- 型定義 ---
 interface LogEntry {
@@ -13,29 +17,7 @@ interface LogEntry {
 type TurnPhase = 'discussion' | 'action' | 'resolve';
 type GameResult = 'playing' | 'hacker_win_hp' | 'hacker_win_leak' | 'defense_win';
 
-// デバッグ用タイムスケール（1秒あたりの経過秒数）
-const TIME_SCALES = [1, 10, 60];
-
-interface TurnEvent {
-    turn: number;
-    title: string;
-    description: string;
-    level: 'info' | 'warn' | 'critical';
-}
-
-// --- ターンイベント定義 ---
-const TURN_EVENTS: TurnEvent[] = [
-    { turn: 1, title: 'SYSTEM BREACH DETECTED', description: 'ALL SYSTEMS ENCRYPTED. RANSOMWARE PAYLOAD ACTIVE.', level: 'critical' },
-    { turn: 2, title: 'BACKUP CORRUPTION', description: 'BACKUP SERVER #2 INTEGRITY CHECK FAILED. DATA HASH MISMATCH.', level: 'critical' },
-    { turn: 3, title: 'LATERAL MOVEMENT', description: 'UNAUTHORIZED SSH SESSION FROM 10.0.3.77 TO DB_MASTER.', level: 'warn' },
-    { turn: 4, title: 'INSIDER ALERT', description: 'PRIVILEGE ESCALATION DETECTED ON UID:4021. ROOT ACCESS GRANTED.', level: 'critical' },
-    { turn: 5, title: 'DATA EXFILTRATION', description: 'OUTBOUND TRAFFIC SPIKE: 2.4GB TO EXTERNAL IP 185.xx.xx.xx.', level: 'critical' },
-    { turn: 6, title: 'COUNTER-ATTACK', description: 'FIREWALL RULE #47 BYPASSED. NEW C2 CHANNEL ESTABLISHED.', level: 'warn' },
-    { turn: 7, title: 'FINAL PHASE', description: 'DECRYPTION KEY FRAGMENT LOCATED IN /tmp/.shadow_cache.', level: 'info' },
-    { turn: 8, title: 'ENDGAME', description: 'SYSTEM LOCKDOWN IN 15 MINUTES. ALL OPERATORS REPORT STATUS.', level: 'critical' },
-];
-
-// --- プレイヤー定義（デモ用） ---
+// プレイヤー定義（デモ用）
 const PLAYERS = [
     { id: 'p1', name: 'KOBAYASHI', role: 'Network Admin' },
     { id: 'p2', name: 'TANAKA', role: 'Security Analyst' },
@@ -46,17 +28,16 @@ const PLAYERS = [
 ];
 
 function App() {
-    // --- ゲーム状態 ---
+    // --- ゲーム状態 (サーバー同期) ---
     const [ap, setAp] = useState(3);
-    const [turn, setTurn] = useState(1);
+    const [turn, setTurn] = useState<number>(1); // ローカルで保持して比較用に使用
     const [timeLeft, setTimeLeft] = useState(15 * 60);
     const [phase, setPhase] = useState<TurnPhase>('discussion');
     const [systemHp, setSystemHp] = useState(100);
     const [dataLeak, setDataLeak] = useState(0);
     const [gameResult, setGameResult] = useState<GameResult>('playing');
-    const [timeScale, setTimeScale] = useState(1);
 
-    // --- UI状態 ---
+    // --- UI状態 (ローカル) ---
     const [isHacker, setIsHacker] = useState(false);
     const [showHackerMenu, setShowHackerMenu] = useState(false);
     const [showMsgModal, setShowMsgModal] = useState(false);
@@ -66,90 +47,72 @@ function App() {
     const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // --- ログ ---
-    const [logs, setLogs] = useState<LogEntry[]>([
-        { id: '0', time: '09:00:00', level: 'system', content: '=== PROJECT: NEXUS_WAR [TURN-BASED EDITION] ===' },
-        { id: '1', time: '09:00:00', level: 'info', content: 'SYSTEM INITIALIZED. WELCOME, OPERATOR.' },
-        { id: '2', time: '09:00:05', level: 'critical', content: 'EXTERNAL DDOS ATTACK DETECTED ON PORT 80.' },
-    ]);
+    const [logs, setLogs] = useState<LogEntry[]>([]);
 
-    // --- ログ追加 ---
+    // --- Socketイベント設定 ---
+    useEffect(() => {
+        socket.on('state_update', (newState) => {
+            // ターンが変わったらAP回復
+            setTurn(prevTurn => {
+                if (newState.turn > prevTurn) {
+                    setAp(3);
+                    // 音を鳴らすなどの通知もここで可能
+                }
+                return newState.turn;
+            });
+
+            setSystemHp(newState.hp);
+            setDataLeak(newState.leak);
+            // setTurn は上記で実施済み
+            setTimeLeft(newState.timeLeft);
+            setPhase(newState.phase);
+
+            // サーバー側でゲーム終了判定があれば受け取る（未実装ならクライアント判定のままにするか要検討）
+            if (newState.timeLeft <= 0 && newState.turn >= 8) {
+                // 仮：サーバーからの勝敗通知イベントを作るべきだが、一旦状態から判定
+            }
+        });
+
+        socket.on('log_update', (newLog: LogEntry) => {
+            setLogs(prev => [newLog, ...prev].slice(0, 100));
+        });
+
+        socket.on('log_history', (history: LogEntry[]) => {
+            setLogs(history);
+        });
+
+        return () => {
+            socket.off('state_update');
+            socket.off('log_update');
+            socket.off('log_history');
+        };
+    }, []);
+
+    // --- Socket接続エラーハンドリング ---
+    useEffect(() => {
+        socket.on('connect_error', (err) => {
+            console.error('Connection Error:', err);
+            addLog(`CONNECTION ERROR: ${err.message}`, 'critical');
+        });
+        socket.on('connect', () => {
+            addLog('ESTABLISHED CONNECTION TO MAINFRAME.', 'system');
+        });
+        return () => {
+            socket.off('connect_error');
+            socket.off('connect');
+        };
+    }, []);
+
+    // --- ログ追加 (ローカルUI用 + サーバー同期待ち) ---
     const addLog = useCallback((content: string, level: LogEntry['level'] = 'info') => {
-        const newLog: LogEntry = {
-            id: Date.now().toString() + Math.random(),
+        // 即時反映（サーバーからのバック・エコーを待たずにUIの反応を良くするため）
+        setLogs(prev => [{
+            id: 'local-' + Date.now() + Math.random(),
             time: new Date().toLocaleTimeString(),
             level,
             content
-        };
-        setLogs(prev => [newLog, ...prev].slice(0, 100));
+        }, ...prev].slice(0, 100));
     }, []);
-
-    // --- ターンイベント発火 ---
-    const fireTurnEvent = useCallback((turnNum: number) => {
-        const event = TURN_EVENTS.find(e => e.turn === turnNum);
-        if (event) {
-            addLog(`=== ${event.title} ===`, 'system');
-            addLog(event.description, event.level);
-        }
-    }, [addLog]);
-
-    // --- フェーズ計算 ---
-    useEffect(() => {
-        const elapsed = 15 * 60 - timeLeft;
-        if (elapsed < 10 * 60) {
-            setPhase('discussion');
-        } else if (elapsed < 14 * 60) {
-            setPhase('action');
-        } else {
-            setPhase('resolve');
-        }
-    }, [timeLeft]);
-
-    // --- タイマーとターンのロジック ---
-    useEffect(() => {
-        if (gameResult !== 'playing') return; // ゲーム終了時は停止
-
-        const timer = setInterval(() => {
-            setTimeLeft((prev) => {
-                const next = prev - timeScale;
-                if (next <= 0) {
-                    setTurn((t) => {
-                        if (t >= 8) {
-                            // Turn 8 終了 → 防衛側勝利判定
-                            setGameResult('defense_win');
-                            addLog('=== GAME OVER: DEFENSE TEAM WINS ===', 'system');
-                            return t;
-                        }
-                        const nextTurn = t + 1;
-                        setTimeout(() => fireTurnEvent(nextTurn), 500);
-                        return nextTurn;
-                    });
-                    setAp(3);
-                    addLog(`TURN COMPLETED. AP REPLENISHED. AWAITING NEXT PHASE.`, 'system');
-                    return 15 * 60;
-                }
-                return next;
-            });
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, [addLog, fireTurnEvent, gameResult, timeScale]);
-
-    // --- 初期ターンイベント ---
-    useEffect(() => {
-        fireTurnEvent(1);
-    }, []);
-
-    // --- 勝敗判定 ---
-    useEffect(() => {
-        if (gameResult !== 'playing') return;
-        if (systemHp <= 0) {
-            setGameResult('hacker_win_hp');
-            addLog('=== CRITICAL: SYSTEM DESTROYED. HACKER WINS ===', 'critical');
-        } else if (dataLeak >= 100) {
-            setGameResult('hacker_win_leak');
-            addLog('=== CRITICAL: DATA FULLY EXFILTRATED. HACKER WINS ===', 'critical');
-        }
-    }, [systemHp, dataLeak, gameResult, addLog]);
 
     // --- 時間フォーマット ---
     const formatTime = (seconds: number) => {
@@ -160,7 +123,7 @@ function App() {
 
     // --- フェーズ名取得 ---
     const getPhaseLabel = () => {
-        if (gameResult !== 'playing') return '🔴 GAME OVER';
+        if (stateCheckGameOver()) return '🔴 GAME OVER';
         switch (phase) {
             case 'discussion': return '📡 DISCUSSION';
             case 'action': return '⚡ ACTION INPUT';
@@ -168,42 +131,31 @@ function App() {
         }
     };
 
-    // --- リスタート ---
-    const resetGame = () => {
-        setAp(3);
-        setTurn(1);
-        setTimeLeft(15 * 60);
-        setPhase('discussion');
-        setSystemHp(100);
-        setDataLeak(0);
-        setGameResult('playing');
-        setIsHacker(false);
-        setShowHackerMenu(false);
-        setShowMsgModal(false);
-        setIsAlert(false);
-        setLogs([
-            { id: '0', time: new Date().toLocaleTimeString(), level: 'system', content: '=== PROJECT: NEXUS_WAR [RESTARTED] ===' },
-            { id: '1', time: new Date().toLocaleTimeString(), level: 'info', content: 'SYSTEM RE-INITIALIZED. ALL PARAMETERS RESET.' },
-        ]);
-        setTimeout(() => fireTurnEvent(1), 300);
+    // --- 勝敗判定 (クライアント側表示用) ---
+    const stateCheckGameOver = () => {
+        if (systemHp <= 0) return 'hacker_win_hp';
+        if (dataLeak >= 100) return 'hacker_win_leak';
+        if (turn > 8) return 'defense_win';
+        return null;
     };
 
+    useEffect(() => {
+        const res = stateCheckGameOver();
+        if (res) setGameResult(res as GameResult);
+        else setGameResult('playing');
+    }, [systemHp, dataLeak, turn]);
+
+
     // --- 防衛側アクション ---
-    const handleAction = (name: string, cost: number, effect?: () => void) => {
+    const handleAction = (name: string, cost: number) => {
         if (gameResult !== 'playing') return;
-        if (phase === 'resolve') {
-            addLog('LOCKED: SYSTEM IS RESOLVING. WAIT FOR NEXT TURN.', 'warn');
-            return;
-        }
+        if (phase === 'resolve') return;
+
         if (ap >= cost) {
-            setAp(prev => prev - cost);
-            addLog(`EXECUTING: ${name}...`, 'info');
-            setTimeout(() => {
-                addLog(`SUCCESS: ${name} COMPLETED.`, 'info');
-                effect?.();
-            }, 800);
+            setAp(prev => prev - cost); // APはとりあえずローカル管理
+            socket.emit('action', { type: name, cost });
         } else {
-            addLog('ERROR: INSUFFICIENT AP.', 'warn');
+            // ローカルエラーログ
         }
     };
 
@@ -211,23 +163,7 @@ function App() {
     const handleHackerAction = (name: string, cost: number) => {
         if (ap >= cost) {
             setAp(prev => prev - cost);
-            addLog(`EXECUTING: ${name}...`, 'info'); // ハッカー側にも通常ログが出る（自分だけ）
-
-            setTimeout(() => {
-                // ハッカーの効果
-                if (name === 'INJECT_MALWARE') {
-                    setSystemHp(prev => Math.max(0, prev - 15));
-                    addLog('PAYLOAD DELIVERED. TARGET HP -15%.', 'critical');
-                    // 全体ログには別の形で出る（将来のSocket.io実装で対応）
-                } else if (name === 'EXFILTRATE') {
-                    setDataLeak(prev => Math.min(100, prev + 20));
-                    addLog('DATA SIPHONED: +20% EXFILTRATION PROGRESS.', 'critical');
-                } else if (name === 'COVER_TRACKS') {
-                    addLog('LOG ENTRIES PURGED. TRACES REMOVED.', 'info');
-                }
-            }, 800);
-        } else {
-            addLog('ERROR: INSUFFICIENT AP.', 'warn');
+            socket.emit('action', { type: name, cost });
         }
         setShowHackerMenu(false);
     };
@@ -235,16 +171,22 @@ function App() {
     // --- 密談送信 ---
     const sendMessage = () => {
         if (!msgTarget || !msgText.trim()) return;
-        if (ap < 1) {
-            addLog('ERROR: INSUFFICIENT AP FOR ENCRYPTED MSG.', 'warn');
-            return;
-        }
+        if (ap < 1) return;
+
         setAp(prev => prev - 1);
         const target = PLAYERS.find(p => p.id === msgTarget);
-        addLog(`MSG SENT TO ${target?.name || 'UNKNOWN'}: [ENCRYPTED]`, 'info');
-        // 実際のSocket.io実装時はサーバー経由で配信
+        socket.emit('chat_message', { targetId: msgTarget, message: msgText, senderName: 'ME' });
+
         setMsgText('');
         setShowMsgModal(false);
+    };
+
+
+
+    // --- リスタート ---
+    const resetGame = () => {
+        // 本来はサーバーにリセット要求を送るべきだが、簡易的にリロード
+        window.location.reload();
     };
 
     // --- 長押し検出（ハッカーメニュー） ---
@@ -336,19 +278,14 @@ function App() {
                     {!isHacker && (
                         <div className="action-grid">
                             <button
-                                onClick={() => handleAction('NETWORK_SCAN', 1, () => {
-                                    addLog('SCAN RESULT: 3 ACTIVE SESSIONS, 1 ANOMALY DETECTED.', 'warn');
-                                })}
+                                onClick={() => handleAction('NETWORK_SCAN', 1)}
                                 className="btn-action"
                                 disabled={phase === 'resolve'}
                             >
                                 <Search size={18} /> <span>SCAN</span><span className="ap-cost">1AP</span>
                             </button>
                             <button
-                                onClick={() => handleAction('SECURITY_PATCH', 2, () => {
-                                    setSystemHp(prev => Math.min(100, prev + 10));
-                                    addLog('SYSTEM HP RESTORED: +10%.', 'info');
-                                })}
+                                onClick={() => handleAction('SECURITY_PATCH', 2)}
                                 className="btn-action"
                                 disabled={phase === 'resolve'}
                             >
@@ -362,10 +299,7 @@ function App() {
                                 <MessageSquare size={18} /> <span>MSG</span><span className="ap-cost">1AP</span>
                             </button>
                             <button
-                                onClick={() => handleAction('VIEW_AUDIT_LOG', 1, () => {
-                                    addLog('AUDIT: UID:4021 accessed /etc/shadow at 08:47.', 'warn');
-                                    addLog('AUDIT: UID:1088 modified firewall.conf at 08:52.', 'info');
-                                })}
+                                onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
                                 className="btn-action"
                                 disabled={phase === 'resolve'}
                             >
@@ -432,18 +366,6 @@ function App() {
             <footer className="footer">
                 <div className="turn-info">
                     TURN {turn} / 8 | {formatTime(timeLeft)} | {getPhaseLabel()}
-                </div>
-                <div className="debug-controls">
-                    <Clock size={10} />
-                    {TIME_SCALES.map(s => (
-                        <button
-                            key={s}
-                            className={`debug-btn ${timeScale === s ? 'active' : ''}`}
-                            onClick={() => setTimeScale(s)}
-                        >
-                            {s}x
-                        </button>
-                    ))}
                 </div>
             </footer>
 
