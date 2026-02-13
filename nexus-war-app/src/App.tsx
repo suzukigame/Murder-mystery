@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './App.css';
-import { Terminal, Shield, AlertTriangle, MessageSquare, Zap, Cpu, Eye, Skull, Lock, Send, X, Wifi, Database, Search, RotateCcw, Trophy, Clock } from 'lucide-react';
+import { Terminal, Shield, AlertTriangle, MessageSquare, Zap, Cpu, Eye, Skull, Lock, Send, X, Wifi, Database, Search, RotateCcw, Trophy, Clock, User } from 'lucide-react';
 import io from 'socket.io-client';
 
 // ソケット接続 (開発環境用URL)
@@ -38,6 +38,9 @@ function App() {
     const [gameResult, setGameResult] = useState<GameResult>('playing');
 
     // --- UI状態 (ローカル) ---
+    const [isJoined, setIsJoined] = useState(false);
+    const [myPlayerName, setMyPlayerName] = useState('');
+    const [myRole, setMyRole] = useState('');
     const [isHacker, setIsHacker] = useState(false);
     const [showHackerMenu, setShowHackerMenu] = useState(false);
     const [showMsgModal, setShowMsgModal] = useState(false);
@@ -217,10 +220,77 @@ function App() {
         }
     }, [timeLeft, addLog]);
 
+    // --- ロビー画面 ---
+    const handleJoin = (name: string, role: string) => {
+        socket.emit('join_game', { name, role });
+        setIsJoined(true);
+        setMyPlayerName(name);
+        setMyRole(role);
+        addLog(`IDENTITY VERIFIED: ${name} [${role}]`, 'system');
+    };
+
+    if (!isJoined) {
+        return (
+            <div className="terminal-screen flex flex-col items-center justify-center h-screen w-screen p-4 bg-black text-green-500 font-mono overflow-hidden">
+                <style>{`
+                    .glitch-text { position: relative; }
+                    .glitch-text::before, .glitch-text::after { content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+                    .glitch-text::before { left: 2px; text-shadow: -1px 0 red; clip: rect(24px, 550px, 90px, 0); animation: glitch-anim-2 3s infinite linear alternate-reverse; }
+                    .glitch-text::after { left: -2px; text-shadow: -1px 0 blue; clip: rect(85px, 550px, 140px, 0); animation: glitch-anim 2.5s infinite linear alternate-reverse; }
+                    @keyframes glitch-anim { 0% { clip: rect(10px, 9999px, 30px, 0); } 100% { clip: rect(80px, 9999px, 100px, 0); } }
+                    @keyframes glitch-anim-2 { 0% { clip: rect(60px, 9999px, 80px, 0); } 100% { clip: rect(10px, 9999px, 100px, 0); } }
+                    .lobby-container { background: radial-gradient(circle, rgba(0,20,0,1) 0%, rgba(0,0,0,1) 100%); }
+                `}</style>
+                <div className="mb-12 text-center z-10">
+                    <h1 className="text-6xl font-bold mb-2 glitch-text tracking-tighter text-shadow-green" data-text="NEXUS_WAR">NEXUS_WAR</h1>
+                    <p className="text-green-700 tracking-widest text-sm typing-anim">CYBER WARFARE SIMULATION PROTOCOL</p>
+                </div>
+
+                <div className="border border-green-500/50 p-8 rounded bg-black/90 max-w-4xl w-full shadow-[0_0_20px_rgba(0,255,0,0.2)] relative overflow-hidden backdrop-blur-sm z-10">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent"></div>
+                    <div className="absolute bottom-0 right-0 w-full h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent"></div>
+
+                    <h2 className="text-xl mb-8 text-center border-b border-green-500/30 pb-4 flex items-center justify-center gap-2 text-green-400">
+                        <Lock size={20} /> AUTHENTICATION REQUIRED
+                    </h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {PLAYERS.map(p => (
+                            <button
+                                key={p.id}
+                                onClick={() => handleJoin(p.name, p.role)}
+                                className="group relative border border-green-800 p-4 hover:border-green-400 hover:bg-green-500/10 text-left transition-all duration-300 overflow-hidden"
+                            >
+                                <div className="absolute top-0 left-0 w-1 h-full bg-green-800 group-hover:bg-green-400 transition-colors"></div>
+                                <div className="font-bold text-lg text-green-500 group-hover:text-green-300 mb-1 flex items-center gap-2 pl-2">
+                                    {p.name}
+                                </div>
+                                <div className="text-xs text-green-700 group-hover:text-green-500 pl-2">{p.role}</div>
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="mt-8 text-center text-xs text-green-900 border-t border-green-900/50 pt-4">
+                        SECURE CONNECTION :: UNAUTHORIZED ACCESS PROHIBITED :: ID VERIFICATION MANDATORY
+                    </div>
+                </div>
+
+                {/* Background Grid Effect */}
+                <div className="absolute inset-0 z-0 opacity-10 pointer-events-none" style={{
+                    backgroundImage: 'linear-gradient(green 1px, transparent 1px), linear-gradient(90deg, green 1px, transparent 1px)',
+                    backgroundSize: '40px 40px'
+                }}></div>
+            </div>
+        );
+    }
+
     return (
         <div className={`app-container ${isAlert ? 'alert-mode' : ''}`}>
             {/* --- Header --- */}
             <header className="stat-bar">
+                <div className="stat-item text-green-400">
+                    <User size={14} /> <span className="font-bold">{myPlayerName}</span> <span className="text-xs opacity-70">[{myRole}]</span>
+                </div>
                 <div className="stat-item">
                     <Cpu size={14} /> <span>HP: {systemHp}%</span>
                 </div>

@@ -88,25 +88,43 @@ io.on('connection', (socket) => {
     socket.emit('state_update', gameState);
     socket.emit('log_history', gameState.logs);
 
+    // 参加登録
+    socket.on('join_game', (data: { name: string, role: string }) => {
+        const existing = gameState.players.find(p => p.id === socket.id);
+        if (!existing) {
+            gameState.players.push({
+                id: socket.id,
+                name: data.name,
+                role: data.role
+            });
+            addLog(`NEW CONNECTION: ${data.name} [${data.role}] ESTABLISHED.`, 'system');
+            io.emit('state_update', gameState);
+        } else {
+            // 名前変更などの場合
+            existing.name = data.name;
+            existing.role = data.role;
+            io.emit('state_update', gameState);
+        }
+    });
+
     // アクション受信
     socket.on('action', (data: { type: string, cost: number, effect?: any }) => {
-        // ここで検証ロジックを入れる（AP足りてるかなど）
-        // 今回は簡易的にそのまま反映
+        const player = gameState.players.find(p => p.id === socket.id);
+        const executorName = player ? player.name : 'Unknown User';
+
         if (data.type === 'INJECT_MALWARE') {
             gameState.hp = Math.max(0, gameState.hp - 15);
-            addLog('CRITICAL ALERT: MALWARE DETECTED. HP DROPPED.', 'critical');
+            addLog(`CRITICAL ALERT: MALWARE DETECTED by ${executorName}. HP DROPPED.`, 'critical');
         } else if (data.type === 'SECURITY_PATCH') {
             gameState.hp = Math.min(100, gameState.hp + 10);
-            addLog('SYSTEM PATCH APPLIED. HP RESTORED.', 'info');
+            addLog(`SYSTEM PATCH APPLIED by ${executorName}. HP RESTORED.`, 'info');
         } else if (data.type === 'EXFILTRATE') {
             gameState.leak = Math.min(100, gameState.leak + 20);
-            addLog('DATA EXFILTRATION DETECTED.', 'critical');
+            addLog(`DATA EXFILTRATION DETECTED by ${executorName}.`, 'critical');
         } else if (data.type === 'NETWORK_SCAN') {
-            // 本来は個別に送るべきだが、デモ用に全体ログ＆自分用ログ
-            // 自分用ログを送る手段がまだないので、一旦全体ログに「スキャン実行」と出す
-            addLog(`SYSTEM SCAN EXECUTED by User. Result: Secure.`, 'info');
+            addLog(`SYSTEM SCAN EXECUTED by ${executorName}. Result: Secure.`, 'info');
         } else if (data.type === 'VIEW_AUDIT_LOG') {
-            addLog(`AUDIT LOG ACCESSED. Monitoring active.`, 'info');
+            addLog(`AUDIT LOG ACCESSED by ${executorName}. Monitoring active.`, 'info');
         }
 
         io.emit('state_update', gameState);
@@ -114,12 +132,19 @@ io.on('connection', (socket) => {
 
     // チャット受信
     socket.on('chat_message', (data: { targetId: string, message: string, senderName: string }) => {
-        // 特定の相手に送る処理 (Socket.io roomなどを使用)
-        // 今回はログに「暗号化通信」として出すのみ（実際の中身は送らない）
-        addLog(`ENCRYPTED MESSAGE DETECTED FROM ${data.senderName}.`, 'warn');
+        const player = gameState.players.find(p => p.id === socket.id);
+        const name = player ? player.name : data.senderName;
+        addLog(`ENCRYPTED MESSAGE DETECTED FROM ${name}.`, 'warn');
     });
 
     socket.on('disconnect', () => {
+        const playerIndex = gameState.players.findIndex(p => p.id === socket.id);
+        if (playerIndex !== -1) {
+            const player = gameState.players[playerIndex];
+            gameState.players.splice(playerIndex, 1);
+            addLog(`CONNECTION LOST: ${player.name}`, 'warn');
+            io.emit('state_update', gameState);
+        }
         console.log('Client disconnected:', socket.id);
     });
 });
