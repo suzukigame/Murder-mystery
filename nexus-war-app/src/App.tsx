@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import './App.css';
-import { Terminal, Shield, AlertTriangle, MessageSquare, Zap, Cpu, Eye, Skull, Lock, Send, X, Database, Search, RotateCcw, Trophy, User } from 'lucide-react';
+import { Terminal, Shield, AlertTriangle, Zap, Cpu, Eye, Skull, Lock, X, Database, Search, RotateCcw, Trophy, User } from 'lucide-react';
 import io from 'socket.io-client';
 
 // ソケット接続 (開発環境用URL)
@@ -48,11 +48,9 @@ function App() {
     const [isMurderer, setIsMurderer] = useState(false); // 新: 殺人犯フラグ
     const [isIsolated, setIsIsolated] = useState(false);
     const [players, setPlayers] = useState<any[]>([]);
-    const [isTraceMode, setIsTraceMode] = useState(false); // New: Trace mode state
+    const [isTraceMode, setIsTraceMode] = useState(false); // Trace mode state
+    const [isDdosMode, setIsDdosMode] = useState(false); // DDOS target selection mode
     const [showHackerMenu, setShowHackerMenu] = useState(false);
-    const [showMsgModal, setShowMsgModal] = useState(false);
-    const [msgTarget, setMsgTarget] = useState('');
-    const [msgText, setMsgText] = useState('');
     const [isAlert, setIsAlert] = useState(false);
 
 
@@ -111,12 +109,19 @@ function App() {
             addLog(`RESTRICTED DATA RECEIVED: ${roleIntel}. Intel decrypted.`, 'system');
         });
 
+        // DDOSデバフ通知の受信
+        socket.on('ap_debuff', (data: { amount: number }) => {
+            setAp(prev => Math.max(0, prev - data.amount));
+            addLog(`SYSTEM ALERT: YOUR RESOURCES HAVE BEEN THROTTLED. AP -${data.amount} THIS TURN.`, 'critical');
+        });
+
         return () => {
             socket.off('state_update');
             socket.off('log_update');
             socket.off('log_history');
             socket.off('private_message');
             socket.off('role_assigned');
+            socket.off('ap_debuff');
         };
     }, []);
 
@@ -205,18 +210,6 @@ function App() {
             addLog(`ERROR: ROOT PRIVILEGES - INSUFFICIENT POWER.`, 'warn');
         }
         setShowHackerMenu(false);
-    };
-
-    // --- 密談送信 ---
-    const sendMessage = () => {
-        if (!msgTarget || !msgText.trim()) return;
-        if (ap < 1) return;
-
-        setAp(prev => prev - 1);
-        socket.emit('chat_message', { targetId: msgTarget, message: msgText, senderName: 'ME' });
-
-        setMsgText('');
-        setShowMsgModal(false);
     };
 
 
@@ -397,7 +390,8 @@ function App() {
                 <section className="player-list-section">
                     <div className="screen-header">
                         <User size={14} /> ACTIVE_PERSONNEL
-                        {isTraceMode && <span className="ml-2 text-yellow-400 animate-pulse">[TRACE MODE ACTIVE: SELECT TARGET]</span>}
+                        {isTraceMode && <span className="ml-2 text-yellow-400 animate-pulse">[TRACE MODE: SELECT TARGET]</span>}
+                        {isDdosMode && <span className="ml-2 text-red-400 animate-pulse">[DDOS MODE: SELECT TARGET]</span>}
                     </div>
                     <div className="player-grid">
                         {players.map(p => (
@@ -409,7 +403,9 @@ function App() {
                                 </div>
                                 {phase === 'discussion' && p.id !== socket.id && !isIsolated && (
                                     <>
-                                        {!isTraceMode && <button onClick={() => handleVote(p.id)} className="btn-vote">VOTE</button>}
+                                        {!isTraceMode && !isDdosMode && (
+                                            <button onClick={() => handleVote(p.id)} className="btn-vote">VOTE</button>
+                                        )}
                                         {isTraceMode && myRole === 'Network Admin' && (
                                             <button
                                                 onClick={() => {
@@ -420,6 +416,18 @@ function App() {
                                                 style={{ borderColor: '#ffff00', color: '#ffff00' }}
                                             >
                                                 TRACE
+                                            </button>
+                                        )}
+                                        {isDdosMode && isHacker && (
+                                            <button
+                                                onClick={() => {
+                                                    handleAction('DDOS', 2, p.id);
+                                                    setIsDdosMode(false);
+                                                }}
+                                                className="btn-vote"
+                                                style={{ borderColor: '#ff4444', color: '#ff4444' }}
+                                            >
+                                                DDOS
                                             </button>
                                         )}
                                     </>
@@ -584,11 +592,12 @@ function App() {
                             )}
 
                             <button
-                                onClick={() => setShowMsgModal(true)}
+                                onClick={() => setIsDdosMode(!isDdosMode)}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve'}
+                                style={isDdosMode ? { backgroundColor: 'rgba(255, 0, 0, 0.3)', borderColor: '#ff4444' } : {}}
                             >
-                                <MessageSquare size={18} /> <span>MSG</span><span className="ap-cost">1AP</span>
+                                <Zap size={18} /> <span>DDOS</span><span className="ap-cost">2AP {'->'}  AP-1</span>
                             </button>
                             <button
                                 onContextMenu={(e) => { e.preventDefault(); setIsHacker(!isHacker); }}
@@ -671,42 +680,6 @@ function App() {
                 </div>
             )}
 
-            {/* --- 密談モーダル --- */}
-            {showMsgModal && (
-                <div className="modal-overlay" onClick={() => setShowMsgModal(false)}>
-                    <div className="msg-modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <Lock size={16} /> <span>ENCRYPTED MESSAGE (1AP)</span>
-                            <button className="modal-close" onClick={() => setShowMsgModal(false)}><X size={14} /></button>
-                        </div>
-                        <div className="msg-body">
-                            <label className="msg-label">TARGET:</label>
-                            <div className="player-select">
-                                {PLAYERS.map(p => (
-                                    <button
-                                        key={p.id}
-                                        className={`player-chip ${msgTarget === p.id ? 'selected' : ''}`}
-                                        onClick={() => setMsgTarget(p.id)}
-                                    >
-                                        {p.name}
-                                    </button>
-                                ))}
-                            </div>
-                            <label className="msg-label">MESSAGE:</label>
-                            <textarea
-                                className="msg-input"
-                                value={msgText}
-                                onChange={(e) => setMsgText(e.target.value)}
-                                placeholder="Type your message..."
-                                maxLength={140}
-                            />
-                            <button className="btn-send" onClick={sendMessage}>
-                                <Send size={14} /> SEND ENCRYPTED
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* --- ゲームオーバー画面 --- */}
             {gameResult !== 'playing' && (

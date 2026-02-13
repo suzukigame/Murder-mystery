@@ -36,6 +36,7 @@ interface Player {
     isIsolated: boolean; // 投票により隔離されているか
     votes: number;       // 獲得票数
     performedHackerAction: boolean; // 前ターンにハッカー行動をしたか（TRACE_LOG用）
+    apDebuff: number;    // 新: 次ターンのAPデバフ（DDOS用）
 }
 
 interface GameState {
@@ -172,6 +173,13 @@ setInterval(() => {
         gameState.players.forEach(p => {
             p.votes = 0;
             p.performedHackerAction = false; // フラグリセット
+            // DDOSデバフの適用と通知
+            if (p.apDebuff > 0) {
+                addLog(`NETWORK DEGRADATION: ${p.name}'s resources throttled (-${p.apDebuff} AP).`, 'warn');
+                // クライアント側にデバフ情報を送信
+                io.to(p.id).emit('ap_debuff', { amount: p.apDebuff });
+                p.apDebuff = 0; // デバフをリセット
+            }
             if (p.isIsolated && gameState.phase === 'discussion') {
                 // 前ターンの隔離を解除（あるいは継続ルールにするか検討）
                 // 一旦、隔離は1ターンのみとする
@@ -223,7 +231,8 @@ io.on('connection', (socket) => {
                 isMurderer: false,
                 isIsolated: false,
                 votes: 0,
-                performedHackerAction: false
+                performedHackerAction: false,
+                apDebuff: 0
             });
             addLog(`NEW CONNECTION: ${data.name} [${data.role}] ESTABLISHED.`, 'system');
 
@@ -308,7 +317,7 @@ io.on('connection', (socket) => {
             return;
         }
 
-        const isHackerAction = ['INJECT_MALWARE', 'EXFILTRATE', 'COVER_TRACKS', 'TAMPER_EVIDENCE'].includes(data.type);
+        const isHackerAction = ['INJECT_MALWARE', 'EXFILTRATE', 'COVER_TRACKS', 'TAMPER_EVIDENCE', 'DDOS'].includes(data.type);
         const publicCost = isHackerAction ? 0 : data.cost; // ハッカーアクションは表向き0APに見える
 
         gameState.totalPublicAp += publicCost;
@@ -367,6 +376,23 @@ io.on('connection', (socket) => {
         } else if (data.type === 'COVER_TRACKS') {
             player.performedHackerAction = false;
             addLog(`LOG PURGE DETECTED. SYSTEM TRACES REMOVED.`, 'warn');
+        } else if (data.type === 'DDOS') {
+            // ハッカースキル: DDOS攻撃（ターゲットの次ターンAPを-1）
+            if (player.isHacker) {
+                const target = gameState.players.find(p => p.id === data.targetId);
+                if (target) {
+                    target.apDebuff = Math.min(target.apDebuff + 1, 2); // 最大-2まで
+                    addLog(`WARNING: ABNORMAL RESOURCE CONSUMPTION DETECTED ON NETWORK.`, 'critical');
+                    // ターゲットには個人通知
+                    io.to(target.id).emit('private_message', {
+                        senderId: 'SYSTEM',
+                        senderName: 'SystemAlert',
+                        message: `YOUR TERMINAL HAS BEEN TARGETED BY DDOS. NEXT TURN AP -1.`
+                    });
+                }
+            } else {
+                socket.emit('error', 'UNAUTHORIZED ACCESS: ROOT PRIVILEGES REQUIRED.');
+            }
         } else if (data.type === 'TAMPER_EVIDENCE') {
             // 殺人犯スキル: 証拠改ざん
             if (player.isMurderer) {
