@@ -1,0 +1,99 @@
+:root {
+    --bg-color: #050a0f;
+    --terminal-bg: #0d1117;
+    --text-active: #00ff41;
+    --text-dim: #008f11;
+    --accent-cyan: #00f2ff;
+    --accent-red: #ff0044;
+    --accent-yellow: #f4c430;
+    --border-color: #1b2d3d;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-active);
+    font-family: var(--font-mono);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* CRT Scanline Effect */
+body::before {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 2;
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+}
+
+/* Glitch/Flicker Animation */
+@keyframes flicker {
+    0% {
+        opacity: 0.97;
+    }
+
+    5% {
+        opacity: 0.95;
+    }
+
+    10% {
+        opacity: 0.9;
+    }
+
+    15% {
+        opacity: 0.95;
+    }
+
+    25% {
+        opacity: 0.95;
+    }
+
+    30% {
+        opacity: 0.9;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+.terminal-container {
+    animation: flicker 0.1s infinite;
+}
+
+/* Alert Animation */
+@keyframes alert-pulse {
+    0% {
+        box-shadow: 0 0 5px var(--accent-red);
+        background-color: rgba(255, 0, 68, 0.1);
+    }
+
+    50% {
+        box-shadow: 0 0 20px var(--accent-red);
+        background-color: rgba(255, 0, 68, 0.3);
+    }
+
+    100% {
+        box-shadow: 0 0 5px var(--accent-red);
+        background-color: rgba(255, 0, 68, 0.1);
+    }
+}
+
+.alert-mode {
+    animation: alert-pulse 1s infinite;
+}
