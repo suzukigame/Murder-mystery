@@ -423,6 +423,24 @@ function App() {
                 <div className="turn-info">
                     TURN {turn} / 8 | {formatTime(timeLeft)} | {getPhaseLabel()}
                 </div>
+                <button
+                    onClick={resetGame}
+                    style={{
+                        marginLeft: 'auto',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        color: 'rgba(255, 255, 255, 0.5)',
+                        padding: '2px 8px',
+                        fontSize: '10px',
+                        cursor: 'pointer',
+                        borderRadius: '2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                    }}
+                >
+                    <RotateCcw size={10} /> DEBUG RESET
+                </button>
             </footer>
 
             {/* --- ハッカー専用メニュー (オーバーレイ) --- */}
