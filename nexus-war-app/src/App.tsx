@@ -146,11 +146,11 @@ function App() {
 
     // --- フェーズ名取得 ---
     const getPhaseLabel = () => {
-        if (stateCheckGameOver()) return '🔴 GAME OVER';
+        if (stateCheckGameOver()) return 'GAME OVER';
         switch (phase) {
-            case 'discussion': return '📡 DISCUSSION';
-            case 'action': return '⚡ ACTION INPUT';
-            case 'resolve': return '🔄 RESOLVING';
+            case 'discussion': return 'DISCUSSION';
+            case 'action': return 'ACTION INPUT';
+            case 'resolve': return 'RESOLVING';
         }
     };
 
@@ -380,7 +380,7 @@ function App() {
                                 <div className="p-info">
                                     <div className="p-name">{p.name}</div>
                                     <div className="p-role text-xs opacity-50">{p.role}</div>
-                                    {p.votes > 0 && <div className="p-votes">⚠️ SUSPICION: {p.votes}</div>}
+                                    {p.votes > 0 && <div className="p-votes">ALERT: SUSPICION: {p.votes}</div>}
                                 </div>
                                 {phase === 'discussion' && p.id !== socket.id && !isIsolated && (
                                     <button onClick={() => handleVote(p.id)} className="btn-vote">VOTE</button>
