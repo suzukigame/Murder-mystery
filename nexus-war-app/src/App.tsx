@@ -85,6 +85,10 @@ function App() {
             setLogs(history);
         });
 
+        socket.on('private_message', (data: { senderId: string, senderName: string, message: string }) => {
+            addLog(`PRIVATE DECRYPTED: ${data.message}`, 'warn');
+        });
+
         return () => {
             socket.off('state_update');
             socket.off('log_update');

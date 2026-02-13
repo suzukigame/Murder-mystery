@@ -153,7 +153,16 @@ io.on('connection', (socket) => {
     socket.on('chat_message', (data: { targetId: string, message: string, senderName: string }) => {
         const player = gameState.players.find(p => p.id === socket.id);
         const name = player ? player.name : data.senderName;
-        addLog(`ENCRYPTED MESSAGE DETECTED FROM ${name}.`, 'warn');
+
+        // 全員へのログは匿名化
+        addLog('ENCRYPTED COMMUNICATION DETECTED.', 'warn');
+
+        // ターゲットにのみメッセージを送信
+        io.to(data.targetId).emit('private_message', {
+            senderId: socket.id,
+            senderName: name,
+            message: data.message
+        });
     });
 
     socket.on('disconnect', () => {
