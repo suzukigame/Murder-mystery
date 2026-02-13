@@ -20,12 +20,12 @@ type GameResult = 'playing' | 'hacker_win_hp' | 'hacker_win_leak' | 'defense_win
 
 // プレイヤー定義（デモ用）
 const PLAYERS = [
-    { id: 'p1', name: 'KOBAYASHI', role: 'Network Admin' },
-    { id: 'p2', name: 'TANAKA', role: 'Security Analyst' },
-    { id: 'p3', name: 'SUZUKI', role: 'DB Engineer' },
-    { id: 'p4', name: 'YAMADA', role: 'Sys Operator' },
-    { id: 'p5', name: 'SATO', role: 'Infra Lead' },
-    { id: 'p6', name: 'NAKAMURA', role: 'Dev Ops' },
+    { id: 'p1', name: 'ICHIMONJI', role: 'Network Admin' },
+    { id: 'p2', name: 'NIHEI', role: 'Security Analyst' },
+    { id: 'p3', name: 'SANWA', role: 'DB Engineer' },
+    { id: 'p4', name: 'SHINOMIYA', role: 'Sys Operator' },
+    { id: 'p5', name: 'GOKA', role: 'Infra Lead' },
+    { id: 'p6', name: 'ROKKAKU', role: 'Dev Ops' },
 ];
 
 function App() {
