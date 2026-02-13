@@ -362,9 +362,9 @@ function App() {
             <div className="secret-intel-box">
                 <div className="secret-header"><Lock size={12} /> CLASSIFIED INTEL (Your Secret)</div>
                 <div className="secret-body">
-                    {isHacker && <div className="text-red-500 font-bold">[ROLE: HACKER] OBJECTIVE: LEAK 100% OR DESTROY HP.</div>}
-                    {isMurderer && <div className="text-purple-400 font-bold">[ROLE: MURDERER] OBJECTIVE: PREVENT ANALYSIS (100%).</div>}
-                    {!isHacker && !isMurderer && <div className="text-green-400 font-bold">[ROLE: CIVILIAN] OBJECTIVE: ANALYZE EVIDENCE (100%) & DEFEND.</div>}
+                    {isHacker && <div className="text-red-500 font-bold">[役割: ハッカー] 目的: データ流出100% または システムHPを0にせよ。</div>}
+                    {isMurderer && <div className="text-purple-400 font-bold">[役割: 殺人犯] 目的: 証拠解析(100%)を阻止せよ。</div>}
+                    {!isHacker && !isMurderer && <div className="text-green-400 font-bold">[役割: 社員] 目的: 証拠解析(100%)を完了させつつ、防衛せよ。</div>}
                     <div className="mt-2 text-sm opacity-80">{mySecret || 'Waiting for mission start...'}</div>
                 </div>
                 {isIsolated && (
