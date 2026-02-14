@@ -21,7 +21,9 @@ const io = new Server(server, {
     }
 });
 
-const TURN_DURATION = 10 * 60; // 10分に変
+// CONSTANTS FOR DEVELOPMENT (3 min turns)
+const TURN_DURATION = 3 * 60; // 3分 (開発用)
+// const TURN_DURATION = 10 * 60; // 10分 (本番用)
 
 // 型定義
 type TurnPhase = 'discussion' | 'action' | 'resolve';
@@ -109,10 +111,20 @@ setInterval(() => {
         console.log(`[DEBUG] Turn: ${gameState.turn}, Time: ${gameState.timeLeft}, Phase: ${gameState.phase}`);
     }
 
-    // フェーズ遷移ロジック (15分対応 -> 10分調整)
+
+
+    // ...
+
+    // フェーズ遷移ロジック
     const elapsed = TURN_DURATION - gameState.timeLeft;
-    const ACTION_START = 7 * 60;   // 7分経過でアクション開始 (残3分)
-    const RESOLVE_START = 9 * 60;  // 9分経過で解決開始 (残1分)
+
+    // 開発用 (3分): Discussion 2分 -> Action 40秒 -> Resolve 20秒
+    const ACTION_START = 2 * 60;   // 2分経過でアクション開始 (残1分)
+    const RESOLVE_START = 2 * 60 + 40; // 2分40秒経過で解決開始 (残20秒)
+
+    // 本番用 (10分): Discussion 7分 -> Action 2分 -> Resolve 1分
+    // const ACTION_START = 7 * 60;   // 7分経過でアクション開始 (残3分)
+    // const RESOLVE_START = 9 * 60;  // 9分経過で解決開始 (残1分)
 
     if (elapsed < ACTION_START) {
         if (gameState.phase !== 'discussion') {
@@ -363,7 +375,7 @@ io.on('connection', (socket) => {
             }
         } else if (data.type === 'RESTORE_SYSTEM') {
             gameState.hp = Math.min(100, gameState.hp + 10);
-            addLog(`SYSTEM PATCH APPLIED by ${executorName}. HP RESTORED.`, 'info');
+            addLog(`SYSTEM PATCH APPLIED. HP RESTORED.`, 'info');
         } else if (data.type === 'EXFILTRATE' || data.type === 'EXFIL') {
             gameState.currentTurnAttackActions++;
             if (gameState.firewallActive) {
@@ -375,18 +387,14 @@ io.on('connection', (socket) => {
             }
         } else if (data.type === 'ANALYZE_EVIDENCE') {
             // 証拠解析
-            // 殺人犯が実行しても進まない
-            if (player.isMurderer) {
-                addLog(`EVIDENCE ANALYSIS RUNNING... (Initiated by ${executorName})`, 'info');
-                // No progress
-            } else {
+            if (!player.isMurderer) {
                 gameState.evidenceAnalysisProgress = Math.min(100, gameState.evidenceAnalysisProgress + 10);
-                addLog(`EVIDENCE ANALYSIS SUCCESSFUL (+10%) by ${executorName}.`, 'info');
             }
+            addLog(`EVIDENCE ANALYSIS SUCCESSFUL (+10%).`, 'info');
             checkWinCondition();
         } else if (data.type === 'ENCRYPT_DATA') {
             gameState.leak = Math.max(0, gameState.leak - 10);
-            addLog(`DATA ENCRYPTION COMPLETE by ${executorName}. LEAK PROGRESS REDUCED.`, 'info');
+            addLog(`DATA ENCRYPTION COMPLETE. LEAK PROGRESS REDUCED.`, 'info');
         } else if (data.type === 'VIEW_AUDIT_LOG') {
             const total = gameState.previousTurnAttackActions + gameState.previousTurnManipActions;
             addLog(`SYSTEM [AUDIT]: Complete Scan Finished. DETECTED: ${total} unauthorized command(s) in previous cycle.`, 'system');
@@ -456,30 +464,28 @@ io.on('connection', (socket) => {
                     senderName: 'LogAnalyzer',
                     message: `TRACE RESULT for ${target.name}: ${result}`
                 });
-                addLog(`TRACE LOG EXECUTED on ${target.name} by ${executorName}. Result sent to admin.`, 'info');
+                addLog(`TRACE LOG EXECUTED on ${target.name}. Result sent to admin.`, 'info');
             }
         } else if (data.type === 'FIREWALL' && player.role === 'Security Analyst') {
             // 田中: Firewall展開
             gameState.firewallActive = true;
-            addLog(`FIREWALL DEPLOYED by ${executorName}. Next attack will be mitigated.`, 'info');
+            addLog(`FIREWALL DEPLOYED. Next attack will be mitigated.`, 'info');
         } else if (data.type === 'DATA_RECOVERY' && player.role === 'DB Engineer') {
             // 鈴木: Leak回復
             gameState.leak = Math.max(0, gameState.leak - 15);
-            addLog(`DATA RECOVERY COMPLETE by ${executorName}. LEAK REDUCED by 15%.`, 'info');
+            addLog(`DATA RECOVERY COMPLETE. LEAK REDUCED by 15%.`, 'info');
             checkWinCondition();
         } else if (data.type === 'SYS_ROLLBACK' && player.role === 'Sys Operator') {
             // 佐藤: HP大回復
             gameState.hp = Math.min(100, gameState.hp + 25);
-            addLog(`SYSTEM ROLLBACK EXECUTED by ${executorName}. SYSTEM HP RESTORED (+25).`, 'info');
+            addLog(`SYSTEM ROLLBACK EXECUTED. SYSTEM HP RESTORED (+25).`, 'info');
             checkWinCondition();
         } else if (data.type === 'SERVER_BOOST' && player.role === 'Infra Lead') {
             // 伊藤: 解析ブースト
-            if (player.isMurderer) {
-                addLog(`SERVER RESOURCE BOOSTED for ANALYSIS by ${executorName}.`, 'info');
-            } else {
+            if (!player.isMurderer) {
                 gameState.evidenceAnalysisProgress = Math.min(100, gameState.evidenceAnalysisProgress + 15);
-                addLog(`SERVER RESOURCE BOOSTED (+15% Analysis) by ${executorName}.`, 'info');
             }
+            addLog(`SERVER RESOURCE BOOSTED (+15% Analysis).`, 'info');
             checkWinCondition();
         } else if (data.type === 'DEPLOY_BOT' && player.role === 'Dev Ops') {
             // 渡辺: Bot設置 (最大3台まで)
@@ -487,7 +493,7 @@ io.on('connection', (socket) => {
                 socket.emit('error', 'DEPLOYMENT FAILED: MAXIMUM BOT CAPACITY (3) REACHED.');
             } else {
                 gameState.devOpsBots++;
-                addLog(`AUTOMATED SECURITY BOT DEPLOYED by ${executorName}. Analysis throughput increased.`, 'info');
+                addLog(`AUTOMATED SECURITY BOT DEPLOYED. Analysis throughput increased.`, 'info');
             }
         }
 

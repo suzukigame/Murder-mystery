@@ -32,7 +32,8 @@ function App() {
     // --- ゲーム状態 (サーバー同期) ---
     const [ap, setAp] = useState(3);
     const [turn, setTurn] = useState<number>(1);
-    const [timeLeft, setTimeLeft] = useState(10 * 60);
+    const [timeLeft, setTimeLeft] = useState(3 * 60); // 開発用 3分
+    // const [timeLeft, setTimeLeft] = useState(10 * 60); // 本番用 10分
     const [phase, setPhase] = useState<TurnPhase>('discussion');
     const [systemHp, setSystemHp] = useState(100);
     const [dataLeak, setDataLeak] = useState(0);
@@ -237,7 +238,21 @@ function App() {
 
     // --- フェーズ変更時のアラート ---
     useEffect(() => {
-        const elapsed = 10 * 60 - timeLeft;
+        // const MAX_TIME = 10 * 60; // 本番用
+        const MAX_TIME = 3 * 60; // 開発用
+        const elapsed = MAX_TIME - timeLeft;
+
+        // 開発用 (3分)
+        if (elapsed === 2 * 60) { // 2分経過
+            addLog('>>> ACTION PHASE STARTED. INPUT YOUR COMMANDS. <<<', 'system');
+            setIsAlert(true);
+            setTimeout(() => setIsAlert(false), 3000);
+        }
+        if (elapsed === 2 * 60 + 40) { // 2分40秒経過
+            addLog('>>> RESOLVE PHASE. PROCESSING ALL ACTIONS... <<<', 'system');
+        }
+
+        /* 本番用 (10分)
         if (elapsed === 7 * 60) {
             addLog('>>> ACTION PHASE STARTED. INPUT YOUR COMMANDS. <<<', 'system');
             setIsAlert(true);
@@ -246,6 +261,7 @@ function App() {
         if (elapsed === 9 * 60) {
             addLog('>>> RESOLVE PHASE. PROCESSING ALL ACTIONS... <<<', 'system');
         }
+        */
     }, [timeLeft, addLog]);
 
     // --- ロビー画面 ---
