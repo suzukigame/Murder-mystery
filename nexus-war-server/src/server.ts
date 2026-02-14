@@ -621,8 +621,13 @@ io.on('connection', (socket) => {
             gameState.currentTurnManipActions++;
             // 殺人犯スキル: サボタージュ (HP -5)
             if (player.isMurderer) {
-                gameState.hp = Math.max(0, gameState.hp - 5);
-                addLog(`MINOR SYSTEM GLITCH DETECTED. INTERNAL SABOTAGE suspected.`, 'warn', executorName);
+                if (gameState.firewallActive) {
+                    addLog(`SABOTAGE ATTEMPT DETECTED BUT BLOCKED BY FIREWALL.`, 'info', executorName);
+                    gameState.firewallActive = false; // 消費
+                } else {
+                    gameState.hp = Math.max(0, gameState.hp - 5);
+                    addLog(`MINOR SYSTEM GLITCH DETECTED. INTERNAL SABOTAGE suspected.`, 'warn', executorName);
+                }
                 player.performedHackerAction = true; // 痕跡残る
             } else {
                 socket.emit('error', 'UNAUTHORIZED ACTION.');
