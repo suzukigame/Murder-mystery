@@ -64,6 +64,8 @@ function App() {
     // GM観戦モード用
     const [isSpectator, setIsSpectator] = useState(false);
     const [gmPlayerInfo, setGmPlayerInfo] = useState<any[]>([]);
+    // GM用: アクター情報付きログ (logId -> actor名)
+    const [gmActorMap, setGmActorMap] = useState<{ [logId: string]: string }>({});
 
 
     // --- ログ ---
@@ -149,6 +151,12 @@ function App() {
         socket.on('gm_info', (info: any[]) => {
             setGmPlayerInfo(info);
         });
+        // GM用: アクター情報付きログ
+        socket.on('gm_log_update', (gmLog: any) => {
+            if (gmLog.actor && gmLog.id) {
+                setGmActorMap(prev => ({ ...prev, [gmLog.id]: gmLog.actor }));
+            }
+        });
 
         return () => {
             socket.off('state_update');
@@ -159,6 +167,7 @@ function App() {
             socket.off('ap_debuff');
             socket.off('spectator_confirmed');
             socket.off('gm_info');
+            socket.off('gm_log_update');
         };
     }, []);
 
@@ -416,8 +425,8 @@ function App() {
                 <div style={{ display: 'flex', gap: '1rem', padding: '1rem', height: 'calc(100vh - 50px)' }}>
                     {/* プレイヤー情報パネル */}
                     <div style={{
-                        width: '300px', flexShrink: 0, background: '#0a0a1a',
-                        border: '1px solid #333', borderRadius: '8px', padding: '1rem', overflowY: 'auto'
+                        width: '220px', flexShrink: 0, background: '#0a0a1a',
+                        border: '1px solid #333', borderRadius: '8px', padding: '0.8rem', overflowY: 'auto'
                     }}>
                         <h3 style={{ color: '#ffcc00', fontSize: '0.9rem', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
                             <Eye size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
@@ -472,12 +481,23 @@ function App() {
                         <div style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
                             {logs.map(log => (
                                 <div key={log.id} style={{
-                                    padding: '2px 0', color:
+                                    padding: '3px 0', color:
                                         log.level === 'critical' ? '#ff4444' :
                                             log.level === 'warn' ? '#ffcc00' :
-                                                log.level === 'system' ? '#00ff88' : '#888'
+                                                log.level === 'system' ? '#00ff88' : '#888',
+                                    display: 'flex', gap: '6px', alignItems: 'flex-start'
                                 }}>
-                                    <span style={{ color: '#555' }}>[{log.time}]</span> {log.content}
+                                    <span style={{ color: '#555', flexShrink: 0 }}>[{log.time}]</span>
+                                    {gmActorMap[log.id] && (
+                                        <span style={{
+                                            background: '#2a1a4a', color: '#c8a2ff', padding: '0 4px',
+                                            borderRadius: '3px', fontSize: '0.7rem', fontWeight: 'bold',
+                                            flexShrink: 0, border: '1px solid #6b3fa0'
+                                        }}>
+                                            {gmActorMap[log.id]}
+                                        </span>
+                                    )}
+                                    <span style={{ wordBreak: 'break-word' }}>{log.content}</span>
                                 </div>
                             ))}
                         </div>
