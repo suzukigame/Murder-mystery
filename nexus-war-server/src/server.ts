@@ -482,9 +482,13 @@ io.on('connection', (socket) => {
             }
             checkWinCondition();
         } else if (data.type === 'DEPLOY_BOT' && player.role === 'Dev Ops') {
-            // 渡辺: Bot設置
-            gameState.devOpsBots++;
-            addLog(`AUTOMATED SECURITY BOT DEPLOYED by ${executorName}. Analysis throughput increased.`, 'info');
+            // 渡辺: Bot設置 (最大3台まで)
+            if (gameState.devOpsBots >= 3) {
+                socket.emit('error', 'DEPLOYMENT FAILED: MAXIMUM BOT CAPACITY (3) REACHED.');
+            } else {
+                gameState.devOpsBots++;
+                addLog(`AUTOMATED SECURITY BOT DEPLOYED by ${executorName}. Analysis throughput increased.`, 'info');
+            }
         }
 
         io.emit('state_update', gameState);
