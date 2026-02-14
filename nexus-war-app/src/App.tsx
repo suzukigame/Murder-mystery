@@ -38,6 +38,7 @@ function App() {
     const [dataLeak, setDataLeak] = useState(0);
     const [evidenceAnalysis, setEvidenceAnalysis] = useState(0); // 新: 証拠解析率
     const [gameResult, setGameResult] = useState<GameResult>('playing');
+    const [nextTurnDebuff, setNextTurnDebuff] = useState(0); // 新: 次ターンのデバフ一時保存
 
     // --- UI状態 (ローカル) ---
     const [isJoined, setIsJoined] = useState(false);
@@ -58,17 +59,18 @@ function App() {
     // --- ログ ---
     const [logs, setLogs] = useState<LogEntry[]>([]);
 
+    // --- ターン更新時のAP処理 (デバフ適用) ---
+    useEffect(() => {
+        // ターンが1より大きい場合のみ（初期化時は除く、あるいは初期化時も3でOK）
+        // サーバーからのstate_updateでturnが更新されたタイミングで実行
+        setAp(Math.max(0, 3 - nextTurnDebuff));
+        setNextTurnDebuff(0); // 適用したらリセット
+    }, [turn]);
+
     // --- Socketイベント設定 ---
     useEffect(() => {
         socket.on('state_update', (newState) => {
-            // ターンが変わったらAP回復
-            setTurn(prevTurn => {
-                if (newState.turn > prevTurn || (prevTurn === 0 && newState.turn === 1)) {
-                    setAp(3);
-                }
-                return newState.turn;
-            });
-
+            setTurn(newState.turn); // ここでturnが更新されると上のuseEffectが発火
             setSystemHp(newState.hp);
             setDataLeak(newState.leak);
             setEvidenceAnalysis(newState.evidenceAnalysisProgress || 0);
@@ -112,8 +114,9 @@ function App() {
 
         // DDOSデバフ通知の受信
         socket.on('ap_debuff', (data: { amount: number }) => {
-            setAp(prev => Math.max(0, prev - data.amount));
-            addLog(`SYSTEM ALERT: YOUR RESOURCES HAVE BEEN THROTTLED. AP -${data.amount} THIS TURN.`, 'critical');
+            // 次のターンに適用するために一時保存
+            setNextTurnDebuff(data.amount);
+            addLog(`SYSTEM ALERT: RESOURCE THROTTLE SCHEDULED. AP -${data.amount} NEXT TURN.`, 'critical');
         });
 
         return () => {
@@ -484,11 +487,11 @@ function App() {
                                 <Lock size={18} /> <span>ENCRYPT</span><span className="ap-cost">2AP {'->'} LEAK-10%</span>
                             </button>
                             <button
-                                onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
+                                onClick={() => handleAction('VIEW_AUDIT_LOG', 3)}
                                 className="btn-action"
                                 disabled={phase === 'resolve'}
                             >
-                                <Eye size={18} /> <span>AUDIT</span><span className="ap-cost">1AP</span>
+                                <Eye size={18} /> <span>AUDIT</span><span className="ap-cost">3AP</span>
                             </button>
 
                             {/* --- Murderer Skill --- */}

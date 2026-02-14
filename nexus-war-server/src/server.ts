@@ -35,7 +35,8 @@ interface Player {
     secret?: string;      // キャラクター固有の秘密
     isIsolated: boolean; // 投票により隔離されているか
     votes: number;       // 獲得票数
-    performedHackerAction: boolean; // 前ターンにハッカー行動をしたか（TRACE_LOG用）
+    performedHackerAction: boolean; // 現在のターンにハッカー行動をしたか
+    lastTurnHackerAction: boolean;  // 新: 昨ターンのハッカー行動（TRACE_LOG用）
     apDebuff: number;    // 新: 次ターンのAPデバフ（DDOS用）
 }
 
@@ -54,6 +55,10 @@ interface GameState {
     devOpsBots: number;    // 新: DevOpsのボット数
     firewallActive: boolean; // 新: Firewall状態
     votedPlayers: { [voterId: string]: string }; // 新: 投票履歴
+    currentTurnAttackActions: number; // 現在のターンの攻撃的行動数 (Intrusion)
+    currentTurnManipActions: number;   // 現在のターンの工作型行動数 (Manipulation)
+    previousTurnAttackActions: number; // 前のターンの攻撃的行動数
+    previousTurnManipActions: number;  // 前のターンの工作型行動数
 }
 
 // ゲーム状態初期化関数
@@ -71,7 +76,11 @@ const getInitialState = (): GameState => ({
     totalActualAp: 0,
     devOpsBots: 0,
     firewallActive: false,
-    votedPlayers: {}
+    votedPlayers: {},
+    currentTurnAttackActions: 0,
+    currentTurnManipActions: 0,
+    previousTurnAttackActions: 0,
+    previousTurnManipActions: 0
 });
 
 let gameState = getInitialState();
@@ -168,6 +177,10 @@ setInterval(() => {
         }
 
         // 次ターンの準備
+        gameState.previousTurnAttackActions = gameState.currentTurnAttackActions;
+        gameState.previousTurnManipActions = gameState.currentTurnManipActions;
+        gameState.currentTurnAttackActions = 0;
+        gameState.currentTurnManipActions = 0;
         gameState.turn++;
         gameState.timeLeft = TURN_DURATION;
         gameState.phase = 'discussion';
@@ -177,6 +190,7 @@ setInterval(() => {
         gameState.votedPlayers = {}; // 投票履歴リセット
         gameState.players.forEach(p => {
             p.votes = 0;
+            p.lastTurnHackerAction = p.performedHackerAction; // 現在の行動を前回として保存
             p.performedHackerAction = false; // フラグリセット
             // DDOSデバフの適用と通知
             if (p.apDebuff > 0) {
@@ -232,6 +246,7 @@ io.on('connection', (socket) => {
                 isIsolated: false,
                 votes: 0,
                 performedHackerAction: false,
+                lastTurnHackerAction: false, // 初期化
                 apDebuff: 0
             });
             addLog(`NEW CONNECTION: ${data.name} [${data.role}] ESTABLISHED.`, 'system');
@@ -272,21 +287,21 @@ io.on('connection', (socket) => {
         gameState.players.forEach(p => {
             p.isHacker = false;
             p.isMurderer = false;
-            p.secret = "明日の朝、佐々木に不正を公表される予定だ。"; // デフォルト
+            p.secret = "明日の朝、鈴木に不正を公表される予定だ。"; // デフォルト
         });
 
         // ハッカー割り当て
         const hacker = gameState.players.find(p => p.id === shuffled[0].id);
         if (hacker) {
             hacker.isHacker = true;
-            hacker.secret = "あなたはハッカーとしてシステムに潜入した。佐々木の死は好機だ。";
+            hacker.secret = "あなたはハッカーとしてシステムに潜入した。鈴木の死は好機だ。";
         }
 
         // 殺人犯割り当て
         const murderer = gameState.players.find(p => p.id === shuffled[1].id);
         if (murderer) {
             murderer.isMurderer = true;
-            murderer.secret = "あなたは18:00に佐々木を殺害した。証拠ファイルを解析されると終わりだ。";
+            murderer.secret = "あなたは18:00に鈴木を殺害した。証拠ファイルを解析されると終わりだ。";
         }
 
         gameState.players.forEach(p => {
@@ -338,6 +353,7 @@ io.on('connection', (socket) => {
 
         // 基本アクション
         if (data.type === 'INJECT_MALWARE') {
+            gameState.currentTurnAttackActions++;
             if (gameState.firewallActive) {
                 addLog(`MALWARE DETECTED BUT BLOCKED BY FIREWALL.`, 'info');
                 gameState.firewallActive = false; // 消費
@@ -349,10 +365,8 @@ io.on('connection', (socket) => {
             gameState.hp = Math.min(100, gameState.hp + 10);
             addLog(`SYSTEM PATCH APPLIED by ${executorName}. HP RESTORED.`, 'info');
         } else if (data.type === 'EXFILTRATE' || data.type === 'EXFIL') {
+            gameState.currentTurnAttackActions++;
             if (gameState.firewallActive) {
-                // Firewall blocks HP damage mostly. For leak, let's say it reduces effect?
-                // Or maybe block one attack regardless type?
-                // For simplicity: Firewall blocks ANY single bad effect.
                 addLog(`EXFILTRATION BLOCKED BY FIREWALL.`, 'info');
                 gameState.firewallActive = false;
             } else {
@@ -373,10 +387,17 @@ io.on('connection', (socket) => {
         } else if (data.type === 'ENCRYPT_DATA') {
             gameState.leak = Math.max(0, gameState.leak - 10);
             addLog(`DATA ENCRYPTION COMPLETE by ${executorName}. LEAK PROGRESS REDUCED.`, 'info');
+        } else if (data.type === 'VIEW_AUDIT_LOG') {
+            const total = gameState.previousTurnAttackActions + gameState.previousTurnManipActions;
+            addLog(`SYSTEM [AUDIT]: Complete Scan Finished. DETECTED: ${total} unauthorized command(s) in previous cycle.`, 'system');
+            addLog(`- [TYPE: INTRUSION]: ${gameState.previousTurnAttackActions}`, 'system');
+            addLog(`- [TYPE: MANIPULATION]: ${gameState.previousTurnManipActions}`, 'system');
         } else if (data.type === 'COVER_TRACKS') {
+            gameState.currentTurnManipActions++;
             player.performedHackerAction = false;
             addLog(`LOG PURGE DETECTED. SYSTEM TRACES REMOVED.`, 'warn');
         } else if (data.type === 'DDOS') {
+            gameState.currentTurnAttackActions++;
             // ハッカースキル: DDOS攻撃（ターゲットの次ターンAPを-1）
             if (player.isHacker) {
                 const target = gameState.players.find(p => p.id === data.targetId);
@@ -394,6 +415,7 @@ io.on('connection', (socket) => {
                 socket.emit('error', 'UNAUTHORIZED ACCESS: ROOT PRIVILEGES REQUIRED.');
             }
         } else if (data.type === 'FALSE_FLAG') {
+            gameState.currentTurnManipActions++;
             // ハッカースキル: 証拠偽装（ターゲットのTRACE_LOG結果をPOSITIVEに偽装）
             if (player.isHacker) {
                 const target = gameState.players.find(p => p.id === data.targetId);
@@ -410,6 +432,7 @@ io.on('connection', (socket) => {
                 socket.emit('error', 'UNAUTHORIZED ACCESS: ROOT PRIVILEGES REQUIRED.');
             }
         } else if (data.type === 'TAMPER_EVIDENCE') {
+            gameState.currentTurnManipActions++;
             // 殺人犯スキル: 証拠改ざん
             if (player.isMurderer) {
                 // 解析を後退させる
@@ -426,7 +449,7 @@ io.on('connection', (socket) => {
             // 小林: 指定ターゲットの昨ターンのハッカー行動有無を調査
             const target = gameState.players.find(p => p.id === data.targetId);
             if (target) {
-                const result = target.performedHackerAction ? "POSITIVE (Suspicious Activity Found)" : "NEGATIVE (Clean)";
+                const result = target.lastTurnHackerAction ? "POSITIVE (Suspicious Activity Found)" : "NEGATIVE (Clean)";
                 // 個別通知
                 io.to(player.id).emit('private_message', {
                     senderId: 'SYSTEM',
