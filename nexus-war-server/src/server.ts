@@ -382,6 +382,12 @@ io.on('connection', (socket) => {
                     secret: existingByName.secret
                 });
             }
+
+            // 【重要】再接続であっても、6人揃っていて未開始なら開始する
+            if (gameState.players.length === 6 && !gameState.isGameStarted) {
+                assignRoles();
+            }
+
             io.emit('state_update', gameState);
             return;
         }
@@ -685,8 +691,8 @@ io.on('connection', (socket) => {
         const playerIndex = gameState.players.findIndex(p => p.id === socket.id);
         if (playerIndex !== -1) {
             const player = gameState.players[playerIndex];
-            gameState.players.splice(playerIndex, 1);
-            addLog(`CONNECTION LOST: ${player.name}`, 'warn');
+            // サーバー負荷軽減のためリストからは削除せず、切断ログのみ出力（再接続を待つ）
+            addLog(`CONNECTION SUSPENDED: ${player.name} (Wait for re-auth)`, 'warn');
             io.emit('state_update', gameState);
         }
         console.log('Client disconnected:', socket.id);
@@ -698,8 +704,22 @@ io.on('connection', (socket) => {
         gameState = getInitialState();
         gameState.players = currentPlayers; // プレイヤーリストは維持
         addLog('SYSTEM REBOOT INITIATED... NEW SESSION STARTED.', 'system');
+
+        // 6人揃っていれば自動で役割を振り直して開始
+        if (gameState.players.length === 6) {
+            assignRoles();
+        }
+
         io.emit('state_update', gameState);
         io.emit('log_history', []);
+    });
+
+    // プレイヤーリストの完全リセット (デバッグ/ルーム整理用)
+    socket.on('clear_players', () => {
+        gameState.players = [];
+        gameState.isGameStarted = false;
+        addLog('PLAYER LIST CLEARED BY OPERATOR.', 'system');
+        io.emit('state_update', gameState);
     });
 
     // 投票受付
