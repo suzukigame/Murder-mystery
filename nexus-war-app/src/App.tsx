@@ -700,7 +700,7 @@ function App() {
                                         onClick={() => handleAction('ANALYZE_EVIDENCE', 2)}
                                         className="btn-action btn-analyze"
                                         disabled={phase === 'resolve'}
-                                        style={{ borderColor: '#00ffff', color: '#00ffff' }}
+                                        style={{ borderColor: '#00ff88', color: '#00ff88' }}
                                     >
                                         <Search size={18} /> <span>ANALYZE</span><span className="ap-cost">2AP {'->'} EVID+10%</span>
                                     </button>
@@ -708,6 +708,7 @@ function App() {
                                         onClick={() => handleAction('RESTORE_SYSTEM', 2)}
                                         className="btn-action"
                                         disabled={phase === 'resolve'}
+                                        style={{ borderColor: '#00ff88', color: '#00ff88' }}
                                     >
                                         <Shield size={18} /> <span>RESTORE</span><span className="ap-cost">2AP {'->'} HP+10%</span>
                                     </button>
@@ -715,6 +716,7 @@ function App() {
                                         onClick={() => handleAction('ENCRYPT_DATA', 2)}
                                         className="btn-action"
                                         disabled={phase === 'resolve'}
+                                        style={{ borderColor: '#00ff88', color: '#00ff88' }}
                                     >
                                         <Lock size={18} /> <span>ENCRYPT</span><span className="ap-cost">2AP {'->'} LEAK-10%</span>
                                     </button>
@@ -724,6 +726,7 @@ function App() {
                                 onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
                                 className="btn-action"
                                 disabled={phase === 'resolve'}
+                                style={{ borderColor: isMurderer ? '#cc44ff' : '#00ff88', color: isMurderer ? '#cc44ff' : '#00ff88' }}
                             >
                                 <Eye size={18} /> <span>AUDIT</span><span className="ap-cost">1AP</span>
                             </button>
@@ -735,7 +738,7 @@ function App() {
                                         onClick={() => handleAction('SABOTAGE', 1)}
                                         className="btn-action btn-analyze"
                                         disabled={phase === 'resolve'}
-                                        style={{ borderColor: '#ff4444', color: '#ff4444' }}
+                                        style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                         title="System Sabotage (HP -5)"
                                     >
                                         <Skull size={18} /> <span>SABOTAGE</span><span className="ap-cost">1AP {'->'} HP-5</span>
@@ -744,7 +747,7 @@ function App() {
                                         onClick={() => handleAction('TAMPER_EVIDENCE', 1)}
                                         className="btn-action btn-analyze"
                                         disabled={phase === 'resolve'}
-                                        style={{ borderColor: '#ff00ff', color: '#ff00ff' }}
+                                        style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                         title="Secretly reduce evidence analysis progress"
                                     >
                                         <Database size={18} /> <span>TAMPER</span><span className="ap-cost">1AP {'->'} EVID-5%</span>
@@ -756,7 +759,7 @@ function App() {
                                         }}
                                         className="btn-action btn-analyze"
                                         disabled={phase === 'resolve'}
-                                        style={isFalseFlagMode ? { backgroundColor: 'rgba(255, 0, 255, 0.2)', borderColor: '#ff00ff', color: '#ff00ff' } : { borderColor: '#ff00ff', color: '#ff00ff' }}
+                                        style={isFalseFlagMode ? { backgroundColor: 'rgba(204, 68, 255, 0.2)', borderColor: '#cc44ff', color: '#cc44ff' } : { borderColor: '#cc44ff', color: '#cc44ff' }}
                                         title="Plant False Evidence"
                                     >
                                         <AlertTriangle size={18} /> <span>FALSE_FLAG</span><span className="ap-cost">1AP {'->'} POSITIVE偽装</span>
@@ -768,7 +771,7 @@ function App() {
                                         }}
                                         className="btn-action btn-analyze"
                                         disabled={phase === 'resolve'}
-                                        style={isLockoutMode ? { backgroundColor: 'rgba(255, 0, 0, 0.2)', borderColor: '#ff0000', color: '#ff0000' } : { borderColor: '#ff0000', color: '#ff0000' }}
+                                        style={isLockoutMode ? { backgroundColor: 'rgba(204, 68, 255, 0.2)', borderColor: '#cc44ff', color: '#cc44ff' } : { borderColor: '#cc44ff', color: '#cc44ff' }}
                                         title="Lockout Target Terminal"
                                     >
                                         <Lock size={18} /> <span>LOCKOUT</span><span className="ap-cost">2AP {'->'} 行動封鎖</span>
@@ -782,34 +785,34 @@ function App() {
                                     onClick={() => setIsTraceMode(!isTraceMode)}
                                     className="btn-action btn-special"
                                     disabled={phase === 'resolve'}
-                                    style={isTraceMode ? { backgroundColor: 'rgba(255, 255, 0, 0.2)', borderColor: '#ffff00' } : {}}
+                                    style={isTraceMode ? { backgroundColor: 'rgba(255, 255, 0, 0.2)', borderColor: '#ffff00', color: '#ffff00' } : { borderColor: '#ffff00', color: '#ffff00' }}
                                 >
                                     <Search size={18} /> <span>TRACE_LOG</span><span className="ap-cost">1AP (Target)</span>
                                 </button>
                             )}
 
                             {myRole === 'Security Analyst' && (
-                                <button onClick={() => handleAction('FIREWALL', 2)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                <button onClick={() => handleAction('FIREWALL', 2)} className="btn-action btn-special" disabled={phase === 'resolve'} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
                                     <Shield size={18} /> <span>FIREWALL</span><span className="ap-cost">2AP</span>
                                 </button>
                             )}
                             {myRole === 'DB Engineer' && (
-                                <button onClick={() => handleAction('DATA_RECOVERY', 2)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                <button onClick={() => handleAction('DATA_RECOVERY', 2)} className="btn-action btn-special" disabled={phase === 'resolve'} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
                                     <Database size={18} /> <span>RECOVERY</span><span className="ap-cost">2AP</span>
                                 </button>
                             )}
                             {myRole === 'Sys Operator' && (
-                                <button onClick={() => handleAction('SYS_ROLLBACK', 3)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                <button onClick={() => handleAction('SYS_ROLLBACK', 3)} className="btn-action btn-special" disabled={phase === 'resolve'} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
                                     <RotateCcw size={18} /> <span>ROLLBACK</span><span className="ap-cost">3AP (HP+25)</span>
                                 </button>
                             )}
                             {myRole === 'Infra Lead' && (
-                                <button onClick={() => handleAction('SERVER_BOOST', 2)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                <button onClick={() => handleAction('SERVER_BOOST', 2)} className="btn-action btn-special" disabled={phase === 'resolve'} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
                                     <Zap size={18} /> <span>BOOST</span><span className="ap-cost">2AP (EVID+15%)</span>
                                 </button>
                             )}
                             {myRole === 'Dev Ops' && (
-                                <button onClick={() => handleAction('DEPLOY_BOT', 1)} className="btn-action btn-special" disabled={phase === 'resolve'}>
+                                <button onClick={() => handleAction('DEPLOY_BOT', 1)} className="btn-action btn-special" disabled={phase === 'resolve'} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
                                     <Cpu size={18} /> <span>DEPLOY_BOT</span><span className="ap-cost">1AP</span>
                                 </button>
                             )}
@@ -855,7 +858,7 @@ function App() {
                                 }}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve'}
-                                style={isDdosMode ? { backgroundColor: 'rgba(255, 0, 0, 0.3)', borderColor: '#ff4444' } : {}}
+                                style={isDdosMode ? { backgroundColor: 'rgba(255, 68, 68, 0.3)', borderColor: '#ff4444', color: '#ff4444' } : { borderColor: '#ff4444', color: '#ff4444' }}
                             >
                                 <Zap size={18} /> <span>DDOS</span><span className="ap-cost">1AP {'->'} AP-2</span>
                             </button>
@@ -866,7 +869,7 @@ function App() {
                                 }}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve'}
-                                style={isFalseFlagMode ? { backgroundColor: 'rgba(255, 0, 255, 0.2)', borderColor: '#ff00ff' } : {}}
+                                style={isFalseFlagMode ? { backgroundColor: 'rgba(255, 68, 68, 0.3)', borderColor: '#ff4444', color: '#ff4444' } : { borderColor: '#ff4444', color: '#ff4444' }}
                             >
                                 <AlertTriangle size={18} /> <span>FALSE_FLAG</span><span className="ap-cost">1AP {'->'} POSITIVE偽装</span>
                             </button>
@@ -874,7 +877,7 @@ function App() {
                                 onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
                                 className="btn-action"
                                 disabled={phase === 'resolve'}
-                                style={{ borderColor: '#ffffff', color: '#ffffff' }}
+                                style={{ borderColor: '#ff4444', color: '#ff4444' }}
                             >
                                 <Eye size={18} /> <span>AUDIT</span><span className="ap-cost">1AP {'->'} ログ調査(偽装)</span>
                             </button>
