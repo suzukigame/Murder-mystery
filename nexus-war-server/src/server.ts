@@ -430,9 +430,14 @@ io.on('connection', (socket) => {
             addLog(`DATA ENCRYPTION COMPLETE. LEAK PROGRESS REDUCED.`, 'info');
         } else if (data.type === 'VIEW_AUDIT_LOG') {
             const total = gameState.previousTurnAttackActions + gameState.previousTurnManipActions;
-            addLog(`SYSTEM [AUDIT]: Complete Scan Finished. DETECTED: ${total} unauthorized command(s) in previous cycle.`, 'system');
-            addLog(`- [TYPE: INTRUSION]: ${gameState.previousTurnAttackActions}`, 'system');
-            addLog(`- [TYPE: MANIPULATION]: ${gameState.previousTurnManipActions}`, 'system');
+            // 実行者にのみ詳細を通知
+            io.to(socket.id).emit('private_message', {
+                senderId: 'SYSTEM',
+                senderName: 'AuditScanner',
+                message: `[AUDIT REPORT] PREVIOUS CYCLE DETECTED: ${total} unauthorized tasks. (INTRUSION: ${gameState.previousTurnAttackActions}, MANIPULATION: ${gameState.previousTurnManipActions})`
+            });
+            // 実行された事実のみ公表
+            addLog(`${executorName} EXECUTED SYSTEM AUDIT. RESULTS RESTRICTED TO AGENT.`, 'info');
         } else if (data.type === 'COVER_TRACKS') {
             gameState.currentTurnManipActions++;
             player.performedHackerAction = false;
@@ -575,7 +580,7 @@ io.on('connection', (socket) => {
         const voter = gameState.players.find(p => p.id === socket.id);
         const target = gameState.players.find(p => p.id === data.targetId);
 
-        if (voter && target && (gameState.phase === 'discussion' || gameState.phase === 'resolve')) {
+        if (voter && target && gameState.isGameStarted) {
             // 以前の投票があれば取り消す
             const previousTargetId = gameState.votedPlayers[socket.id];
             if (previousTargetId) {

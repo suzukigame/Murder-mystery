@@ -420,7 +420,7 @@ function App() {
                                     <div className="p-role text-xs opacity-50">{p.role}</div>
                                     {p.votes > 0 && <div className="p-votes">ALERT: SUSPICION: {p.votes}</div>}
                                 </div>
-                                {(phase === 'discussion' || phase === 'resolve') && p.id !== socket.id && (
+                                {isJoined && p.id !== socket.id && (
                                     <>
                                         {!isTraceMode && !isDdosMode && !isFalseFlagMode && (
                                             <button onClick={() => handleVote(p.id)} className="btn-vote">VOTE</button>
@@ -503,11 +503,11 @@ function App() {
                                 <Lock size={18} /> <span>ENCRYPT</span><span className="ap-cost">2AP {'->'} LEAK-10%</span>
                             </button>
                             <button
-                                onClick={() => handleAction('VIEW_AUDIT_LOG', 3)}
+                                onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
                                 className="btn-action"
                                 disabled={phase === 'resolve'}
                             >
-                                <Eye size={18} /> <span>AUDIT</span><span className="ap-cost">3AP</span>
+                                <Eye size={18} /> <span>AUDIT</span><span className="ap-cost">1AP</span>
                             </button>
 
                             {/* --- Murderer Skill --- */}
@@ -617,6 +617,14 @@ function App() {
                             >
                                 <AlertTriangle size={18} /> <span>FALSE_FLAG</span><span className="ap-cost">1AP {'->'} POSITIVE偽装</span>
                             </button>
+                            <button
+                                onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
+                                className="btn-action"
+                                disabled={phase === 'resolve'}
+                                style={{ borderColor: '#ffffff', color: '#ffffff' }}
+                            >
+                                <Eye size={18} /> <span>AUDIT</span><span className="ap-cost">1AP {'->'} ログ調査(偽装)</span>
+                            </button>
 
                             <button
                                 onContextMenu={(e) => { e.preventDefault(); setIsHacker(!isHacker); }}
@@ -677,56 +685,60 @@ function App() {
             </footer>
 
             {/* --- ハッカー専用メニュー (オーバーレイ) --- */}
-            {showHackerMenu && (
-                <div className="modal-overlay" onClick={() => setShowHackerMenu(false)}>
-                    <div className="hacker-modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header hacker-header">
-                            <Skull size={16} /> <span>ROOT ACCESS</span>
-                            <button className="modal-close" onClick={() => setShowHackerMenu(false)}><X size={14} /></button>
-                        </div>
-                        <div className="hacker-actions">
-                            <button onClick={() => handleHackerAction('INJECT_MALWARE', 1)} className="btn-hacker-action">
-                                <Skull size={16} /> INJECT MALWARE (1AP) <span className="effect-tag">HP -15%</span>
-                            </button>
-                            <button onClick={() => handleHackerAction('EXFILTRATE', 2)} className="btn-hacker-action">
-                                <Database size={16} /> EXFILTRATE DATA (2AP) <span className="effect-tag">LEAK +20%</span>
-                            </button>
-                            <button onClick={() => handleHackerAction('COVER_TRACKS', 1)} className="btn-hacker-action">
-                                <Lock size={16} /> COVER TRACKS (1AP) <span className="effect-tag">PURGE LOGS</span>
-                            </button>
+            {
+                showHackerMenu && (
+                    <div className="modal-overlay" onClick={() => setShowHackerMenu(false)}>
+                        <div className="hacker-modal" onClick={e => e.stopPropagation()}>
+                            <div className="modal-header hacker-header">
+                                <Skull size={16} /> <span>ROOT ACCESS</span>
+                                <button className="modal-close" onClick={() => setShowHackerMenu(false)}><X size={14} /></button>
+                            </div>
+                            <div className="hacker-actions">
+                                <button onClick={() => handleHackerAction('INJECT_MALWARE', 1)} className="btn-hacker-action">
+                                    <Skull size={16} /> INJECT MALWARE (1AP) <span className="effect-tag">HP -15%</span>
+                                </button>
+                                <button onClick={() => handleHackerAction('EXFILTRATE', 2)} className="btn-hacker-action">
+                                    <Database size={16} /> EXFILTRATE DATA (2AP) <span className="effect-tag">LEAK +20%</span>
+                                </button>
+                                <button onClick={() => handleHackerAction('COVER_TRACKS', 1)} className="btn-hacker-action">
+                                    <Lock size={16} /> COVER TRACKS (1AP) <span className="effect-tag">PURGE LOGS</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
 
             {/* --- ゲームオーバー画面 --- */}
-            {gameResult !== 'playing' && (
-                <div className="modal-overlay game-over-overlay">
-                    <div className="game-over-modal">
-                        <div className={`game-over-icon ${gameResult === 'defense_win' ? 'win' : 'lose'}`}>
-                            {gameResult === 'defense_win' ? <Trophy size={48} /> : <Skull size={48} />}
+            {
+                gameResult !== 'playing' && (
+                    <div className="modal-overlay game-over-overlay">
+                        <div className="game-over-modal">
+                            <div className={`game-over-icon ${gameResult === 'defense_win' ? 'win' : 'lose'}`}>
+                                {gameResult === 'defense_win' ? <Trophy size={48} /> : <Skull size={48} />}
+                            </div>
+                            <h2 className={`game-over-title ${gameResult === 'defense_win' ? 'win' : 'lose'}`}>
+                                {gameResult === 'defense_win' ? 'DEFENSE WINS' : 'HACKER WINS'}
+                            </h2>
+                            <p className="game-over-sub">
+                                {gameResult === 'hacker_win_hp' && 'SYSTEM HP REACHED 0%. INFRASTRUCTURE DESTROYED.'}
+                                {gameResult === 'hacker_win_leak' && 'DATA EXFILTRATION COMPLETE. ALL FILES COMPROMISED.'}
+                                {gameResult === 'defense_win' && 'ALL 8 TURNS SURVIVED. SYSTEM INTEGRITY MAINTAINED.'}
+                            </p>
+                            <div className="game-over-stats">
+                                <div className="stat-row"><span>FINAL HP</span><span>{systemHp}%</span></div>
+                                <div className="stat-row"><span>DATA LEAKED</span><span>{dataLeak}%</span></div>
+                                <div className="stat-row"><span>TURNS PLAYED</span><span>{turn} / 8</span></div>
+                            </div>
+                            <button className="btn-restart" onClick={resetGame}>
+                                <RotateCcw size={16} /> RESTART MISSION
+                            </button>
                         </div>
-                        <h2 className={`game-over-title ${gameResult === 'defense_win' ? 'win' : 'lose'}`}>
-                            {gameResult === 'defense_win' ? 'DEFENSE WINS' : 'HACKER WINS'}
-                        </h2>
-                        <p className="game-over-sub">
-                            {gameResult === 'hacker_win_hp' && 'SYSTEM HP REACHED 0%. INFRASTRUCTURE DESTROYED.'}
-                            {gameResult === 'hacker_win_leak' && 'DATA EXFILTRATION COMPLETE. ALL FILES COMPROMISED.'}
-                            {gameResult === 'defense_win' && 'ALL 8 TURNS SURVIVED. SYSTEM INTEGRITY MAINTAINED.'}
-                        </p>
-                        <div className="game-over-stats">
-                            <div className="stat-row"><span>FINAL HP</span><span>{systemHp}%</span></div>
-                            <div className="stat-row"><span>DATA LEAKED</span><span>{dataLeak}%</span></div>
-                            <div className="stat-row"><span>TURNS PLAYED</span><span>{turn} / 8</span></div>
-                        </div>
-                        <button className="btn-restart" onClick={resetGame}>
-                            <RotateCcw size={16} /> RESTART MISSION
-                        </button>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
 
