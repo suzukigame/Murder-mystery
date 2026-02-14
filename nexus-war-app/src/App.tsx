@@ -694,28 +694,32 @@ function App() {
                     ) : !isHacker ? (
                         /* === 防衛側ボタン === */
                         <div className="action-grid">
-                            <button
-                                onClick={() => handleAction('ANALYZE_EVIDENCE', 2)}
-                                className="btn-action btn-analyze"
-                                disabled={phase === 'resolve'}
-                                style={{ borderColor: '#00ffff', color: '#00ffff' }}
-                            >
-                                <Search size={18} /> <span>ANALYZE</span><span className="ap-cost">2AP {'->'} EVID+10%</span>
-                            </button>
-                            <button
-                                onClick={() => handleAction('RESTORE_SYSTEM', 2)}
-                                className="btn-action"
-                                disabled={phase === 'resolve'}
-                            >
-                                <Shield size={18} /> <span>RESTORE</span><span className="ap-cost">2AP {'->'} HP+10%</span>
-                            </button>
-                            <button
-                                onClick={() => handleAction('ENCRYPT_DATA', 2)}
-                                className="btn-action"
-                                disabled={phase === 'resolve'}
-                            >
-                                <Lock size={18} /> <span>ENCRYPT</span><span className="ap-cost">2AP {'->'} LEAK-10%</span>
-                            </button>
+                            {!isMurderer && (
+                                <>
+                                    <button
+                                        onClick={() => handleAction('ANALYZE_EVIDENCE', 2)}
+                                        className="btn-action btn-analyze"
+                                        disabled={phase === 'resolve'}
+                                        style={{ borderColor: '#00ffff', color: '#00ffff' }}
+                                    >
+                                        <Search size={18} /> <span>ANALYZE</span><span className="ap-cost">2AP {'->'} EVID+10%</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleAction('RESTORE_SYSTEM', 2)}
+                                        className="btn-action"
+                                        disabled={phase === 'resolve'}
+                                    >
+                                        <Shield size={18} /> <span>RESTORE</span><span className="ap-cost">2AP {'->'} HP+10%</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleAction('ENCRYPT_DATA', 2)}
+                                        className="btn-action"
+                                        disabled={phase === 'resolve'}
+                                    >
+                                        <Lock size={18} /> <span>ENCRYPT</span><span className="ap-cost">2AP {'->'} LEAK-10%</span>
+                                    </button>
+                                </>
+                            )}
                             <button
                                 onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
                                 className="btn-action"
