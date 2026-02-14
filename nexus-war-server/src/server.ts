@@ -61,6 +61,7 @@ interface GameState {
     currentTurnManipActions: number;   // 現在のターンの工作型行動数 (Manipulation)
     previousTurnAttackActions: number; // 前のターンの攻撃的行動数
     previousTurnManipActions: number;  // 前のターンの工作型行動数
+    isGameStarted: boolean;            // 新: ゲーム開始フラグ (役割割り当て済みか)
 }
 
 // ゲーム状態初期化関数
@@ -82,7 +83,8 @@ const getInitialState = (): GameState => ({
     currentTurnAttackActions: 0,
     currentTurnManipActions: 0,
     previousTurnAttackActions: 0,
-    previousTurnManipActions: 0
+    previousTurnManipActions: 0,
+    isGameStarted: false
 });
 
 let gameState = getInitialState();
@@ -102,6 +104,9 @@ const addLog = (content: string, level: 'info' | 'warn' | 'critical' | 'system' 
 
 // 1秒ごとのタイマー処理
 setInterval(() => {
+    // 状態送信は常に継続（ハートビート）
+    io.emit('state_update', gameState);
+
     if (gameState.isPaused || gameState.turn > 8) return;
 
     gameState.timeLeft--;
@@ -166,19 +171,23 @@ setInterval(() => {
         });
 
         // 投票集計と隔離
-        let mostVotedPlayer: Player | null = null;
+        // 投票集計と隔離
         let maxVotes = 0;
         gameState.players.forEach(p => {
             if (p.votes > maxVotes) {
                 maxVotes = p.votes;
-                mostVotedPlayer = p;
             }
         });
 
-        if (mostVotedPlayer !== null && maxVotes > 0) {
-            const victim = mostVotedPlayer as Player;
+        // 最多得票者リストを作成
+        const candidates = gameState.players.filter(p => p.votes === maxVotes && maxVotes > 0);
+
+        if (candidates.length === 1) {
+            const victim = candidates[0];
             victim.isIsolated = true;
             addLog(`VOTING RESULT: ${victim.name} HAS BEEN ISOLATED. NETWORK PRIVILEGES RESTRICTED.`, 'warn');
+        } else if (candidates.length > 1) {
+            addLog(`VOTING RESULT: TIE DETECTED (${maxVotes} votes). NO ACTION TAKEN.`, 'info');
         }
 
         // AP不一致のログ出力
@@ -217,8 +226,6 @@ setInterval(() => {
         io.emit('state_update', gameState);
     }
 
-    // 毎秒の状態を全クライアントに通知 (タイマー同期のため)
-    io.emit('state_update', gameState);
 }, 1000); // 実時間進行 (デバッグ時はここを変更)
 
 function checkWinCondition() {
@@ -247,8 +254,29 @@ io.on('connection', (socket) => {
 
     // 参加登録
     socket.on('join_game', (data: { name: string, role: string }) => {
-        const existing = gameState.players.find(p => p.id === socket.id);
-        if (!existing) {
+        // 名前で既存プレイヤーを検索 (再接続対応)
+        const existingByName = gameState.players.find(p => p.name === data.name);
+
+        if (existingByName) {
+            // IDを最新のものに更新
+            existingByName.id = socket.id;
+            addLog(`RECONNECTED: ${data.name} [${existingByName.role}] RE-ESTABLISHED.`, 'system');
+
+            // 役割がある場合は個別に再通知
+            if (gameState.isGameStarted) {
+                socket.emit('role_assigned', {
+                    isHacker: existingByName.isHacker,
+                    isMurderer: existingByName.isMurderer,
+                    roleName: existingByName.role,
+                    secret: existingByName.secret
+                });
+            }
+            io.emit('state_update', gameState);
+            return;
+        }
+
+        const existingById = gameState.players.find(p => p.id === socket.id);
+        if (!existingById) {
             gameState.players.push({
                 id: socket.id,
                 name: data.name,
@@ -258,21 +286,21 @@ io.on('connection', (socket) => {
                 isIsolated: false,
                 votes: 0,
                 performedHackerAction: false,
-                lastTurnHackerAction: false, // 初期化
+                lastTurnHackerAction: false,
                 apDebuff: 0
             });
             addLog(`NEW CONNECTION: ${data.name} [${data.role}] ESTABLISHED.`, 'system');
 
-            // 6人揃ったら役割を割り当てる
-            if (gameState.players.length === 6) {
+            // 6人揃っていて、かつ未開始なら役割を割り当てる
+            if (gameState.players.length === 6 && !gameState.isGameStarted) {
                 assignRoles();
             }
 
             io.emit('state_update', gameState);
         } else {
             // 名前変更などの場合
-            existing.name = data.name;
-            existing.role = data.role;
+            existingById.name = data.name;
+            existingById.role = data.role;
             io.emit('state_update', gameState);
         }
     });
@@ -289,12 +317,15 @@ io.on('connection', (socket) => {
 
     // 役割割り当て関数
     function assignRoles() {
+        // すでに開始している場合は重複を防ぐ
+        if (gameState.isGameStarted) return;
+
         const shuffled = [...gameState.players].sort(() => Math.random() - 0.5);
 
         // ランダムに役職割り当て
         // 0番目: ハッカー
         // 1番目: 殺人犯
-        // その他: 市民
+        // その他: 社員
 
         gameState.players.forEach(p => {
             p.isHacker = false;
@@ -315,6 +346,8 @@ io.on('connection', (socket) => {
             murderer.isMurderer = true;
             murderer.secret = "あなたは18:00に鈴木を殺害した。証拠ファイルを解析されると終わりだ。";
         }
+
+        gameState.isGameStarted = true; // 開始フラグを立てる
 
         gameState.players.forEach(p => {
             p.votes = 0;
@@ -370,7 +403,7 @@ io.on('connection', (socket) => {
                 addLog(`MALWARE DETECTED BUT BLOCKED BY FIREWALL.`, 'info');
                 gameState.firewallActive = false; // 消費
             } else {
-                gameState.hp = Math.max(0, gameState.hp - 15);
+                gameState.hp = Math.max(0, gameState.hp - 15); // シナリオ通り 15
                 addLog(`CRITICAL ALERT: MALWARE DETECTED. SOURCE: [ENCRYPTED]. HP DROPPED.`, 'critical');
             }
         } else if (data.type === 'RESTORE_SYSTEM') {
@@ -382,7 +415,7 @@ io.on('connection', (socket) => {
                 addLog(`EXFILTRATION BLOCKED BY FIREWALL.`, 'info');
                 gameState.firewallActive = false;
             } else {
-                gameState.leak = Math.min(100, gameState.leak + 20);
+                gameState.leak = Math.min(100, gameState.leak + 20); // シナリオ通り 20
                 addLog(`DATA EXFILTRATION DETECTED. ORIGIN: [UNKNOWN].`, 'critical');
             }
         } else if (data.type === 'ANALYZE_EVIDENCE') {
@@ -542,7 +575,7 @@ io.on('connection', (socket) => {
         const voter = gameState.players.find(p => p.id === socket.id);
         const target = gameState.players.find(p => p.id === data.targetId);
 
-        if (voter && target && gameState.phase === 'discussion') {
+        if (voter && target && (gameState.phase === 'discussion' || gameState.phase === 'resolve')) {
             // 以前の投票があれば取り消す
             const previousTargetId = gameState.votedPlayers[socket.id];
             if (previousTargetId) {

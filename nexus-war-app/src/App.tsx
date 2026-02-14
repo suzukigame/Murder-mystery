@@ -420,7 +420,7 @@ function App() {
                                     <div className="p-role text-xs opacity-50">{p.role}</div>
                                     {p.votes > 0 && <div className="p-votes">ALERT: SUSPICION: {p.votes}</div>}
                                 </div>
-                                {phase === 'discussion' && p.id !== socket.id && (
+                                {(phase === 'discussion' || phase === 'resolve') && p.id !== socket.id && (
                                     <>
                                         {!isTraceMode && !isDdosMode && !isFalseFlagMode && (
                                             <button onClick={() => handleVote(p.id)} className="btn-vote">VOTE</button>
