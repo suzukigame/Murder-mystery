@@ -449,13 +449,14 @@ io.on('connection', (socket) => {
         gameState.players.forEach(p => {
             p.isHacker = false;
             p.isMurderer = false;
-            p.secret = "明日の朝、鈴木に不正を公表される予定だ。"; // デフォルト
+            p.secret = CHARACTER_SECRETS[p.role] || "機密情報：詳細不明"; // キャラクター固有の秘密をデフォルトに設定
         });
 
         // ハッカー割り当て
         const hacker = gameState.players.find(p => p.id === shuffled[0].id);
         if (hacker) {
             hacker.isHacker = true;
+            // ハッカーの秘密を上書き
             hacker.secret = "あなたはハッカーとしてシステムに潜入した。鈴木の死は好機だ。";
         }
 
@@ -463,7 +464,8 @@ io.on('connection', (socket) => {
         const murderer = gameState.players.find(p => p.id === shuffled[1].id);
         if (murderer) {
             murderer.isMurderer = true;
-            murderer.secret = "あなたは18:00に鈴木を殺害した。証拠ファイルを解析されると終わりだ。";
+            // 殺人犯の秘密を上書き（犯行と動機を追加）
+            murderer.secret = "あなたは18:00に鈴木を殺害した。明日の朝、鈴木に不正を公表される予定だったからだ。証拠ファイルを解析されると終わりだ。";
         }
 
         gameState.isGameStarted = true; // 開始フラグを立てる

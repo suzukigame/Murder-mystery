@@ -514,7 +514,7 @@ function App() {
     };
 
     return (
-        <div className={`app-container ${getThemeClass()} ${isAlert ? 'alert-mode' : ''}`}>
+        <div className={`app-container ${isAlert ? 'alert-mode' : ''}`}>
             {/* --- Header --- */}
             <header className="stat-bar">
                 <div className="stat-item text-green-400">
@@ -653,8 +653,10 @@ function App() {
                     </div>
                 </section>
 
-                <section className={`action-panel ${isHacker ? 'hacker-panel' : ''}`}>
-                    <div className="panel-title">{isHacker ? 'ハッカーコンソール' : '社員用のコンソール'}</div>
+                <section className={`action-panel ${getThemeClass()} ${isHacker ? 'hacker-panel' : ''}`}>
+                    <div className="panel-title" style={{ color: getThemeClass() ? 'var(--text-active)' : 'var(--text-dim)' }}>
+                        {isHacker ? 'ハッカーコンソール' : '社員用のコンソール'}
+                    </div>
 
                     {isIsolated ? (
                         <div style={{ padding: '20px', textAlign: 'center', color: '#ff4444', border: '1px solid #ff4444', borderRadius: '8px', margin: '10px 0' }}>
