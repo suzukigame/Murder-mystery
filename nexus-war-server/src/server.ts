@@ -80,7 +80,7 @@ let gameState = getInitialState();
 const addLog = (content: string, level: 'info' | 'warn' | 'critical' | 'system' = 'info') => {
     const log = {
         id: Date.now().toString() + Math.random(),
-        time: new Date().toLocaleTimeString(),
+        time: new Date().toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour12: false }),
         level,
         content
     };
