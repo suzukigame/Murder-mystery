@@ -728,7 +728,7 @@ function App() {
                                 disabled={phase === 'resolve' || ap < 1}
                                 style={{ borderColor: isMurderer ? '#cc44ff' : '#00ff88', color: isMurderer ? '#cc44ff' : '#00ff88' }}
                             >
-                                <Eye size={18} /> <span>AUDIT</span><span className="ap-cost">1AP</span>
+                                <Eye size={18} /> <span>AUDIT</span><span className="ap-cost" style={isMurderer ? { color: '#ffff00' } : {}}>1AP</span>
                             </button>
 
                             {/* --- Murderer Skill --- */}
@@ -741,7 +741,7 @@ function App() {
                                         style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                         title="System Sabotage (HP -5)"
                                     >
-                                        <Skull size={18} /> <span>SABOTAGE</span><span className="ap-cost">1AP {'->'} HP-5</span>
+                                        <Skull size={18} /> <span>SABOTAGE</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} HP-5</span>
                                     </button>
                                     <button
                                         onClick={() => handleAction('TAMPER_EVIDENCE', 1)}
@@ -750,7 +750,7 @@ function App() {
                                         style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                         title="Secretly reduce evidence analysis progress"
                                     >
-                                        <Database size={18} /> <span>TAMPER</span><span className="ap-cost">1AP {'->'} EVID-5%</span>
+                                        <Database size={18} /> <span>TAMPER</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} EVID-5%</span>
                                     </button>
                                     <button
                                         onClick={() => {
@@ -762,7 +762,7 @@ function App() {
                                         style={isFalseFlagMode ? { backgroundColor: 'rgba(204, 68, 255, 0.2)', borderColor: '#cc44ff', color: '#cc44ff' } : { borderColor: '#cc44ff', color: '#cc44ff' }}
                                         title="Plant False Evidence"
                                     >
-                                        <AlertTriangle size={18} /> <span>FALSE_FLAG</span><span className="ap-cost">1AP {'->'} POSITIVE偽装</span>
+                                        <AlertTriangle size={18} /> <span>FALSE_FLAG</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} POSITIVE偽装</span>
                                     </button>
                                     <button
                                         onClick={() => {
@@ -774,7 +774,7 @@ function App() {
                                         style={isLockoutMode ? { backgroundColor: 'rgba(204, 68, 255, 0.2)', borderColor: '#cc44ff', color: '#cc44ff' } : { borderColor: '#cc44ff', color: '#cc44ff' }}
                                         title="Lockout Target Terminal"
                                     >
-                                        <Lock size={18} /> <span>LOCKOUT</span><span className="ap-cost">2AP {'->'} 行動封鎖</span>
+                                        <Lock size={18} /> <span>LOCKOUT</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} 行動封鎖</span>
                                     </button>
                                 </>
                             )}
