@@ -449,7 +449,7 @@ io.on('connection', (socket) => {
         gameState.players.forEach(p => {
             p.isHacker = false;
             p.isMurderer = false;
-            p.secret = CHARACTER_SECRETS[p.role] || "機密情報：詳細不明"; // キャラクター固有の秘密をデフォルトに設定
+            p.secret = ""; // 社員には個別の秘密（過去の不正など）を表示しない
         });
 
         // ハッカー割り当て
