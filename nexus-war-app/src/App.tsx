@@ -625,7 +625,7 @@ function App() {
                                         {isDdosMode && isHacker && (
                                             <button
                                                 onClick={() => {
-                                                    handleAction('DDOS', 2, p.id);
+                                                    handleAction('DDOS', 1, p.id);
                                                     setIsDdosMode(false);
                                                 }}
                                                 className="btn-vote"
@@ -791,7 +791,7 @@ function App() {
                                 disabled={phase === 'resolve'}
                                 style={isDdosMode ? { backgroundColor: 'rgba(255, 0, 0, 0.3)', borderColor: '#ff4444' } : {}}
                             >
-                                <Zap size={18} /> <span>DDOS</span><span className="ap-cost">2AP {'->'} AP-1</span>
+                                <Zap size={18} /> <span>DDOS</span><span className="ap-cost">1AP {'->'} AP-2</span>
                             </button>
                             <button
                                 onClick={() => {

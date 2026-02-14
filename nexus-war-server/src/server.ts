@@ -575,13 +575,13 @@ io.on('connection', (socket) => {
             if (player.isHacker) {
                 const target = gameState.players.find(p => p.id === data.targetId);
                 if (target) {
-                    target.apDebuff = Math.min(target.apDebuff + 1, 2); // 最大-2まで
+                    target.apDebuff = 2; // -2AP
                     addLog(`WARNING: ABNORMAL RESOURCE CONSUMPTION DETECTED ON NETWORK.`, 'critical', executorName);
                     // ターゲットには個人通知
                     io.to(target.id).emit('private_message', {
                         senderId: 'SYSTEM',
                         senderName: 'SystemAlert',
-                        message: `YOUR TERMINAL HAS BEEN TARGETED BY DDOS. NEXT TURN AP -1.`
+                        message: `YOUR TERMINAL HAS BEEN TARGETED BY DDOS. NEXT TURN AP -2.`
                     });
                 }
             } else {
