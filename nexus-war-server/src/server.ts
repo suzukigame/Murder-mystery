@@ -175,13 +175,13 @@ setInterval(() => {
     } else if (elapsed < RESOLVE_START) {
         if (gameState.phase !== 'action') {
             gameState.phase = 'action';
-            addLog('>>> ACTION PHASE STARTED. INPUT YOUR COMMANDS. <<<', 'system');
+            addLog('>>> アクションフェーズ開始。コマンドを入力してください。 <<<', 'system');
             io.emit('state_update', gameState);
         }
     } else {
         if (gameState.phase !== 'resolve') {
             gameState.phase = 'resolve';
-            addLog('>>> RESOLVE PHASE. PROCESSING ALL ACTIONS... <<<', 'system');
+            addLog('>>> 解決フェーズ。全アクションを処理中... <<<', 'system');
 
 
             // 勝利判定チェック
@@ -197,7 +197,7 @@ setInterval(() => {
         if (gameState.devOpsBots > 0) {
             const botProgress = gameState.devOpsBots * 3;
             gameState.evidenceAnalysisProgress = Math.min(100, gameState.evidenceAnalysisProgress + botProgress);
-            addLog(`AUTOMATED BOTS PROCESSED ANALYSIS: +${botProgress}%`, 'info');
+            addLog(`自動セキュリティBOTによる解析処理: +${botProgress}%`, 'info');
             checkWinCondition();
         }
 
@@ -206,7 +206,6 @@ setInterval(() => {
             p.isIsolated = false;
         });
 
-        // 投票集計と隔離
         // 投票集計と隔離
         let maxVotes = 0;
         gameState.players.forEach(p => {
@@ -221,16 +220,16 @@ setInterval(() => {
         if (candidates.length === 1) {
             const victim = candidates[0];
             victim.isIsolated = true;
-            addLog(`VOTING RESULT: ${victim.name} HAS BEEN ISOLATED. NETWORK PRIVILEGES RESTRICTED.`, 'warn');
+            addLog(`投票結果: ${victim.name} が隔離されました。ネットワーク権限が制限されます。`, 'warn');
         } else if (candidates.length > 1) {
-            addLog(`VOTING RESULT: TIE DETECTED (${maxVotes} votes). NO ACTION TAKEN.`, 'info');
+            addLog(`投票結果: 票数が拮抗しています (${maxVotes}票)。処置は見送られました。`, 'info');
         }
 
         // AP不一致のログ出力
         const variance = gameState.totalActualAp - gameState.totalPublicAp;
-        addLog(`[TURN REPORT] PUBLIC AP: ${gameState.totalPublicAp} | ACTUAL SYSTEM LOAD: ${gameState.totalActualAp}`, 'system');
+        addLog(`[ターン報告] 公称AP: ${gameState.totalPublicAp} | 実システム負荷: ${gameState.totalActualAp}`, 'system');
         if (variance > 0) {
-            addLog(`WARNING: ${variance} AP VARIANCE DETECTED. SUSPICIOUS BACKGROUND PROCESSES IDENTIFIED.`, 'critical');
+            addLog(`警告: ${variance} APの異常値を検知。不審なバックグラウンドプロセスを確認。`, 'critical');
         }
 
         // Turn 8 終了時 → 最終投票フェーズへ
@@ -241,7 +240,7 @@ setInterval(() => {
             gameState.finalVotesHacker = {};
             gameState.finalVotingComplete = false;
             gameState.finalVotingResult = 'none';
-            addLog('>>> ALL 8 TURNS COMPLETED. FINAL VOTING PHASE: IDENTIFY THE MURDERER AND HACKER. <<<', 'system');
+            addLog('>>> 全8ターン終了。最終投票フェーズ: 殺人犯とハッカーを特定せよ。 <<<', 'system');
             io.emit('state_update', gameState);
         } else {
             // 次ターンの準備
@@ -262,14 +261,14 @@ setInterval(() => {
                 p.performedHackerAction = false; // フラグリセット
                 // DDOSデバフの適用と通知
                 if (p.apDebuff > 0) {
-                    addLog(`NETWORK DEGRADATION: ${p.name}'s resources throttled (-${p.apDebuff} AP).`, 'warn');
+                    addLog(`ネットワーク遅延: ${p.name} のリソースが制限されました (-${p.apDebuff} AP)。`, 'warn');
                     // クライアント側にデバフ情報を送信
                     io.to(p.id).emit('ap_debuff', { amount: p.apDebuff });
                     p.apDebuff = 0; // デバフをリセット
                 }
             });
 
-            addLog(`TURN ${gameState.turn - 1} COMPLETED. STARTING TURN ${gameState.turn}.`, 'system');
+            addLog(`ターン ${gameState.turn - 1} 終了。ターン ${gameState.turn} を開始します。`, 'system');
             io.emit('state_update', gameState);
         }
     }
@@ -280,15 +279,15 @@ function checkWinCondition() {
     if (gameState.evidenceAnalysisProgress >= 100) {
         const murderer = gameState.players.find(p => p.isMurderer);
         const name = murderer ? murderer.name : "UNKNOWN";
-        addLog(`!!! EVIDENCE ANALYSIS COMPLETE !!! MURDERER IDENTIFIED: ${name}`, 'critical');
+        addLog(`!!! 証拠解析コンプリート !!! 殺人犯を特定: ${name}`, 'critical');
         gameState.isPaused = true;
     }
     if (gameState.leak >= 100) {
-        addLog(`!!! DATA LEAK 100% COMPLETE !!! HACKERS WIN. SYSTEM COMPROMISED.`, 'critical');
+        addLog(`!!! データ漏洩 100% !!! ハッカーの勝利。システムは陥落しました。`, 'critical');
         gameState.isPaused = true;
     }
     if (gameState.hp <= 0) {
-        addLog(`!!! SYSTEM FAILURE !!! HACKERS WIN. MAIN CORE DESTROYED.`, 'critical');
+        addLog(`!!! システムダウン !!! ハッカーの勝利。メインコア破壊。`, 'critical');
         gameState.isPaused = true;
     }
 }
@@ -335,21 +334,21 @@ function tallyFinalVotes() {
     const murdererGuessName = gameState.players.find(p => p.id === murdererGuessId)?.name || 'UNKNOWN';
     const hackerGuessName = gameState.players.find(p => p.id === hackerGuessId)?.name || 'UNKNOWN';
 
-    addLog(`=== FINAL VOTE RESULTS ===`, 'system');
-    addLog(`MURDERER SUSPECT: ${murdererGuessName} (${maxMurdererVotes} votes) → ${murdererCorrect ? 'CORRECT ✓' : 'WRONG ✗'}`, 'system');
-    addLog(`HACKER SUSPECT: ${hackerGuessName} (${maxHackerVotes} votes) → ${hackerCorrect ? 'CORRECT ✓' : 'WRONG ✗'}`, 'system');
-    addLog(`REAL MURDERER: ${realMurderer?.name || 'UNKNOWN'}`, 'system');
-    addLog(`REAL HACKER: ${realHacker?.name || 'UNKNOWN'}`, 'system');
+    addLog(`=== 最終投票結果 ===`, 'system');
+    addLog(`殺人犯 告発対象: ${murdererGuessName} (${maxMurdererVotes}票) → ${murdererCorrect ? '正解 ✓' : '不正解 ✗'}`, 'system');
+    addLog(`ハッカー 告発対象: ${hackerGuessName} (${maxHackerVotes}票) → ${hackerCorrect ? '正解 ✓' : '不正解 ✗'}`, 'system');
+    addLog(`真の殺人犯: ${realMurderer?.name || '不明'}`, 'system');
+    addLog(`真のハッカー: ${realHacker?.name || '不明'}`, 'system');
 
     if (murdererCorrect && hackerCorrect) {
         gameState.finalVotingResult = 'employee_perfect_win';
-        addLog(`★★★ PERFECT VICTORY ★★★ Both traitors identified!`, 'critical');
+        addLog(`★★★ 完全勝利 ★★★ 裏切り者を全員特定しました！`, 'critical');
     } else if (murdererCorrect) {
         gameState.finalVotingResult = 'employee_win';
-        addLog(`★ EMPLOYEES WIN ★ Murderer identified! Hacker remains at large.`, 'critical');
+        addLog(`★ 社員勝利 ★ 殺人犯を特定！しかしハッカーは逃走...`, 'critical');
     } else {
         gameState.finalVotingResult = 'murderer_escape';
-        addLog(`✗ MURDERER ESCAPES ✗ The killer walks free...`, 'critical');
+        addLog(`✗ 殺人犯逃亡 ✗ 犯人は闇に消えました...`, 'critical');
     }
 
     gameState.isPaused = true;
@@ -371,7 +370,7 @@ io.on('connection', (socket) => {
         if (existingByName) {
             // IDを最新のものに更新
             existingByName.id = socket.id;
-            addLog(`RECONNECTED: ${data.name} [${existingByName.role}] RE-ESTABLISHED.`, 'system');
+            addLog(`再接続: ${data.name} [${existingByName.role}] 復帰しました。`, 'system');
 
             // 役割がある場合は個別に再通知
             if (gameState.isGameStarted) {
@@ -406,7 +405,7 @@ io.on('connection', (socket) => {
                 lastTurnHackerAction: false,
                 apDebuff: 0
             });
-            addLog(`NEW CONNECTION: ${data.name} [${data.role}] ESTABLISHED.`, 'system');
+            addLog(`新規接続: ${data.name} [${data.role}] 確立。`, 'system');
 
             // 6人揃っていて、かつ未開始なら役割を割り当てる
             if (gameState.players.length === 6 && !gameState.isGameStarted) {
@@ -425,7 +424,7 @@ io.on('connection', (socket) => {
     // GM観戦モードで参加
     socket.on('join_spectator', () => {
         spectatorIds.add(socket.id);
-        addLog('GM OBSERVER CONNECTED.', 'system');
+        addLog('GM観戦モード: 接続しました。', 'system');
         socket.emit('spectator_confirmed', true);
         io.emit('state_update', gameState);
     });
@@ -493,14 +492,14 @@ io.on('connection', (socket) => {
             });
         });
 
-        addLog('ROLES ASSIGNED. ONE MURDERER. ONE HACKER. FIND THE TRUTH.', 'system');
+        addLog('役職割当完了。殺人犯1名、ハッカー1名が潜伏中。真実を暴け。', 'system');
     }
     socket.on('action', (data: { type: string, cost: number, targetId?: string }) => {
         const player = gameState.players.find(p => p.id === socket.id);
         if (!player) return;
 
         if (player.isIsolated) {
-            socket.emit('error', 'ACCESS DENIED: ACCOUNT ISOLATED BY VOTE.');
+            socket.emit('error', 'アクセス拒否: 投票により隔離されています。');
             return;
         }
 
@@ -520,7 +519,7 @@ io.on('connection', (socket) => {
         // 権限チェック: 非ハッカーがハッカーアクションをしようとした場合
         // 殺人犯アクション (TAMPER_EVIDENCE, SABOTAGE, LOCKOUT, FALSE_FLAG) は殺人犯に許可
         if (isHackerAction && !player.isHacker && !(isMurdererAction && player.isMurderer)) {
-            socket.emit('error', 'UNAUTHORIZED ACCESS: ROOT PRIVILEGES REQUIRED.');
+            socket.emit('error', '不正アクセス: ROOT権限が必要です。');
             return;
         }
 
@@ -528,48 +527,48 @@ io.on('connection', (socket) => {
         if (data.type === 'INJECT_MALWARE') {
             gameState.currentTurnAttackActions++;
             if (gameState.firewallActive) {
-                addLog(`MALWARE DETECTED BUT BLOCKED BY FIREWALL.`, 'info', executorName);
+                addLog(`マルウェア検知。ファイアウォールによりブロックされました。`, 'info', executorName);
                 gameState.firewallActive = false; // 消費
             } else {
                 gameState.hp = Math.max(0, gameState.hp - 40); // バランス調整: 15 -> 40
-                addLog(`CRITICAL ALERT: MALWARE DETECTED. SOURCE: [ENCRYPTED]. HP DROPPED.`, 'critical', executorName);
+                addLog(`緊急警報: マルウェア検知。送信元: [暗号化済]。システムHP低下。`, 'critical', executorName);
             }
         } else if (data.type === 'RESTORE_SYSTEM') {
             gameState.hp = Math.min(100, gameState.hp + 10);
-            addLog(`SYSTEM PATCH APPLIED. HP RESTORED.`, 'info', executorName);
+            addLog(`システムパッチ適用。HP回復。`, 'info', executorName);
         } else if (data.type === 'EXFILTRATE' || data.type === 'EXFIL') {
             gameState.currentTurnAttackActions++;
             if (gameState.firewallActive) {
-                addLog(`EXFILTRATION BLOCKED BY FIREWALL.`, 'info', executorName);
+                addLog(`データ持ち出し阻止。ファイアウォール作動。`, 'info', executorName);
                 gameState.firewallActive = false;
             } else {
                 gameState.leak = Math.min(100, gameState.leak + 15); // バランス調整: 20 -> 15
-                addLog(`DATA EXFILTRATION DETECTED. ORIGIN: [UNKNOWN].`, 'critical', executorName);
+                addLog(`データ持ち出し検知。送信元: [不明]。`, 'critical', executorName);
             }
         } else if (data.type === 'ANALYZE_EVIDENCE') {
             // 証拠解析
             if (!player.isMurderer) {
                 gameState.evidenceAnalysisProgress = Math.min(100, gameState.evidenceAnalysisProgress + 10);
             }
-            addLog(`EVIDENCE ANALYSIS SUCCESSFUL (+10%).`, 'info', executorName);
+            addLog(`証拠解析完了 (+10%)。`, 'info', executorName);
             checkWinCondition();
         } else if (data.type === 'ENCRYPT_DATA') {
             gameState.leak = Math.max(0, gameState.leak - 10);
-            addLog(`DATA ENCRYPTION COMPLETE. LEAK PROGRESS REDUCED.`, 'info', executorName);
+            addLog(`データ暗号化完了。漏洩リスク低減。`, 'info', executorName);
         } else if (data.type === 'VIEW_AUDIT_LOG') {
             const total = gameState.previousTurnAttackActions + gameState.previousTurnManipActions;
             // 実行者にのみ詳細を通知
             io.to(socket.id).emit('private_message', {
                 senderId: 'SYSTEM',
                 senderName: 'AuditScanner',
-                message: `[AUDIT REPORT] PREVIOUS CYCLE DETECTED: ${total} unauthorized tasks. (INTRUSION: ${gameState.previousTurnAttackActions}, MANIPULATION: ${gameState.previousTurnManipActions})`
+                message: `[監査報告] 前サイクルにおける不正タスク: ${total}件 (侵入: ${gameState.previousTurnAttackActions}, 改ざん: ${gameState.previousTurnManipActions})`
             });
             // 実行された事実のみ公表
-            addLog(`${executorName} EXECUTED SYSTEM AUDIT. RESULTS RESTRICTED TO AGENT.`, 'info', executorName);
+            addLog(`${executorName} がシステム監査を実行。結果はエージェントにのみ通知されました。`, 'info', executorName);
         } else if (data.type === 'COVER_TRACKS') {
             gameState.currentTurnManipActions++;
             player.performedHackerAction = false;
-            addLog(`LOG PURGE DETECTED. SYSTEM TRACES REMOVED.`, 'warn', executorName);
+            addLog(`ログ消去を検知。システム痕跡が削除されました。`, 'warn', executorName);
         } else if (data.type === 'DDOS') {
             gameState.currentTurnAttackActions++;
             // ハッカースキル: DDOS攻撃（ターゲットの次ターンAPを-1）
@@ -577,16 +576,16 @@ io.on('connection', (socket) => {
                 const target = gameState.players.find(p => p.id === data.targetId);
                 if (target) {
                     target.apDebuff = 2; // -2AP
-                    addLog(`WARNING: ABNORMAL RESOURCE CONSUMPTION DETECTED ON NETWORK.`, 'critical', executorName);
+                    addLog(`警告: ネットワーク上の異常なリソース消費を検知。`, 'critical', executorName);
                     // ターゲットには個人通知
                     io.to(target.id).emit('private_message', {
                         senderId: 'SYSTEM',
                         senderName: 'SystemAlert',
-                        message: `YOUR TERMINAL HAS BEEN TARGETED BY DDOS. NEXT TURN AP -2.`
+                        message: `あなたの端末がDDOS攻撃を受けました。次ターンのAP -2。`
                     });
                 }
             } else {
-                socket.emit('error', 'UNAUTHORIZED ACCESS: ROOT PRIVILEGES REQUIRED.');
+                socket.emit('error', '不正アクセス: ROOT権限が必要です。');
             }
         } else if (data.type === 'FALSE_FLAG') {
             gameState.currentTurnManipActions++;
@@ -599,11 +598,11 @@ io.on('connection', (socket) => {
                     io.to(player.id).emit('private_message', {
                         senderId: 'SYSTEM',
                         senderName: 'HackerOS',
-                        message: `FALSE FLAG PLANTED ON ${target.name}. TRACE_LOG WILL SHOW POSITIVE.`
+                        message: `${target.name} に偽装工作を実行。ログ追跡の結果はPOSITIVEとなります。`
                     });
                 }
             } else {
-                socket.emit('error', 'UNAUTHORIZED ACTION.');
+                socket.emit('error', '不正なアクションです。');
             }
         } else if (data.type === 'TAMPER_EVIDENCE') {
             gameState.currentTurnManipActions++;
@@ -611,26 +610,26 @@ io.on('connection', (socket) => {
             if (player.isMurderer) {
                 // 解析を後退させる
                 gameState.evidenceAnalysisProgress = Math.max(0, gameState.evidenceAnalysisProgress - 5); // バランス調整: 15 -> 5
-                addLog(`WARNING: DATA CORRUPTION DETECTED IN EVIDENCE LOGS.`, 'critical', executorName);
+                addLog(`警告: 証拠ログのデータ破損を検知。`, 'critical', executorName);
                 // 殺人犯も痕跡を残す（TRACE_LOGでバレるようにする）
                 player.performedHackerAction = true;
             } else {
-                socket.emit('error', 'UNAUTHORIZED ACTION.');
+                socket.emit('error', '不正なアクションです。');
             }
         } else if (data.type === 'SABOTAGE') {
             gameState.currentTurnManipActions++;
             // 殺人犯スキル: サボタージュ (HP -5)
             if (player.isMurderer) {
                 if (gameState.firewallActive) {
-                    addLog(`SABOTAGE ATTEMPT DETECTED BUT BLOCKED BY FIREWALL.`, 'info', executorName);
+                    addLog(`サボタージュ試行を検知。ファイアウォールによりブロックされました。`, 'info', executorName);
                     gameState.firewallActive = false; // 消費
                 } else {
                     gameState.hp = Math.max(0, gameState.hp - 5);
-                    addLog(`MINOR SYSTEM GLITCH DETECTED. INTERNAL SABOTAGE suspected.`, 'warn', executorName);
+                    addLog(`システムグリッチ検知。内部サボタージュの疑いあり。`, 'warn', executorName);
                 }
                 player.performedHackerAction = true; // 痕跡残る
             } else {
-                socket.emit('error', 'UNAUTHORIZED ACTION.');
+                socket.emit('error', '不正なアクションです。');
             }
         } else if (data.type === 'LOCKOUT') {
             gameState.currentTurnManipActions++;
@@ -639,17 +638,17 @@ io.on('connection', (socket) => {
                 const target = gameState.players.find(p => p.id === data.targetId);
                 if (target) {
                     target.apDebuff = 3; // APを0にする (3 - 3 = 0)
-                    addLog(`SECURITY LOCKOUT INITIATED on terminal.`, 'critical', executorName);
+                    addLog(`端末に対するセキュリティロックアウトを開始。`, 'critical', executorName);
                     // ターゲットには個人通知
                     io.to(target.id).emit('private_message', {
                         senderId: 'SYSTEM',
                         senderName: 'AdminAuth',
-                        message: `YOUR TERMINAL HAS BEEN LOCKED OUT. NEXT TURN AP -3.`
+                        message: `あなたの端末はロックアウトされました。次ターンのAP -3。`
                     });
                     player.performedHackerAction = true; // 痕跡残る
                 }
             } else {
-                socket.emit('error', 'UNAUTHORIZED ACTION.');
+                socket.emit('error', '不正なアクションです。');
             }
         }
         // --- ユニークアクション (Special Skills: Redeisgned) ---
@@ -657,43 +656,43 @@ io.on('connection', (socket) => {
             // 小林: 指定ターゲットの昨ターンのハッカー行動有無を調査
             const target = gameState.players.find(p => p.id === data.targetId);
             if (target) {
-                const result = (target.lastTurnHackerAction || target.performedHackerAction) ? "POSITIVE (Suspicious Activity Found)" : "NEGATIVE (Clean)";
+                const result = (target.lastTurnHackerAction || target.performedHackerAction) ? "POSITIVE (不審な活動を確認)" : "NEGATIVE (異常なし)";
                 // 個別通知
                 io.to(player.id).emit('private_message', {
                     senderId: 'SYSTEM',
                     senderName: 'LogAnalyzer',
-                    message: `TRACE RESULT for ${target.name}: ${result}`
+                    message: `${target.name} の追跡結果: ${result}`
                 });
-                addLog(`TRACE LOG EXECUTED on ${target.name}. Result sent to admin.`, 'info', executorName);
+                addLog(`${target.name} に対するログ追跡を実行。結果は管理者に通知されました。`, 'info', executorName);
             }
         } else if (data.type === 'FIREWALL' && player.role === 'セキュリティ分析官') {
             // 田中: Firewall展開
             gameState.firewallActive = true;
-            addLog(`FIREWALL DEPLOYED. Next attack will be mitigated.`, 'info', executorName);
+            addLog(`ファイアウォール展開。次の攻撃を無効化します。`, 'info', executorName);
         } else if (data.type === 'DATA_RECOVERY' && player.role === 'DBエンジニア') {
             // 鈴木: Leak回復
             gameState.leak = Math.max(0, gameState.leak - 15);
-            addLog(`DATA RECOVERY COMPLETE. LEAK REDUCED by 15%.`, 'info', executorName);
+            addLog(`データ復旧完了。漏洩率が15%低下しました。`, 'info', executorName);
             checkWinCondition();
         } else if (data.type === 'SYS_ROLLBACK' && player.role === 'システムオペレーター') {
             // 佐藤: HP大回復
             gameState.hp = Math.min(100, gameState.hp + 25);
-            addLog(`SYSTEM ROLLBACK EXECUTED. SYSTEM HP RESTORED (+25).`, 'info', executorName);
+            addLog(`システムロールバック実行。システムHP大回復 (+25)。`, 'info', executorName);
             checkWinCondition();
         } else if (data.type === 'SERVER_BOOST' && player.role === 'インフラリーダー') {
             // 伊藤: 解析ブースト
             if (!player.isMurderer) {
                 gameState.evidenceAnalysisProgress = Math.min(100, gameState.evidenceAnalysisProgress + 15);
             }
-            addLog(`SERVER RESOURCE BOOSTED (+15% Analysis).`, 'info', executorName);
+            addLog(`サーバリソースブースト。解析効率向上 (+15%)。`, 'info', executorName);
             checkWinCondition();
         } else if (data.type === 'DEPLOY_BOT' && player.role === 'DevOps') {
             // 渡辺: Bot設置 (最大3台まで)
             if (gameState.devOpsBots >= 3) {
-                socket.emit('error', 'DEPLOYMENT FAILED: MAXIMUM BOT CAPACITY (3) REACHED.');
+                socket.emit('error', '配備失敗: BOT最大数(3)に達しています。');
             } else {
                 gameState.devOpsBots++;
-                addLog(`AUTOMATED SECURITY BOT DEPLOYED. Analysis throughput increased.`, 'info', executorName);
+                addLog(`自動セキュリティBOT配備完了。解析スループット向上。`, 'info', executorName);
             }
         }
 
