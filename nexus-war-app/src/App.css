@@ -724,3 +724,55 @@
     background: var(--text-dim);
     color: black;
 }
+
+/* === Character Themes === */
+.hacker-theme {
+    --bg-color: #0d0510;
+    --terminal-bg: #150a1d;
+    --text-active: #ff2d55;
+    --text-dim: #991b1b;
+    --accent-cyan: #ff0044;
+    --border-color: #3d1b1b;
+}
+
+.murderer-theme {
+    --bg-color: #0b050f;
+    --terminal-bg: #130d17;
+    --text-active: #bc13fe;
+    --text-dim: #7e22ce;
+    --accent-cyan: #d946ef;
+    --border-color: #2e1b3d;
+}
+
+.hacker-theme .stat-bar,
+.murderer-theme .stat-bar,
+.hacker-theme .bar-container,
+.murderer-theme .bar-container,
+.hacker-theme .action-panel,
+.murderer-theme .action-panel {
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.hacker-theme .secret-intel-box {
+    border-color: var(--accent-red);
+    background: rgba(255, 0, 68, 0.05);
+    animation: pulse-red 4s infinite ease-in-out;
+}
+
+@keyframes pulse-red {
+    0% { border-color: rgba(255, 0, 68, 0.3); box-shadow: 0 0 5px rgba(255, 0, 68, 0.1); }
+    50% { border-color: rgba(255, 0, 68, 0.8); box-shadow: 0 0 15px rgba(255, 0, 68, 0.2); }
+    100% { border-color: rgba(255, 0, 68, 0.3); box-shadow: 0 0 5px rgba(255, 0, 68, 0.1); }
+}
+
+.murderer-theme .secret-intel-box {
+    border-color: #bc13fe;
+    background: rgba(188, 19, 254, 0.05);
+    animation: pulse-purple 4s infinite ease-in-out;
+}
+
+@keyframes pulse-purple {
+    0% { border-color: rgba(188, 19, 254, 0.3); box-shadow: 0 0 5px rgba(188, 19, 254, 0.1); }
+    50% { border-color: rgba(188, 19, 254, 0.8); box-shadow: 0 0 15px rgba(188, 19, 254, 0.2); }
+    100% { border-color: rgba(188, 19, 254, 0.3); box-shadow: 0 0 5px rgba(188, 19, 254, 0.1); }
+}

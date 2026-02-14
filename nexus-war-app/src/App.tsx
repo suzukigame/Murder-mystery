@@ -507,8 +507,14 @@ function App() {
         );
     }
 
+    const getThemeClass = () => {
+        if (isHacker) return 'hacker-theme';
+        if (isMurderer) return 'murderer-theme';
+        return '';
+    };
+
     return (
-        <div className={`app-container ${isAlert ? 'alert-mode' : ''}`}>
+        <div className={`app-container ${getThemeClass()} ${isAlert ? 'alert-mode' : ''}`}>
             {/* --- Header --- */}
             <header className="stat-bar">
                 <div className="stat-item text-green-400">
