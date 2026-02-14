@@ -26,7 +26,7 @@ const TURN_DURATION = 3 * 60; // 3分 (開発用)
 // const TURN_DURATION = 10 * 60; // 10分 (本番用)
 
 // 型定義
-type TurnPhase = 'discussion' | 'action' | 'resolve';
+type TurnPhase = 'discussion' | 'action' | 'resolve' | 'final_voting';
 
 interface Player {
     id: string;
@@ -62,6 +62,11 @@ interface GameState {
     previousTurnAttackActions: number; // 前のターンの攻撃的行動数
     previousTurnManipActions: number;  // 前のターンの工作型行動数
     isGameStarted: boolean;            // 新: ゲーム開始フラグ (役割割り当て済みか)
+    // 最終投票フェーズ用
+    finalVotesMurderer: { [voterId: string]: string }; // 殺人犯への投票
+    finalVotesHacker: { [voterId: string]: string };   // ハッカーへの投票
+    finalVotingComplete: boolean;                       // 最終投票完了フラグ
+    finalVotingResult: 'none' | 'employee_perfect_win' | 'employee_win' | 'murderer_escape'; // 最終投票結果
 }
 
 // ゲーム状態初期化関数
@@ -84,7 +89,11 @@ const getInitialState = (): GameState => ({
     currentTurnManipActions: 0,
     previousTurnAttackActions: 0,
     previousTurnManipActions: 0,
-    isGameStarted: false
+    isGameStarted: false,
+    finalVotesMurderer: {},
+    finalVotesHacker: {},
+    finalVotingComplete: false,
+    finalVotingResult: 'none'
 });
 
 let gameState = getInitialState();
@@ -107,7 +116,7 @@ setInterval(() => {
     // 状態送信は常に継続（ハートビート）
     io.emit('state_update', gameState);
 
-    if (gameState.isPaused || gameState.turn > 8) return;
+    if (gameState.isPaused || gameState.turn > 8 || gameState.phase === 'final_voting') return;
 
     gameState.timeLeft--;
 
@@ -197,33 +206,45 @@ setInterval(() => {
             addLog(`WARNING: ${variance} AP VARIANCE DETECTED. SUSPICIOUS BACKGROUND PROCESSES IDENTIFIED.`, 'critical');
         }
 
-        // 次ターンの準備
-        gameState.previousTurnAttackActions = gameState.currentTurnAttackActions;
-        gameState.previousTurnManipActions = gameState.currentTurnManipActions;
-        gameState.currentTurnAttackActions = 0;
-        gameState.currentTurnManipActions = 0;
-        gameState.turn++;
-        gameState.timeLeft = TURN_DURATION;
-        gameState.phase = 'discussion';
-        gameState.totalPublicAp = 0;
-        gameState.totalActualAp = 0;
-        gameState.firewallActive = false; // Firewallリセット
-        gameState.votedPlayers = {}; // 投票履歴リセット
-        gameState.players.forEach(p => {
-            p.votes = 0;
-            p.lastTurnHackerAction = p.performedHackerAction; // 現在の行動を前回として保存
-            p.performedHackerAction = false; // フラグリセット
-            // DDOSデバフの適用と通知
-            if (p.apDebuff > 0) {
-                addLog(`NETWORK DEGRADATION: ${p.name}'s resources throttled (-${p.apDebuff} AP).`, 'warn');
-                // クライアント側にデバフ情報を送信
-                io.to(p.id).emit('ap_debuff', { amount: p.apDebuff });
-                p.apDebuff = 0; // デバフをリセット
-            }
-        });
+        // Turn 8 終了時 → 最終投票フェーズへ
+        if (gameState.turn >= 8) {
+            gameState.phase = 'final_voting';
+            gameState.timeLeft = 0;
+            gameState.finalVotesMurderer = {};
+            gameState.finalVotesHacker = {};
+            gameState.finalVotingComplete = false;
+            gameState.finalVotingResult = 'none';
+            addLog('>>> ALL 8 TURNS COMPLETED. FINAL VOTING PHASE: IDENTIFY THE MURDERER AND HACKER. <<<', 'system');
+            io.emit('state_update', gameState);
+        } else {
+            // 次ターンの準備
+            gameState.previousTurnAttackActions = gameState.currentTurnAttackActions;
+            gameState.previousTurnManipActions = gameState.currentTurnManipActions;
+            gameState.currentTurnAttackActions = 0;
+            gameState.currentTurnManipActions = 0;
+            gameState.turn++;
+            gameState.timeLeft = TURN_DURATION;
+            gameState.phase = 'discussion';
+            gameState.totalPublicAp = 0;
+            gameState.totalActualAp = 0;
+            gameState.firewallActive = false; // Firewallリセット
+            gameState.votedPlayers = {}; // 投票履歴リセット
+            gameState.players.forEach(p => {
+                p.votes = 0;
+                p.lastTurnHackerAction = p.performedHackerAction; // 現在の行動を前回として保存
+                p.performedHackerAction = false; // フラグリセット
+                // DDOSデバフの適用と通知
+                if (p.apDebuff > 0) {
+                    addLog(`NETWORK DEGRADATION: ${p.name}'s resources throttled (-${p.apDebuff} AP).`, 'warn');
+                    // クライアント側にデバフ情報を送信
+                    io.to(p.id).emit('ap_debuff', { amount: p.apDebuff });
+                    p.apDebuff = 0; // デバフをリセット
+                }
+            });
 
-        addLog(`TURN ${gameState.turn - 1} COMPLETED. STARTING TURN ${gameState.turn}.`, 'system');
-        io.emit('state_update', gameState);
+            addLog(`TURN ${gameState.turn - 1} COMPLETED. STARTING TURN ${gameState.turn}.`, 'system');
+            io.emit('state_update', gameState);
+        }
     }
 
 }, 1000); // 実時間進行 (デバッグ時はここを変更)
@@ -243,6 +264,69 @@ function checkWinCondition() {
         addLog(`!!! SYSTEM FAILURE !!! HACKERS WIN. MAIN CORE DESTROYED.`, 'critical');
         gameState.isPaused = true;
     }
+}
+
+// 最終投票集計
+function tallyFinalVotes() {
+    if (gameState.finalVotingComplete) return;
+    gameState.finalVotingComplete = true;
+
+    const realMurderer = gameState.players.find(p => p.isMurderer);
+    const realHacker = gameState.players.find(p => p.isHacker);
+
+    // 殺人犯投票の多数決
+    const murdererVoteCounts: { [targetId: string]: number } = {};
+    Object.values(gameState.finalVotesMurderer).forEach(targetId => {
+        murdererVoteCounts[targetId] = (murdererVoteCounts[targetId] || 0) + 1;
+    });
+    let maxMurdererVotes = 0;
+    let murdererGuessId = '';
+    Object.entries(murdererVoteCounts).forEach(([id, count]) => {
+        if (count > maxMurdererVotes) {
+            maxMurdererVotes = count;
+            murdererGuessId = id;
+        }
+    });
+
+    // ハッカー投票の多数決
+    const hackerVoteCounts: { [targetId: string]: number } = {};
+    Object.values(gameState.finalVotesHacker).forEach(targetId => {
+        hackerVoteCounts[targetId] = (hackerVoteCounts[targetId] || 0) + 1;
+    });
+    let maxHackerVotes = 0;
+    let hackerGuessId = '';
+    Object.entries(hackerVoteCounts).forEach(([id, count]) => {
+        if (count > maxHackerVotes) {
+            maxHackerVotes = count;
+            hackerGuessId = id;
+        }
+    });
+
+    const murdererCorrect = realMurderer && murdererGuessId === realMurderer.id;
+    const hackerCorrect = realHacker && hackerGuessId === realHacker.id;
+
+    const murdererGuessName = gameState.players.find(p => p.id === murdererGuessId)?.name || 'UNKNOWN';
+    const hackerGuessName = gameState.players.find(p => p.id === hackerGuessId)?.name || 'UNKNOWN';
+
+    addLog(`=== FINAL VOTE RESULTS ===`, 'system');
+    addLog(`MURDERER SUSPECT: ${murdererGuessName} (${maxMurdererVotes} votes) → ${murdererCorrect ? 'CORRECT ✓' : 'WRONG ✗'}`, 'system');
+    addLog(`HACKER SUSPECT: ${hackerGuessName} (${maxHackerVotes} votes) → ${hackerCorrect ? 'CORRECT ✓' : 'WRONG ✗'}`, 'system');
+    addLog(`REAL MURDERER: ${realMurderer?.name || 'UNKNOWN'}`, 'system');
+    addLog(`REAL HACKER: ${realHacker?.name || 'UNKNOWN'}`, 'system');
+
+    if (murdererCorrect && hackerCorrect) {
+        gameState.finalVotingResult = 'employee_perfect_win';
+        addLog(`★★★ PERFECT VICTORY ★★★ Both traitors identified!`, 'critical');
+    } else if (murdererCorrect) {
+        gameState.finalVotingResult = 'employee_win';
+        addLog(`★ EMPLOYEES WIN ★ Murderer identified! Hacker remains at large.`, 'critical');
+    } else {
+        gameState.finalVotingResult = 'murderer_escape';
+        addLog(`✗ MURDERER ESCAPES ✗ The killer walks free...`, 'critical');
+    }
+
+    gameState.isPaused = true;
+    io.emit('state_update', gameState);
 }
 
 io.on('connection', (socket) => {
@@ -597,6 +681,30 @@ io.on('connection', (socket) => {
         }
     });
 
+    // 最終投票受付 (Turn 8終了後)
+    socket.on('final_vote', (data: { murdererVote: string, hackerVote: string }) => {
+        if (gameState.phase !== 'final_voting') return;
+        const voter = gameState.players.find(p => p.id === socket.id);
+        if (!voter) return;
+
+        gameState.finalVotesMurderer[socket.id] = data.murdererVote;
+        gameState.finalVotesHacker[socket.id] = data.hackerVote;
+        addLog(`${voter.name} HAS SUBMITTED FINAL IDENTIFICATION.`, 'system');
+        io.emit('state_update', gameState);
+
+        // 全プレイヤーが投票完了したら自動集計
+        const totalVoters = gameState.players.length;
+        const votedCount = Object.keys(gameState.finalVotesMurderer).length;
+        if (votedCount >= totalVoters) {
+            tallyFinalVotes();
+        }
+    });
+
+    // 最終投票の集計 (GM手動トリガー or 自動)
+    socket.on('tally_final_votes', () => {
+        if (gameState.phase !== 'final_voting') return;
+        tallyFinalVotes();
+    });
 
     // 強制ゲーム開始 (デバッグ用)
     socket.on('start_game_force', () => {

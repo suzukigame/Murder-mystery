@@ -15,8 +15,8 @@ interface LogEntry {
     content: string;
 }
 
-type TurnPhase = 'discussion' | 'action' | 'resolve';
-type GameResult = 'playing' | 'hacker_win_hp' | 'hacker_win_leak' | 'defense_win' | 'murderer_found';
+type TurnPhase = 'discussion' | 'action' | 'resolve' | 'final_voting';
+type GameResult = 'playing' | 'hacker_win_hp' | 'hacker_win_leak' | 'defense_win' | 'murderer_found' | 'employee_perfect_win' | 'employee_win' | 'murderer_escape';
 
 // プレイヤー定義（デモ用）
 const PLAYERS = [
@@ -55,6 +55,12 @@ function App() {
     const [isFalseFlagMode, setIsFalseFlagMode] = useState(false); // False flag targeting mode
     const [showHackerMenu, setShowHackerMenu] = useState(false);
     const [isAlert, setIsAlert] = useState(false);
+    // 最終投票フェーズ用
+    const [finalMurdererVote, setFinalMurdererVote] = useState('');
+    const [finalHackerVote, setFinalHackerVote] = useState('');
+    const [hasSubmittedFinalVote, setHasSubmittedFinalVote] = useState(false);
+    const [finalVotingResult, setFinalVotingResult] = useState<string>('none');
+    const [finalVotedCount, setFinalVotedCount] = useState(0);
 
 
     // --- ログ ---
@@ -85,10 +91,22 @@ function App() {
 
             // サーバー側でゲーム終了判定があれば受け取る
             if (newState.isPaused) {
-                // 簡易判定
-                if (newState.evidenceAnalysisProgress >= 100) setGameResult('murderer_found');
-                else if (newState.hp <= 0) setGameResult('hacker_win_hp');
-                else if (newState.leak >= 100) setGameResult('hacker_win_leak');
+                // 最終投票結果の確認
+                if (newState.finalVotingResult && newState.finalVotingResult !== 'none') {
+                    setGameResult(newState.finalVotingResult as GameResult);
+                    setFinalVotingResult(newState.finalVotingResult);
+                } else if (newState.evidenceAnalysisProgress >= 100) {
+                    setGameResult('murderer_found');
+                } else if (newState.hp <= 0) {
+                    setGameResult('hacker_win_hp');
+                } else if (newState.leak >= 100) {
+                    setGameResult('hacker_win_leak');
+                }
+            }
+
+            // 最終投票フェーズの投票数トラック
+            if (newState.phase === 'final_voting') {
+                setFinalVotedCount(Object.keys(newState.finalVotesMurderer || {}).length);
             }
         });
 
@@ -170,6 +188,7 @@ function App() {
             case 'discussion': return 'DISCUSSION';
             case 'action': return 'ACTION INPUT';
             case 'resolve': return 'RESOLVING';
+            case 'final_voting': return 'FINAL VOTING';
         }
     };
 
@@ -177,7 +196,7 @@ function App() {
     const stateCheckGameOver = () => {
         if (systemHp <= 0) return 'hacker_win_hp';
         if (dataLeak >= 100) return 'hacker_win_leak';
-        if (turn > 8) return 'defense_win';
+        if (finalVotingResult !== 'none') return finalVotingResult;
         return null;
     };
 
@@ -223,9 +242,25 @@ function App() {
         socket.emit('vote', { targetId });
     };
 
+    // 最終投票送信
+    const handleFinalVoteSubmit = () => {
+        if (!finalMurdererVote || !finalHackerVote) return;
+        socket.emit('final_vote', {
+            murdererVote: finalMurdererVote,
+            hackerVote: finalHackerVote
+        });
+        setHasSubmittedFinalVote(true);
+    };
+
     // --- リスタート ---
     const resetGame = () => {
         setAp(3);
+        setGameResult('playing');
+        setFinalMurdererVote('');
+        setFinalHackerVote('');
+        setHasSubmittedFinalVote(false);
+        setFinalVotingResult('none');
+        setFinalVotedCount(0);
         socket.emit('reset_game');
     };
 
@@ -710,21 +745,124 @@ function App() {
             }
 
 
+            {/* --- 最終投票フェーズ画面 --- */}
+            {
+                phase === 'final_voting' && gameResult === 'playing' && (
+                    <div className="modal-overlay game-over-overlay">
+                        <div className="game-over-modal" style={{ maxWidth: '500px' }}>
+                            <div className="game-over-icon win">
+                                <Eye size={48} />
+                            </div>
+                            <h2 className="game-over-title win" style={{ fontSize: '1.4rem' }}>
+                                FINAL IDENTIFICATION
+                            </h2>
+                            <p className="game-over-sub" style={{ marginBottom: '1.5rem' }}>
+                                8ターン生存完了。殺人犯とハッカーを指名してください。
+                            </p>
+
+                            {!hasSubmittedFinalVote ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0 1rem' }}>
+                                    {/* 殺人犯投票 */}
+                                    <div style={{ textAlign: 'left' }}>
+                                        <label style={{ color: '#ff4444', fontWeight: 'bold', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block' }}>
+                                            <Skull size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+                                            殺人犯は誰だ？ (必須)
+                                        </label>
+                                        <select
+                                            value={finalMurdererVote}
+                                            onChange={(e) => setFinalMurdererVote(e.target.value)}
+                                            style={{
+                                                width: '100%', padding: '0.6rem', background: '#1a1a2e',
+                                                color: '#fff', border: '1px solid #ff4444', borderRadius: '4px',
+                                                fontSize: '0.9rem'
+                                            }}
+                                        >
+                                            <option value="">-- 選択してください --</option>
+                                            {players.filter(p => p.id !== socket.id).map(p => (
+                                                <option key={p.id} value={p.id}>{p.name} ({p.role})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* ハッカー投票 */}
+                                    <div style={{ textAlign: 'left' }}>
+                                        <label style={{ color: '#00ff88', fontWeight: 'bold', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block' }}>
+                                            <Zap size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+                                            ハッカーは誰だ？ (ボーナス)
+                                        </label>
+                                        <select
+                                            value={finalHackerVote}
+                                            onChange={(e) => setFinalHackerVote(e.target.value)}
+                                            style={{
+                                                width: '100%', padding: '0.6rem', background: '#1a1a2e',
+                                                color: '#fff', border: '1px solid #00ff88', borderRadius: '4px',
+                                                fontSize: '0.9rem'
+                                            }}
+                                        >
+                                            <option value="">-- 選択してください --</option>
+                                            {players.filter(p => p.id !== socket.id).map(p => (
+                                                <option key={p.id} value={p.id}>{p.name} ({p.role})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <button
+                                        onClick={handleFinalVoteSubmit}
+                                        disabled={!finalMurdererVote || !finalHackerVote}
+                                        style={{
+                                            padding: '0.8rem', background: finalMurdererVote && finalHackerVote ? '#00ff88' : '#333',
+                                            color: finalMurdererVote && finalHackerVote ? '#000' : '#666',
+                                            border: 'none', borderRadius: '4px', fontWeight: 'bold',
+                                            fontSize: '1rem', cursor: finalMurdererVote && finalHackerVote ? 'pointer' : 'not-allowed',
+                                            marginTop: '0.5rem'
+                                        }}
+                                    >
+                                        SUBMIT IDENTIFICATION
+                                    </button>
+                                </div>
+                            ) : (
+                                <div style={{ padding: '1rem', textAlign: 'center' }}>
+                                    <p style={{ color: '#00ff88', fontSize: '1.1rem', fontWeight: 'bold' }}>
+                                        ✓ 投票完了
+                                    </p>
+                                    <p style={{ color: '#888', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                                        他のプレイヤーの投票を待っています... ({finalVotedCount}/{players.length})
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )
+            }
+
             {/* --- ゲームオーバー画面 --- */}
             {
                 gameResult !== 'playing' && (
                     <div className="modal-overlay game-over-overlay">
                         <div className="game-over-modal">
-                            <div className={`game-over-icon ${gameResult === 'defense_win' ? 'win' : 'lose'}`}>
-                                {gameResult === 'defense_win' ? <Trophy size={48} /> : <Skull size={48} />}
+                            <div className={`game-over-icon ${gameResult === 'employee_perfect_win' || gameResult === 'employee_win' || gameResult === 'murderer_found' ? 'win' : 'lose'
+                                }`}>
+                                {(gameResult === 'employee_perfect_win' || gameResult === 'employee_win' || gameResult === 'murderer_found')
+                                    ? <Trophy size={48} />
+                                    : <Skull size={48} />
+                                }
                             </div>
-                            <h2 className={`game-over-title ${gameResult === 'defense_win' ? 'win' : 'lose'}`}>
-                                {gameResult === 'defense_win' ? 'DEFENSE WINS' : 'HACKER WINS'}
+                            <h2 className={`game-over-title ${gameResult === 'employee_perfect_win' || gameResult === 'employee_win' || gameResult === 'murderer_found' ? 'win' : 'lose'
+                                }`}>
+                                {gameResult === 'employee_perfect_win' && '★ PERFECT VICTORY ★'}
+                                {gameResult === 'employee_win' && 'EMPLOYEES WIN'}
+                                {gameResult === 'murderer_found' && 'MURDERER FOUND'}
+                                {gameResult === 'murderer_escape' && 'MURDERER ESCAPES'}
+                                {gameResult === 'hacker_win_hp' && 'HACKER WINS'}
+                                {gameResult === 'hacker_win_leak' && 'HACKER WINS'}
                             </h2>
                             <p className="game-over-sub">
+                                {gameResult === 'employee_perfect_win' && '殺人犯もハッカーも特定！完全勝利！'}
+                                {gameResult === 'employee_win' && '殺人犯を特定！しかしハッカーは逃走した...'}
+                                {gameResult === 'murderer_found' && 'EVIDENCE ANALYSIS COMPLETE. MURDERER IDENTIFIED.'}
+                                {gameResult === 'murderer_escape' && '殺人犯の特定に失敗...犯人は闇に消えた。'}
                                 {gameResult === 'hacker_win_hp' && 'SYSTEM HP REACHED 0%. INFRASTRUCTURE DESTROYED.'}
                                 {gameResult === 'hacker_win_leak' && 'DATA EXFILTRATION COMPLETE. ALL FILES COMPROMISED.'}
-                                {gameResult === 'defense_win' && 'ALL 8 TURNS SURVIVED. SYSTEM INTEGRITY MAINTAINED.'}
                             </p>
                             <div className="game-over-stats">
                                 <div className="stat-row"><span>FINAL HP</span><span>{systemHp}%</span></div>
