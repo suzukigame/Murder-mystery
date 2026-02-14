@@ -20,12 +20,12 @@ type GameResult = 'playing' | 'hacker_win_hp' | 'hacker_win_leak' | 'defense_win
 
 // プレイヤー定義（デモ用）
 const PLAYERS = [
-    { id: 'p1', name: '一文字', role: 'ネットワーク管理者' },
-    { id: 'p2', name: '二瓶', role: 'セキュリティ分析官' },
-    { id: 'p3', name: '三和', role: 'DBエンジニア' },
-    { id: 'p4', name: '四宮', role: 'システムオペレーター' },
-    { id: 'p5', name: '五香', role: 'インフラリーダー' },
-    { id: 'p6', name: '六角', role: 'DevOps' },
+    { id: 'p1', name: '一文字' },
+    { id: 'p2', name: '二瓶' },
+    { id: 'p3', name: '三和' },
+    { id: 'p4', name: '四宮' },
+    { id: 'p5', name: '五香' },
+    { id: 'p6', name: '六角' },
 ];
 
 function App() {
@@ -93,7 +93,10 @@ function App() {
 
             // 自分の隔離状態を確認
             const me = newState.players.find((p: any) => p.id === socket.id);
-            if (me) setIsIsolated(me.isIsolated);
+            if (me) {
+                setIsIsolated(me.isIsolated);
+                if (me.role && me.role !== 'TBD') setMyRole(me.role);
+            }
 
             // サーバー側でゲーム終了判定があれば受け取る
             if (newState.isPaused) {
@@ -132,6 +135,7 @@ function App() {
             setIsHacker(data.isHacker);
             setIsMurderer(data.isMurderer);
             setMySecret(data.secret);
+            setMyRole(data.roleName);
 
             const roleIntel = data.isHacker ? "HACKER ACTIVATED" : (data.isMurderer ? "MURDERER ACTIVATED" : "EMPLOYEE VERIFIED");
             addLog(`RESTRICTED DATA RECEIVED: ${roleIntel}. Intel decrypted.`, 'system');
@@ -324,12 +328,12 @@ function App() {
     }, [timeLeft, addLog]);
 
     // --- ロビー画面 ---
-    const handleJoin = (name: string, role: string) => {
-        socket.emit('join_game', { name, role });
+    const handleJoin = (name: string) => {
+        socket.emit('join_game', { name, role: 'TBD' });
         setIsJoined(true);
         setMyPlayerName(name);
-        setMyRole(role);
-        addLog(`IDENTITY VERIFIED: ${name} [${role}]`, 'system');
+        setMyRole('待機中...');
+        addLog(`IDENTITY VERIFIED: ${name}`, 'system');
     };
 
     if (!isJoined) {
@@ -361,14 +365,13 @@ function App() {
                         {PLAYERS.map(p => (
                             <button
                                 key={p.id}
-                                onClick={() => handleJoin(p.name, p.role)}
+                                onClick={() => handleJoin(p.name)}
                                 className="group relative border border-green-800 p-4 hover:border-green-400 hover:bg-green-500/10 text-left transition-all duration-300 overflow-hidden"
                             >
                                 <div className="absolute top-0 left-0 w-1 h-full bg-green-800 group-hover:bg-green-400 transition-colors"></div>
                                 <div className="font-bold text-lg text-green-500 group-hover:text-green-300 mb-1 flex items-center gap-2 pl-2">
                                     {p.name}
                                 </div>
-                                <div className="text-xs text-green-700 group-hover:text-green-500 pl-2">{p.role}</div>
                             </button>
                         ))}
                     </div>
@@ -568,7 +571,7 @@ function App() {
                 </div>
                 {isIsolated && (
                     <div className="isolated-alert text-red-500 font-bold flex items-center gap-2 mt-2">
-                        <AlertTriangle size={16} /> ACCOUNT ISOLATED: ACTIONS PROHIBITED
+                        <AlertTriangle size={16} /> アカウント凍結中: アクション実行不可
                     </div>
                 )}
             </div>
@@ -595,23 +598,23 @@ function App() {
                 <section className="player-list-section">
                     <div className="screen-header">
                         <User size={14} /> 社員リスト
-                        {isTraceMode && <span className="ml-2 text-yellow-400 animate-pulse">[TRACE MODE: SELECT TARGET]</span>}
-                        {isDdosMode && <span className="ml-2 text-red-400 animate-pulse">[DDOS MODE: SELECT TARGET]</span>}
-                        {isFalseFlagMode && <span className="ml-2 text-purple-400 animate-pulse">[FALSE FLAG: SELECT TARGET]</span>}
-                        {isLockoutMode && <span className="ml-2 text-red-400 animate-pulse">[LOCKOUT: SELECT TARGET]</span>}
+                        {isTraceMode && <span className="ml-2 text-yellow-400 animate-pulse">[ログ追跡: 対象を選択してください]</span>}
+                        {isDdosMode && <span className="ml-2 text-red-400 animate-pulse">[DDOS攻撃: 対象を選択してください]</span>}
+                        {isFalseFlagMode && <span className="ml-2 text-purple-400 animate-pulse">[偽装工作: 対象を選択してください]</span>}
+                        {isLockoutMode && <span className="ml-2 text-red-400 animate-pulse">[ロックアウト: 対象を選択してください]</span>}
                     </div>
                     <div className="player-grid">
                         {players.map(p => (
                             <div key={p.id} className={`player-card ${p.isIsolated ? 'isolated' : ''}`}>
                                 <div className="p-info">
                                     <div className="p-name">{p.name}</div>
-                                    <div className="p-role text-xs opacity-50">{p.role}</div>
-                                    {p.votes > 0 && <div className="p-votes">ALERT: SUSPICION: {p.votes}</div>}
+                                    {/* <div className="p-role text-xs opacity-50">{p.role}</div> */}
+                                    {p.votes > 0 && <div className="p-votes">疑惑度: {p.votes}</div>}
                                 </div>
                                 {isJoined && p.id !== socket.id && (
                                     <>
                                         {!isTraceMode && !isDdosMode && !isFalseFlagMode && !isLockoutMode && (
-                                            <button onClick={() => handleVote(p.id)} className="btn-vote">VOTE</button>
+                                            <button onClick={() => handleVote(p.id)} className="btn-vote">投票</button>
                                         )}
                                         {isTraceMode && myRole === 'ネットワーク管理者' && (
                                             <button
@@ -688,8 +691,8 @@ function App() {
                     {isIsolated ? (
                         <div style={{ padding: '20px', textAlign: 'center', color: '#ff4444', border: '1px solid #ff4444', borderRadius: '8px', margin: '10px 0' }}>
                             <AlertTriangle size={32} style={{ marginBottom: '8px' }} />
-                            <div style={{ fontSize: '14px', fontWeight: 'bold' }}>⚠ ACCOUNT ISOLATED BY VOTE ⚠</div>
-                            <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>CONSOLE ACCESS DENIED THIS TURN. VOTING ONLY.</div>
+                            <div style={{ fontSize: '14px', fontWeight: 'bold' }}>⚠ 投票によりアカウント凍結中 ⚠</div>
+                            <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>コンソールアクセス拒否。このターンは投票のみ可能です。</div>
                         </div>
                     ) : !isHacker ? (
                         /* === 防衛側ボタン === */

@@ -370,7 +370,7 @@ io.on('connection', (socket) => {
         if (existingByName) {
             // IDを最新のものに更新
             existingByName.id = socket.id;
-            addLog(`再接続: ${data.name} [${existingByName.role}] 復帰しました。`, 'system');
+            addLog(`再接続: ${data.name} 復帰しました。`, 'system');
 
             // 役割がある場合は個別に再通知
             if (gameState.isGameStarted) {
@@ -405,7 +405,7 @@ io.on('connection', (socket) => {
                 lastTurnHackerAction: false,
                 apDebuff: 0
             });
-            addLog(`新規接続: ${data.name} [${data.role}] 確立。`, 'system');
+            addLog(`新規接続: ${data.name} 確立。`, 'system');
 
             // 6人揃っていて、かつ未開始なら役割を割り当てる
             if (gameState.players.length === 6 && !gameState.isGameStarted) {
@@ -451,7 +451,12 @@ io.on('connection', (socket) => {
         // 1番目: 殺人犯
         // その他: 社員
 
-        gameState.players.forEach(p => {
+        // ランダムに役割 (Role) を割り当て
+        const ROLES = ['ネットワーク管理者', 'セキュリティ分析官', 'DBエンジニア', 'システムオペレーター', 'インフラリーダー', 'DevOps'];
+        const shuffledRoles = [...ROLES].sort(() => Math.random() - 0.5);
+
+        gameState.players.forEach((p, index) => {
+            p.role = shuffledRoles[index]; // ランダム役割を適用
             p.isHacker = false;
             p.isMurderer = false;
             p.secret = ""; // 社員には個別の秘密（過去の不正など）を表示しない
