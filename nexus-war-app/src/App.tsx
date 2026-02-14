@@ -106,7 +106,7 @@ function App() {
             setIsMurderer(data.isMurderer);
             setMySecret(data.secret);
 
-            const roleIntel = data.isHacker ? "HACKER ACTIVATED" : (data.isMurderer ? "MURDERER ACTIVATED" : "CIVILIAN VERIFIED");
+            const roleIntel = data.isHacker ? "HACKER ACTIVATED" : (data.isMurderer ? "MURDERER ACTIVATED" : "EMPLOYEE VERIFIED");
             addLog(`RESTRICTED DATA RECEIVED: ${roleIntel}. Intel decrypted.`, 'system');
         });
 

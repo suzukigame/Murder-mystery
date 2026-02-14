@@ -294,7 +294,7 @@ io.on('connection', (socket) => {
             p.isIsolated = false;
 
             // 各プレイヤーに自分の役割と秘密を個別に通知
-            let roleMsg = "一般市民";
+            let roleMsg = "社員";
             if (p.isHacker) roleMsg = "ハッカー";
             if (p.isMurderer) roleMsg = "殺人犯";
 
