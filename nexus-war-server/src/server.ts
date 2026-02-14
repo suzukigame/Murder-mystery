@@ -432,12 +432,12 @@ io.on('connection', (socket) => {
 
     // キャラクターごとの秘密情報の定義（ベーステキスト：役割通知時に上書きされる）
     const CHARACTER_SECRETS: { [key: string]: string } = {
-        'Network Admin': 'マイニングの証拠',
-        'Security Analyst': '偽造文書の件',
-        'DB Engineer': 'データ売却未遂',
-        'Sys Operator': 'ログ改ざんの件',
-        'Infra Lead': '機密持ち出し未遂',
-        'Dev Ops': 'バックドア設置'
+        'ネットワーク管理者': 'マイニングの証拠',
+        'セキュリティ分析官': '偽造文書の件',
+        'DBエンジニア': 'データ売却未遂',
+        'システムオペレーター': 'ログ改ざんの件',
+        'インフラリーダー': '機密持ち出し未遂',
+        'DevOps': 'バックドア設置'
     };
 
     // 役割割り当て関数
@@ -653,7 +653,7 @@ io.on('connection', (socket) => {
             }
         }
         // --- ユニークアクション (Special Skills: Redeisgned) ---
-        else if (data.type === 'TRACE_LOG' && player.role === 'Network Admin') {
+        else if (data.type === 'TRACE_LOG' && player.role === 'ネットワーク管理者') {
             // 小林: 指定ターゲットの昨ターンのハッカー行動有無を調査
             const target = gameState.players.find(p => p.id === data.targetId);
             if (target) {
@@ -666,28 +666,28 @@ io.on('connection', (socket) => {
                 });
                 addLog(`TRACE LOG EXECUTED on ${target.name}. Result sent to admin.`, 'info', executorName);
             }
-        } else if (data.type === 'FIREWALL' && player.role === 'Security Analyst') {
+        } else if (data.type === 'FIREWALL' && player.role === 'セキュリティ分析官') {
             // 田中: Firewall展開
             gameState.firewallActive = true;
             addLog(`FIREWALL DEPLOYED. Next attack will be mitigated.`, 'info', executorName);
-        } else if (data.type === 'DATA_RECOVERY' && player.role === 'DB Engineer') {
+        } else if (data.type === 'DATA_RECOVERY' && player.role === 'DBエンジニア') {
             // 鈴木: Leak回復
             gameState.leak = Math.max(0, gameState.leak - 15);
             addLog(`DATA RECOVERY COMPLETE. LEAK REDUCED by 15%.`, 'info', executorName);
             checkWinCondition();
-        } else if (data.type === 'SYS_ROLLBACK' && player.role === 'Sys Operator') {
+        } else if (data.type === 'SYS_ROLLBACK' && player.role === 'システムオペレーター') {
             // 佐藤: HP大回復
             gameState.hp = Math.min(100, gameState.hp + 25);
             addLog(`SYSTEM ROLLBACK EXECUTED. SYSTEM HP RESTORED (+25).`, 'info', executorName);
             checkWinCondition();
-        } else if (data.type === 'SERVER_BOOST' && player.role === 'Infra Lead') {
+        } else if (data.type === 'SERVER_BOOST' && player.role === 'インフラリーダー') {
             // 伊藤: 解析ブースト
             if (!player.isMurderer) {
                 gameState.evidenceAnalysisProgress = Math.min(100, gameState.evidenceAnalysisProgress + 15);
             }
             addLog(`SERVER RESOURCE BOOSTED (+15% Analysis).`, 'info', executorName);
             checkWinCondition();
-        } else if (data.type === 'DEPLOY_BOT' && player.role === 'Dev Ops') {
+        } else if (data.type === 'DEPLOY_BOT' && player.role === 'DevOps') {
             // 渡辺: Bot設置 (最大3台まで)
             if (gameState.devOpsBots >= 3) {
                 socket.emit('error', 'DEPLOYMENT FAILED: MAXIMUM BOT CAPACITY (3) REACHED.');
