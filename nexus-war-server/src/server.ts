@@ -504,8 +504,9 @@ io.on('connection', (socket) => {
             return;
         }
 
-        const isHackerAction = ['INJECT_MALWARE', 'EXFILTRATE', 'COVER_TRACKS', 'TAMPER_EVIDENCE', 'DDOS', 'FALSE_FLAG'].includes(data.type);
-        const publicCost = isHackerAction ? 0 : data.cost; // ハッカーアクションは表向き0APに見える
+        const isHackerAction = ['INJECT_MALWARE', 'EXFILTRATE', 'COVER_TRACKS', 'TAMPER_EVIDENCE', 'DDOS', 'FALSE_FLAG', 'SABOTAGE', 'LOCKOUT'].includes(data.type);
+        const isMurdererAction = ['TAMPER_EVIDENCE', 'SABOTAGE', 'LOCKOUT', 'FALSE_FLAG'].includes(data.type);
+        const publicCost = isHackerAction ? 0 : data.cost; // ハッカー/マーダーアクションは表向き0APに見える
 
         gameState.totalPublicAp += publicCost;
         gameState.totalActualAp += data.cost;
@@ -517,8 +518,8 @@ io.on('connection', (socket) => {
         const executorName = player.name;
 
         // 権限チェック: 非ハッカーがハッカーアクションをしようとした場合
-        // TAMPER_EVIDENCE は殺人犯用（ハッカーとは限らない）だが、隠密行動扱いにする
-        if (isHackerAction && !player.isHacker && data.type !== 'TAMPER_EVIDENCE') {
+        // 殺人犯アクション (TAMPER_EVIDENCE, SABOTAGE, LOCKOUT, FALSE_FLAG) は殺人犯に許可
+        if (isHackerAction && !player.isHacker && !(isMurdererAction && player.isMurderer)) {
             socket.emit('error', 'UNAUTHORIZED ACCESS: ROOT PRIVILEGES REQUIRED.');
             return;
         }
@@ -530,7 +531,7 @@ io.on('connection', (socket) => {
                 addLog(`MALWARE DETECTED BUT BLOCKED BY FIREWALL.`, 'info', executorName);
                 gameState.firewallActive = false; // 消費
             } else {
-                gameState.hp = Math.max(0, gameState.hp - 15); // シナリオ通り 15
+                gameState.hp = Math.max(0, gameState.hp - 40); // バランス調整: 15 -> 40
                 addLog(`CRITICAL ALERT: MALWARE DETECTED. SOURCE: [ENCRYPTED]. HP DROPPED.`, 'critical', executorName);
             }
         } else if (data.type === 'RESTORE_SYSTEM') {
@@ -542,7 +543,7 @@ io.on('connection', (socket) => {
                 addLog(`EXFILTRATION BLOCKED BY FIREWALL.`, 'info', executorName);
                 gameState.firewallActive = false;
             } else {
-                gameState.leak = Math.min(100, gameState.leak + 20); // シナリオ通り 20
+                gameState.leak = Math.min(100, gameState.leak + 15); // バランス調整: 20 -> 15
                 addLog(`DATA EXFILTRATION DETECTED. ORIGIN: [UNKNOWN].`, 'critical', executorName);
             }
         } else if (data.type === 'ANALYZE_EVIDENCE') {
@@ -590,11 +591,11 @@ io.on('connection', (socket) => {
         } else if (data.type === 'FALSE_FLAG') {
             gameState.currentTurnManipActions++;
             // ハッカースキル: 証拠偽装（ターゲットのTRACE_LOG結果をPOSITIVEに偽装）
-            if (player.isHacker) {
+            if (player.isHacker || player.isMurderer) {
                 const target = gameState.players.find(p => p.id === data.targetId);
                 if (target) {
                     target.performedHackerAction = true;
-                    // ハッカー本人にだけ通知
+                    // 実行者にだけ通知
                     io.to(player.id).emit('private_message', {
                         senderId: 'SYSTEM',
                         senderName: 'HackerOS',
@@ -602,17 +603,51 @@ io.on('connection', (socket) => {
                     });
                 }
             } else {
-                socket.emit('error', 'UNAUTHORIZED ACCESS: ROOT PRIVILEGES REQUIRED.');
+                socket.emit('error', 'UNAUTHORIZED ACTION.');
             }
         } else if (data.type === 'TAMPER_EVIDENCE') {
             gameState.currentTurnManipActions++;
             // 殺人犯スキル: 証拠改ざん
             if (player.isMurderer) {
                 // 解析を後退させる
-                gameState.evidenceAnalysisProgress = Math.max(0, gameState.evidenceAnalysisProgress - 15);
+                gameState.evidenceAnalysisProgress = Math.max(0, gameState.evidenceAnalysisProgress - 5); // バランス調整: 15 -> 5
                 addLog(`WARNING: DATA CORRUPTION DETECTED IN EVIDENCE LOGS.`, 'critical', executorName);
                 // 殺人犯も痕跡を残す（TRACE_LOGでバレるようにする）
                 player.performedHackerAction = true;
+            } else {
+                socket.emit('error', 'UNAUTHORIZED ACTION.');
+            }
+        } else if (data.type === 'SABOTAGE') {
+            gameState.currentTurnManipActions++;
+            // 殺人犯スキル: サボタージュ (HP -5)
+            if (player.isMurderer) {
+                if (gameState.firewallActive) {
+                    addLog(`SABOTAGE ATTEMPT DETECTED BUT BLOCKED BY FIREWALL.`, 'info', executorName);
+                    gameState.firewallActive = false; // 消費
+                } else {
+                    gameState.hp = Math.max(0, gameState.hp - 5);
+                    addLog(`MINOR SYSTEM GLITCH DETECTED. INTERNAL SABOTAGE suspected.`, 'warn', executorName);
+                }
+                player.performedHackerAction = true; // 痕跡残る
+            } else {
+                socket.emit('error', 'UNAUTHORIZED ACTION.');
+            }
+        } else if (data.type === 'LOCKOUT') {
+            gameState.currentTurnManipActions++;
+            // 殺人犯スキル: 市民を行動不能にする (Next Turn AP = 0)
+            if (player.isMurderer) {
+                const target = gameState.players.find(p => p.id === data.targetId);
+                if (target) {
+                    target.apDebuff = 3; // APを0にする (3 - 3 = 0)
+                    addLog(`SECURITY LOCKOUT INITIATED on terminal.`, 'critical', executorName);
+                    // ターゲットには個人通知
+                    io.to(target.id).emit('private_message', {
+                        senderId: 'SYSTEM',
+                        senderName: 'AdminAuth',
+                        message: `YOUR TERMINAL HAS BEEN LOCKED OUT. NEXT TURN AP -3.`
+                    });
+                    player.performedHackerAction = true; // 痕跡残る
+                }
             } else {
                 socket.emit('error', 'UNAUTHORIZED ACTION.');
             }
