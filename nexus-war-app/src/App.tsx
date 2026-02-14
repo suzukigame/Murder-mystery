@@ -20,12 +20,12 @@ type GameResult = 'playing' | 'hacker_win_hp' | 'hacker_win_leak' | 'defense_win
 
 // プレイヤー定義（デモ用）
 const PLAYERS = [
-    { id: 'p1', name: 'ICHIMONJI', role: 'Network Admin' },
-    { id: 'p2', name: 'NIHEI', role: 'Security Analyst' },
-    { id: 'p3', name: 'SANWA', role: 'DB Engineer' },
-    { id: 'p4', name: 'SHINOMIYA', role: 'Sys Operator' },
-    { id: 'p5', name: 'GOKA', role: 'Infra Lead' },
-    { id: 'p6', name: 'ROKKAKU', role: 'Dev Ops' },
+    { id: 'p1', name: '一文字', role: 'ネットワーク管理者' },
+    { id: 'p2', name: '二瓶', role: 'セキュリティ分析官' },
+    { id: 'p3', name: '三和', role: 'DBエンジニア' },
+    { id: 'p4', name: '四宮', role: 'システムオペレーター' },
+    { id: 'p5', name: '五香', role: 'インフラリーダー' },
+    { id: 'p6', name: '六角', role: 'DevOps' },
 ];
 
 function App() {
@@ -209,10 +209,10 @@ function App() {
     const getPhaseLabel = () => {
         if (stateCheckGameOver()) return 'GAME OVER';
         switch (phase) {
-            case 'discussion': return 'DISCUSSION';
-            case 'action': return 'ACTION INPUT';
-            case 'resolve': return 'RESOLVING';
-            case 'final_voting': return 'FINAL VOTING';
+            case 'discussion': return '議論フェーズ';
+            case 'action': return 'アクション入力';
+            case 'resolve': return '解決フェーズ';
+            case 'final_voting': return '最終投票';
         }
     };
 
@@ -354,7 +354,7 @@ function App() {
                     <div className="absolute bottom-0 right-0 w-full h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent"></div>
 
                     <h2 className="text-xl mb-8 text-center border-b border-green-500/30 pb-4 flex items-center justify-center gap-2 text-green-400">
-                        <Lock size={20} /> AUTHENTICATION REQUIRED
+                        <Lock size={20} /> 認証・ログイン
                     </h2>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -384,7 +384,7 @@ function App() {
                             className="border border-yellow-600/50 text-yellow-600 px-6 py-2 hover:bg-yellow-600/10 hover:border-yellow-400 transition-all text-sm"
                         >
                             <Eye size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} />
-                            GM OBSERVER MODE
+                            GM観戦モード
                         </button>
                     </div>
                 </div>
@@ -394,7 +394,7 @@ function App() {
                     backgroundImage: 'linear-gradient(green 1px, transparent 1px), linear-gradient(90deg, green 1px, transparent 1px)',
                     backgroundSize: '40px 40px'
                 }}></div>
-            </div>
+            </div >
         );
     }
 
@@ -404,7 +404,7 @@ function App() {
             <div className="app-container">
                 <header className="stat-bar">
                     <div className="stat-item" style={{ color: '#ffcc00' }}>
-                        <Eye size={14} /> <span className="font-bold">GM OBSERVER</span>
+                        <Eye size={14} /> <span className="font-bold">GM観戦中</span>
                     </div>
                     <div className="stat-item">
                         <Cpu size={14} /> <span>HP: {systemHp}%</span>
@@ -431,7 +431,7 @@ function App() {
                     }}>
                         <h3 style={{ color: '#ffcc00', fontSize: '0.9rem', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
                             <Eye size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
-                            PLAYER INTEL
+                            プレイヤー情報
                         </h3>
                         {gmPlayerInfo.length > 0 ? gmPlayerInfo.map((p: any) => (
                             <div key={p.id} style={{
@@ -446,8 +446,8 @@ function App() {
                                 <div style={{ fontSize: '0.75rem', marginTop: '4px' }}>
                                     {p.isHacker && <span style={{ color: '#ff4444', fontWeight: 'bold', marginRight: '8px' }}>HACKER</span>}
                                     {p.isMurderer && <span style={{ color: '#bc13fe', fontWeight: 'bold', marginRight: '8px' }}>MURDERER</span>}
-                                    {!p.isHacker && !p.isMurderer && <span style={{ color: '#00ff88' }}>EMPLOYEE</span>}
-                                    {p.isIsolated && <span style={{ color: '#ff8800', marginLeft: '8px' }}>ISOLATED</span>}
+                                    {!p.isHacker && !p.isMurderer && <span style={{ color: '#00ff88' }}>社員</span>}
+                                    {p.isIsolated && <span style={{ color: '#ff8800', marginLeft: '8px' }}>隔離中</span>}
                                 </div>
                                 <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>VOTES: {p.votes}</div>
                             </div>
@@ -465,7 +465,7 @@ function App() {
                                     borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem'
                                 }}
                             >
-                                FORCE START GAME
+                                FORCE START GAME (役職配布)
                             </button>
                         )}
                     </div>
@@ -477,7 +477,7 @@ function App() {
                     }}>
                         <h3 style={{ color: '#00ff88', fontSize: '0.9rem', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
                             <Terminal size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
-                            SYSTEM LOG
+                            システムログ
                         </h3>
                         <div style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
                             {logs.map(log => (
@@ -535,21 +535,21 @@ function App() {
             {/* --- HP & Leak & Analysis Bars --- */}
             <div className="progress-bars">
                 <div className="bar-container">
-                    <div className="bar-label"><Shield size={12} /> SYSTEM HP</div>
+                    <div className="bar-label"><Shield size={12} /> システムHP</div>
                     <div className="bar-track">
                         <div className="bar-fill hp-bar" style={{ width: `${systemHp}%` }} />
                     </div>
                     <span className="bar-value">{systemHp}%</span>
                 </div>
                 <div className="bar-container">
-                    <div className="bar-label"><Database size={12} /> DATA LEAK</div>
+                    <div className="bar-label"><Database size={12} /> データ漏洩</div>
                     <div className="bar-track">
                         <div className="bar-fill leak-bar" style={{ width: `${dataLeak}%` }} />
                     </div>
                     <span className="bar-value">{dataLeak}%</span>
                 </div>
                 <div className="bar-container">
-                    <div className="bar-label"><Search size={12} /> EVIDENCE</div>
+                    <div className="bar-label"><Search size={12} /> 証拠解析</div>
                     <div className="bar-track">
                         <div className="bar-fill" style={{ width: `${evidenceAnalysis}%`, backgroundColor: '#00ffff', boxShadow: '0 0 10px #00ffff' }} />
                     </div>
@@ -559,7 +559,7 @@ function App() {
 
             {/* --- Personal Secret --- */}
             <div className="secret-intel-box">
-                <div className="secret-header"><Lock size={12} /> CLASSIFIED INTEL (Your Secret)</div>
+                <div className="secret-header"><Lock size={12} /> 機密情報 (あなたの秘密)</div>
                 <div className="secret-body">
                     {isHacker && <div className="text-red-500 font-bold">[役割: ハッカー] 目的: データ流出100% または システムHPを0にせよ。</div>}
                     {isMurderer && <div className="text-purple-400 font-bold">[役割: 殺人犯] 目的: 証拠解析(100%)を阻止せよ。</div>}
@@ -578,8 +578,8 @@ function App() {
                 {/* Log Screen */}
                 <section className="log-screen">
                     <div className="screen-header">
-                        <Terminal size={14} /> <span>SYSTEM_LOG</span>
-                        <span className="log-count">{logs.length} entries</span>
+                        <Terminal size={14} /> <span>システムログ</span>
+                        <span className="log-count">{logs.length} 件</span>
                     </div>
                     <div className="log-content">
                         {logs.map(log => (
@@ -594,7 +594,7 @@ function App() {
                 {/* Player List & Voting */}
                 <section className="player-list-section">
                     <div className="screen-header">
-                        <User size={14} /> ACTIVE_PERSONNEL
+                        <User size={14} /> 社員リスト
                         {isTraceMode && <span className="ml-2 text-yellow-400 animate-pulse">[TRACE MODE: SELECT TARGET]</span>}
                         {isDdosMode && <span className="ml-2 text-red-400 animate-pulse">[DDOS MODE: SELECT TARGET]</span>}
                         {isFalseFlagMode && <span className="ml-2 text-purple-400 animate-pulse">[FALSE FLAG: SELECT TARGET]</span>}
@@ -613,7 +613,7 @@ function App() {
                                         {!isTraceMode && !isDdosMode && !isFalseFlagMode && !isLockoutMode && (
                                             <button onClick={() => handleVote(p.id)} className="btn-vote">VOTE</button>
                                         )}
-                                        {isTraceMode && myRole === 'Network Admin' && (
+                                        {isTraceMode && myRole === 'ネットワーク管理者' && (
                                             <button
                                                 onClick={() => {
                                                     handleAction('TRACE_LOG', 1, p.id);
@@ -682,7 +682,7 @@ function App() {
 
                 <section className={`action-panel ${getThemeClass()} ${isHacker ? 'hacker-panel' : ''}`}>
                     <div className="panel-title" style={{ color: getThemeClass() ? 'var(--text-active)' : 'var(--text-dim)' }}>
-                        {isHacker ? 'ハッカーコンソール' : '社員用のコンソール'}
+                        {isHacker ? 'ハッカーコンソール' : '社員用コンソール'}
                     </div>
 
                     {isIsolated ? (
@@ -702,7 +702,7 @@ function App() {
                                         disabled={phase === 'resolve' || ap < 2}
                                         style={{ borderColor: '#00ff88', color: '#00ff88' }}
                                     >
-                                        <Search size={18} /> <span>ANALYZE</span><span className="ap-cost">2AP {'->'} EVID+10%</span>
+                                        <Search size={18} /> <span>証拠解析</span><span className="ap-cost">2AP {'->'} 解析+10%</span>
                                     </button>
                                     <button
                                         onClick={() => handleAction('RESTORE_SYSTEM', 2)}
@@ -710,7 +710,7 @@ function App() {
                                         disabled={phase === 'resolve' || ap < 2}
                                         style={{ borderColor: '#00ff88', color: '#00ff88' }}
                                     >
-                                        <Shield size={18} /> <span>RESTORE</span><span className="ap-cost">2AP {'->'} HP+10%</span>
+                                        <Shield size={18} /> <span>システム修復</span><span className="ap-cost">2AP {'->'} HP+10%</span>
                                     </button>
                                     <button
                                         onClick={() => handleAction('ENCRYPT_DATA', 2)}
@@ -718,7 +718,7 @@ function App() {
                                         disabled={phase === 'resolve' || ap < 2}
                                         style={{ borderColor: '#00ff88', color: '#00ff88' }}
                                     >
-                                        <Lock size={18} /> <span>ENCRYPT</span><span className="ap-cost">2AP {'->'} LEAK-10%</span>
+                                        <Lock size={18} /> <span>データ暗号化</span><span className="ap-cost">2AP {'->'} 漏洩-10%</span>
                                     </button>
                                 </>
                             )}
@@ -728,7 +728,7 @@ function App() {
                                 disabled={phase === 'resolve' || ap < 1}
                                 style={{ borderColor: isMurderer ? '#cc44ff' : '#00ff88', color: isMurderer ? '#cc44ff' : '#00ff88' }}
                             >
-                                <Eye size={18} /> <span>AUDIT</span><span className="ap-cost" style={isMurderer ? { color: '#ffff00' } : {}}>1AP</span>
+                                <Eye size={18} /> <span>監査ログ</span><span className="ap-cost" style={isMurderer ? { color: '#ffff00' } : {}}>1AP</span>
                             </button>
 
                             {/* --- Murderer Skill --- */}
@@ -741,7 +741,7 @@ function App() {
                                         style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                         title="System Sabotage (HP -5)"
                                     >
-                                        <Skull size={18} /> <span>SABOTAGE</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} HP-5</span>
+                                        <Skull size={18} /> <span>サボタージュ</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} HP-5</span>
                                     </button>
                                     <button
                                         onClick={() => handleAction('TAMPER_EVIDENCE', 1)}
@@ -750,7 +750,7 @@ function App() {
                                         style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                         title="Secretly reduce evidence analysis progress"
                                     >
-                                        <Database size={18} /> <span>TAMPER</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} EVID-5%</span>
+                                        <Database size={18} /> <span>証拠改ざん</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} 解析-5%</span>
                                     </button>
                                     <button
                                         onClick={() => {
@@ -762,7 +762,7 @@ function App() {
                                         style={isFalseFlagMode ? { backgroundColor: 'rgba(204, 68, 255, 0.2)', borderColor: '#cc44ff', color: '#cc44ff' } : { borderColor: '#cc44ff', color: '#cc44ff' }}
                                         title="Plant False Evidence"
                                     >
-                                        <AlertTriangle size={18} /> <span>FALSE_FLAG</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} POSITIVE偽装</span>
+                                        <AlertTriangle size={18} /> <span>偽装工作</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} POSITIVE偽装</span>
                                     </button>
                                     <button
                                         onClick={() => {
@@ -774,46 +774,53 @@ function App() {
                                         style={isLockoutMode ? { backgroundColor: 'rgba(204, 68, 255, 0.2)', borderColor: '#cc44ff', color: '#cc44ff' } : { borderColor: '#cc44ff', color: '#cc44ff' }}
                                         title="Lockout Target Terminal"
                                     >
-                                        <Lock size={18} /> <span>LOCKOUT</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} 行動封鎖</span>
+                                        <Lock size={18} /> <span>ロックアウト</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} 行動封鎖</span>
                                     </button>
                                 </>
                             )}
 
                             {/* --- 防衛側ユニークアクション --- */}
-                            {myRole === 'Network Admin' && (
+                            {/* --- 防衛側ユニークアクション --- */}
+                            {myRole === 'ネットワーク管理者' && (
                                 <button
-                                    onClick={() => setIsTraceMode(!isTraceMode)}
+                                    onClick={() => {
+                                        setIsTraceMode(!isTraceMode);
+                                        // Reset other modes
+                                        setIsDdosMode(false);
+                                        setIsFalseFlagMode(false);
+                                        setIsLockoutMode(false);
+                                    }}
                                     className="btn-action btn-special"
                                     disabled={phase === 'resolve' || ap < 1}
                                     style={isTraceMode ? { backgroundColor: 'rgba(255, 255, 0, 0.2)', borderColor: '#ffff00', color: '#ffff00' } : { borderColor: '#ffff00', color: '#ffff00' }}
                                 >
-                                    <Search size={18} /> <span>TRACE_LOG</span><span className="ap-cost">1AP (Target)</span>
+                                    <Search size={18} /> <span>ログ追跡</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP</span>
                                 </button>
                             )}
 
-                            {myRole === 'Security Analyst' && (
-                                <button onClick={() => handleAction('FIREWALL', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
-                                    <Shield size={18} /> <span>FIREWALL</span><span className="ap-cost">2AP</span>
+                            {myRole === 'セキュリティ分析官' && (
+                                <button onClick={() => handleAction('FIREWALL', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                    <Shield size={18} /> <span>ファイアウォール</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP</span>
                                 </button>
                             )}
-                            {myRole === 'DB Engineer' && (
-                                <button onClick={() => handleAction('DATA_RECOVERY', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
-                                    <Database size={18} /> <span>RECOVERY</span><span className="ap-cost">2AP</span>
+                            {myRole === 'DBエンジニア' && (
+                                <button onClick={() => handleAction('DATA_RECOVERY', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                    <Database size={18} /> <span>データ復旧</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP</span>
                                 </button>
                             )}
-                            {myRole === 'Sys Operator' && (
+                            {myRole === 'システムオペレーター' && (
                                 <button onClick={() => handleAction('SYS_ROLLBACK', 3)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 3} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
-                                    <RotateCcw size={18} /> <span>ROLLBACK</span><span className="ap-cost">3AP (HP+25)</span>
+                                    <RotateCcw size={18} /> <span>ロールバック</span><span className="ap-cost">3AP (HP+25)</span>
                                 </button>
                             )}
-                            {myRole === 'Infra Lead' && (
+                            {myRole === 'インフラリーダー' && (
                                 <button onClick={() => handleAction('SERVER_BOOST', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
-                                    <Zap size={18} /> <span>BOOST</span><span className="ap-cost">2AP (EVID+15%)</span>
+                                    <Zap size={18} /> <span>ブースト</span><span className="ap-cost">2AP (解析+15%)</span>
                                 </button>
                             )}
-                            {myRole === 'Dev Ops' && (
+                            {myRole === 'DevOps' && (
                                 <button onClick={() => handleAction('DEPLOY_BOT', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
-                                    <Cpu size={18} /> <span>DEPLOY_BOT</span><span className="ap-cost">1AP</span>
+                                    <Cpu size={18} /> <span>BOT配備</span><span className="ap-cost">1AP</span>
                                 </button>
                             )}
 
@@ -824,7 +831,7 @@ function App() {
                                 }}
                                 className="btn-action btn-status"
                             >
-                                <AlertTriangle size={18} /> <span>STATUS</span>
+                                <AlertTriangle size={18} /> <span>ステータス</span>
                             </button>
                         </div>
                     ) : (
@@ -835,21 +842,21 @@ function App() {
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve' || ap < 2}
                             >
-                                <Skull size={18} /> <span>INJECT</span><span className="ap-cost">2AP {'->'} HP-40%</span>
+                                <Skull size={18} /> <span>マルウェア</span><span className="ap-cost">2AP {'->'} HP-40%</span>
                             </button>
                             <button
                                 onClick={() => handleAction('EXFILTRATE', 1)}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve' || ap < 1}
                             >
-                                <Database size={18} /> <span>EXFIL</span><span className="ap-cost">1AP {'->'} LEAK+15%</span>
+                                <Database size={18} /> <span>持ち出し</span><span className="ap-cost">1AP {'->'} 漏洩+15%</span>
                             </button>
                             <button
                                 onClick={() => handleAction('COVER_TRACKS', 1)}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve' || ap < 1}
                             >
-                                <Lock size={18} /> <span>COVER</span><span className="ap-cost">1AP {'->'} 痕跡消去</span>
+                                <Lock size={18} /> <span>痕跡消去</span><span className="ap-cost">1AP {'->'} 痕跡消去</span>
                             </button>
                             <button
                                 onClick={() => {
@@ -860,7 +867,7 @@ function App() {
                                 disabled={phase === 'resolve' || ap < 1}
                                 style={isDdosMode ? { backgroundColor: 'rgba(255, 68, 68, 0.3)', borderColor: '#ff4444', color: '#ff4444' } : { borderColor: '#ff4444', color: '#ff4444' }}
                             >
-                                <Zap size={18} /> <span>DDOS</span><span className="ap-cost">1AP {'->'} AP-2</span>
+                                <Zap size={18} /> <span>DDOS攻撃</span><span className="ap-cost">1AP {'->'} AP-2</span>
                             </button>
                             <button
                                 onClick={() => {
@@ -871,7 +878,7 @@ function App() {
                                 disabled={phase === 'resolve' || ap < 1}
                                 style={isFalseFlagMode ? { backgroundColor: 'rgba(255, 68, 68, 0.3)', borderColor: '#ff4444', color: '#ff4444' } : { borderColor: '#ff4444', color: '#ff4444' }}
                             >
-                                <AlertTriangle size={18} /> <span>FALSE_FLAG</span><span className="ap-cost">1AP {'->'} POSITIVE偽装</span>
+                                <AlertTriangle size={18} /> <span>偽装工作</span><span className="ap-cost">1AP {'->'} POSITIVE偽装</span>
                             </button>
                             <button
                                 onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
@@ -879,7 +886,7 @@ function App() {
                                 disabled={phase === 'resolve' || ap < 1}
                                 style={{ borderColor: '#ff4444', color: '#ff4444' }}
                             >
-                                <Eye size={18} /> <span>AUDIT</span><span className="ap-cost">1AP {'->'} ログ調査(偽装)</span>
+                                <Eye size={18} /> <span>監査(偽装)</span><span className="ap-cost">1AP {'->'} ログ調査(偽装)</span>
                             </button>
 
                             <button
@@ -889,7 +896,7 @@ function App() {
                                 }}
                                 className="btn-action btn-status"
                             >
-                                <AlertTriangle size={18} /> <span>BACK</span>
+                                <AlertTriangle size={18} /> <span>戻る</span>
                             </button>
                         </div>
                     )}
@@ -918,7 +925,7 @@ function App() {
                         marginRight: '8px'
                     }}
                 >
-                    <Zap size={10} /> FORCE START (Assign Roles)
+                    <Zap size={10} /> 強制開始 (役職配布)
                 </button>
                 <button
                     onClick={resetGame}
@@ -936,7 +943,7 @@ function App() {
                         gap: '4px'
                     }}
                 >
-                    <RotateCcw size={10} /> DEBUG RESET
+                    <RotateCcw size={10} /> デバッグリセット
                 </button>
             </footer>
 
@@ -946,18 +953,18 @@ function App() {
                     <div className="modal-overlay" onClick={() => setShowHackerMenu(false)}>
                         <div className="hacker-modal" onClick={e => e.stopPropagation()}>
                             <div className="modal-header hacker-header">
-                                <Skull size={16} /> <span>ROOT ACCESS</span>
+                                <Skull size={16} /> <span>ルート権限アクセス</span>
                                 <button className="modal-close" onClick={() => setShowHackerMenu(false)}><X size={14} /></button>
                             </div>
                             <div className="hacker-actions">
                                 <button onClick={() => handleHackerAction('INJECT_MALWARE', 2)} className="btn-hacker-action">
-                                    <Skull size={16} /> INJECT MALWARE (2AP) <span className="effect-tag">HP -40%</span>
+                                    <Skull size={16} /> マルウェア注入 (2AP) <span className="effect-tag">HP -40%</span>
                                 </button>
                                 <button onClick={() => handleHackerAction('EXFILTRATE', 1)} className="btn-hacker-action">
-                                    <Database size={16} /> EXFILTRATE DATA (1AP) <span className="effect-tag">LEAK +15%</span>
+                                    <Database size={16} /> データ持ち出し (1AP) <span className="effect-tag">漏洩 +15%</span>
                                 </button>
                                 <button onClick={() => handleHackerAction('COVER_TRACKS', 1)} className="btn-hacker-action">
-                                    <Lock size={16} /> COVER TRACKS (1AP) <span className="effect-tag">PURGE LOGS</span>
+                                    <Lock size={16} /> 痕跡消去 (1AP) <span className="effect-tag">ログ完全消去</span>
                                 </button>
                             </div>
                         </div>
@@ -975,7 +982,7 @@ function App() {
                                 <Eye size={48} />
                             </div>
                             <h2 className="game-over-title win" style={{ fontSize: '1.4rem' }}>
-                                FINAL IDENTIFICATION
+                                最終告発
                             </h2>
                             <p className="game-over-sub" style={{ marginBottom: '1.5rem' }}>
                                 8ターン生存完了。殺人犯とハッカーを指名してください。
@@ -1038,7 +1045,7 @@ function App() {
                                             marginTop: '0.5rem'
                                         }}
                                     >
-                                        SUBMIT IDENTIFICATION
+                                        告発する
                                     </button>
                                 </div>
                             ) : (
@@ -1070,28 +1077,28 @@ function App() {
                             </div>
                             <h2 className={`game-over-title ${gameResult === 'employee_perfect_win' || gameResult === 'employee_win' || gameResult === 'murderer_found' ? 'win' : 'lose'
                                 }`}>
-                                {gameResult === 'employee_perfect_win' && '★ PERFECT VICTORY ★'}
-                                {gameResult === 'employee_win' && 'EMPLOYEES WIN'}
-                                {gameResult === 'murderer_found' && 'MURDERER FOUND'}
-                                {gameResult === 'murderer_escape' && 'MURDERER ESCAPES'}
-                                {gameResult === 'hacker_win_hp' && 'HACKER WINS'}
-                                {gameResult === 'hacker_win_leak' && 'HACKER WINS'}
+                                {gameResult === 'employee_perfect_win' && '★ 完全勝利 ★'}
+                                {gameResult === 'employee_win' && '社員勝利'}
+                                {gameResult === 'murderer_found' && '殺人犯確保'}
+                                {gameResult === 'murderer_escape' && '殺人犯逃亡'}
+                                {gameResult === 'hacker_win_hp' && 'ハッカー勝利'}
+                                {gameResult === 'hacker_win_leak' && 'ハッカー勝利'}
                             </h2>
                             <p className="game-over-sub">
                                 {gameResult === 'employee_perfect_win' && '殺人犯もハッカーも特定！完全勝利！'}
                                 {gameResult === 'employee_win' && '殺人犯を特定！しかしハッカーは逃走した...'}
-                                {gameResult === 'murderer_found' && 'EVIDENCE ANALYSIS COMPLETE. MURDERER IDENTIFIED.'}
+                                {gameResult === 'murderer_found' && '証拠解析完了。殺人犯を特定しました。'}
                                 {gameResult === 'murderer_escape' && '殺人犯の特定に失敗...犯人は闇に消えた。'}
-                                {gameResult === 'hacker_win_hp' && 'SYSTEM HP REACHED 0%. INFRASTRUCTURE DESTROYED.'}
-                                {gameResult === 'hacker_win_leak' && 'DATA EXFILTRATION COMPLETE. ALL FILES COMPROMISED.'}
+                                {gameResult === 'hacker_win_hp' && 'システムHPが0%になりました。インフラ崩壊。'}
+                                {gameResult === 'hacker_win_leak' && 'データ流出完了。全ファイルが漏洩しました。'}
                             </p>
                             <div className="game-over-stats">
-                                <div className="stat-row"><span>FINAL HP</span><span>{systemHp}%</span></div>
-                                <div className="stat-row"><span>DATA LEAKED</span><span>{dataLeak}%</span></div>
-                                <div className="stat-row"><span>TURNS PLAYED</span><span>{turn} / 8</span></div>
+                                <div className="stat-row"><span>最終HP</span><span>{systemHp}%</span></div>
+                                <div className="stat-row"><span>最終漏洩率</span><span>{dataLeak}%</span></div>
+                                <div className="stat-row"><span>経過ターン</span><span>{turn} / 8</span></div>
                             </div>
                             <button className="btn-restart" onClick={resetGame}>
-                                <RotateCcw size={16} /> RESTART MISSION
+                                <RotateCcw size={16} /> ミッション再開
                             </button>
                         </div>
                     </div>
