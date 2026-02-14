@@ -563,7 +563,7 @@ function App() {
                     {isHacker && <div className="text-red-500 font-bold">[役割: ハッカー] 目的: データ流出100% または システムHPを0にせよ。</div>}
                     {isMurderer && <div className="text-purple-400 font-bold">[役割: 殺人犯] 目的: 証拠解析(100%)を阻止せよ。</div>}
                     {!isHacker && !isMurderer && <div className="text-green-400 font-bold">[役割: 社員] 目的: 証拠解析(100%)を完了させつつ、防衛せよ。</div>}
-                    <div className="mt-2 text-sm opacity-80">{mySecret || 'Waiting for mission start...'}</div>
+                    <div className="mt-2 text-sm opacity-80">{mySecret || 'システムを守り切れ！'}</div>
                 </div>
                 {isIsolated && (
                     <div className="isolated-alert text-red-500 font-bold flex items-center gap-2 mt-2">
