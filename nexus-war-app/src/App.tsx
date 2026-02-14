@@ -53,6 +53,7 @@ function App() {
     const [isTraceMode, setIsTraceMode] = useState(false); // Trace mode state
     const [isDdosMode, setIsDdosMode] = useState(false); // DDOS target selection mode
     const [isFalseFlagMode, setIsFalseFlagMode] = useState(false); // False flag targeting mode
+    const [isLockoutMode, setIsLockoutMode] = useState(false); // Lockout targeting mode
     const [showHackerMenu, setShowHackerMenu] = useState(false);
     const [isAlert, setIsAlert] = useState(false);
     // 最終投票フェーズ用
@@ -596,6 +597,8 @@ function App() {
                         <User size={14} /> ACTIVE_PERSONNEL
                         {isTraceMode && <span className="ml-2 text-yellow-400 animate-pulse">[TRACE MODE: SELECT TARGET]</span>}
                         {isDdosMode && <span className="ml-2 text-red-400 animate-pulse">[DDOS MODE: SELECT TARGET]</span>}
+                        {isFalseFlagMode && <span className="ml-2 text-purple-400 animate-pulse">[FALSE FLAG: SELECT TARGET]</span>}
+                        {isLockoutMode && <span className="ml-2 text-red-400 animate-pulse">[LOCKOUT: SELECT TARGET]</span>}
                     </div>
                     <div className="player-grid">
                         {players.map(p => (
@@ -607,7 +610,7 @@ function App() {
                                 </div>
                                 {isJoined && p.id !== socket.id && (
                                     <>
-                                        {!isTraceMode && !isDdosMode && !isFalseFlagMode && (
+                                        {!isTraceMode && !isDdosMode && !isFalseFlagMode && !isLockoutMode && (
                                             <button onClick={() => handleVote(p.id)} className="btn-vote">VOTE</button>
                                         )}
                                         {isTraceMode && myRole === 'Network Admin' && (
@@ -644,6 +647,30 @@ function App() {
                                                 style={{ borderColor: '#ff00ff', color: '#ff00ff' }}
                                             >
                                                 FAKE
+                                            </button>
+                                        )}
+                                        {isFalseFlagMode && isMurderer && !isHacker && (
+                                            <button
+                                                onClick={() => {
+                                                    handleAction('FALSE_FLAG', 1, p.id);
+                                                    setIsFalseFlagMode(false);
+                                                }}
+                                                className="btn-vote"
+                                                style={{ borderColor: '#ff00ff', color: '#ff00ff' }}
+                                            >
+                                                FAKE
+                                            </button>
+                                        )}
+                                        {isLockoutMode && isMurderer && (
+                                            <button
+                                                onClick={() => {
+                                                    handleAction('LOCKOUT', 2, p.id);
+                                                    setIsLockoutMode(false);
+                                                }}
+                                                className="btn-vote"
+                                                style={{ borderColor: '#ff0000', color: '#ff0000' }}
+                                            >
+                                                LOCK
                                             </button>
                                         )}
                                     </>
@@ -699,15 +726,50 @@ function App() {
 
                             {/* --- Murderer Skill --- */}
                             {isMurderer && (
-                                <button
-                                    onClick={() => handleAction('TAMPER_EVIDENCE', 2)}
-                                    className="btn-action btn-analyze"
-                                    disabled={phase === 'resolve'}
-                                    style={{ borderColor: '#ff00ff', color: '#ff00ff' }}
-                                    title="Secretly reduce evidence analysis progress"
-                                >
-                                    <Skull size={18} /> <span>TAMPER</span><span className="ap-cost">2AP {'->'} EVID-15%</span>
-                                </button>
+                                <>
+                                    <button
+                                        onClick={() => handleAction('SABOTAGE', 1)}
+                                        className="btn-action btn-analyze"
+                                        disabled={phase === 'resolve'}
+                                        style={{ borderColor: '#ff4444', color: '#ff4444' }}
+                                        title="System Sabotage (HP -5)"
+                                    >
+                                        <Skull size={18} /> <span>SABOTAGE</span><span className="ap-cost">1AP {'->'} HP-5</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleAction('TAMPER_EVIDENCE', 1)}
+                                        className="btn-action btn-analyze"
+                                        disabled={phase === 'resolve'}
+                                        style={{ borderColor: '#ff00ff', color: '#ff00ff' }}
+                                        title="Secretly reduce evidence analysis progress"
+                                    >
+                                        <Database size={18} /> <span>TAMPER</span><span className="ap-cost">1AP {'->'} EVID-5%</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setIsFalseFlagMode(!isFalseFlagMode);
+                                            setIsLockoutMode(false);
+                                        }}
+                                        className="btn-action btn-analyze"
+                                        disabled={phase === 'resolve'}
+                                        style={isFalseFlagMode ? { backgroundColor: 'rgba(255, 0, 255, 0.2)', borderColor: '#ff00ff', color: '#ff00ff' } : { borderColor: '#ff00ff', color: '#ff00ff' }}
+                                        title="Plant False Evidence"
+                                    >
+                                        <AlertTriangle size={18} /> <span>FALSE_FLAG</span><span className="ap-cost">1AP {'->'} POSITIVE偽装</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setIsLockoutMode(!isLockoutMode);
+                                            setIsFalseFlagMode(false);
+                                        }}
+                                        className="btn-action btn-analyze"
+                                        disabled={phase === 'resolve'}
+                                        style={isLockoutMode ? { backgroundColor: 'rgba(255, 0, 0, 0.2)', borderColor: '#ff0000', color: '#ff0000' } : { borderColor: '#ff0000', color: '#ff0000' }}
+                                        title="Lockout Target Terminal"
+                                    >
+                                        <Lock size={18} /> <span>LOCKOUT</span><span className="ap-cost">2AP {'->'} 行動封鎖</span>
+                                    </button>
+                                </>
                             )}
 
                             {/* --- 防衛側ユニークアクション --- */}
@@ -762,18 +824,18 @@ function App() {
                         /* === ハッカー側ボタン === */
                         <div className="action-grid hacker-grid">
                             <button
-                                onClick={() => handleAction('INJECT_MALWARE', 1)}
+                                onClick={() => handleAction('INJECT_MALWARE', 2)}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve'}
                             >
-                                <Skull size={18} /> <span>INJECT</span><span className="ap-cost">1AP {'->'} HP-15%</span>
+                                <Skull size={18} /> <span>INJECT</span><span className="ap-cost">2AP {'->'} HP-40%</span>
                             </button>
                             <button
-                                onClick={() => handleAction('EXFILTRATE', 2)}
+                                onClick={() => handleAction('EXFILTRATE', 1)}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve'}
                             >
-                                <Database size={18} /> <span>EXFIL</span><span className="ap-cost">2AP {'->'} LEAK+20%</span>
+                                <Database size={18} /> <span>EXFIL</span><span className="ap-cost">1AP {'->'} LEAK+15%</span>
                             </button>
                             <button
                                 onClick={() => handleAction('COVER_TRACKS', 1)}
@@ -881,11 +943,11 @@ function App() {
                                 <button className="modal-close" onClick={() => setShowHackerMenu(false)}><X size={14} /></button>
                             </div>
                             <div className="hacker-actions">
-                                <button onClick={() => handleHackerAction('INJECT_MALWARE', 1)} className="btn-hacker-action">
-                                    <Skull size={16} /> INJECT MALWARE (1AP) <span className="effect-tag">HP -15%</span>
+                                <button onClick={() => handleHackerAction('INJECT_MALWARE', 2)} className="btn-hacker-action">
+                                    <Skull size={16} /> INJECT MALWARE (2AP) <span className="effect-tag">HP -40%</span>
                                 </button>
-                                <button onClick={() => handleHackerAction('EXFILTRATE', 2)} className="btn-hacker-action">
-                                    <Database size={16} /> EXFILTRATE DATA (2AP) <span className="effect-tag">LEAK +20%</span>
+                                <button onClick={() => handleHackerAction('EXFILTRATE', 1)} className="btn-hacker-action">
+                                    <Database size={16} /> EXFILTRATE DATA (1AP) <span className="effect-tag">LEAK +15%</span>
                                 </button>
                                 <button onClick={() => handleHackerAction('COVER_TRACKS', 1)} className="btn-hacker-action">
                                     <Lock size={16} /> COVER TRACKS (1AP) <span className="effect-tag">PURGE LOGS</span>
