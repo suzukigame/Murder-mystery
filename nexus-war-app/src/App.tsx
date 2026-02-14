@@ -435,7 +435,7 @@ function App() {
                         {gmPlayerInfo.length > 0 ? gmPlayerInfo.map((p: any) => (
                             <div key={p.id} style={{
                                 padding: '0.6rem', marginBottom: '0.5rem', borderRadius: '4px',
-                                border: `1px solid ${p.isHacker ? '#00ff88' : p.isMurderer ? '#ff4444' : '#444'}`,
+                                border: `1px solid ${p.isHacker ? '#ff4444' : p.isMurderer ? '#bc13fe' : '#00ff88'}`,
                                 background: p.isIsolated ? 'rgba(255,0,0,0.1)' : 'rgba(255,255,255,0.03)'
                             }}>
                                 <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '0.85rem' }}>
@@ -443,9 +443,9 @@ function App() {
                                     <span style={{ color: '#888', fontSize: '0.7rem', marginLeft: '6px' }}>{p.role}</span>
                                 </div>
                                 <div style={{ fontSize: '0.75rem', marginTop: '4px' }}>
-                                    {p.isHacker && <span style={{ color: '#00ff88', fontWeight: 'bold', marginRight: '8px' }}>HACKER</span>}
-                                    {p.isMurderer && <span style={{ color: '#ff4444', fontWeight: 'bold', marginRight: '8px' }}>MURDERER</span>}
-                                    {!p.isHacker && !p.isMurderer && <span style={{ color: '#888' }}>EMPLOYEE</span>}
+                                    {p.isHacker && <span style={{ color: '#ff4444', fontWeight: 'bold', marginRight: '8px' }}>HACKER</span>}
+                                    {p.isMurderer && <span style={{ color: '#bc13fe', fontWeight: 'bold', marginRight: '8px' }}>MURDERER</span>}
+                                    {!p.isHacker && !p.isMurderer && <span style={{ color: '#00ff88' }}>EMPLOYEE</span>}
                                     {p.isIsolated && <span style={{ color: '#ff8800', marginLeft: '8px' }}>ISOLATED</span>}
                                 </div>
                                 <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>VOTES: {p.votes}</div>
