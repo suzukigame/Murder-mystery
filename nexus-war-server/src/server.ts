@@ -449,7 +449,7 @@ io.on('connection', (socket) => {
             // 小林: 指定ターゲットの昨ターンのハッカー行動有無を調査
             const target = gameState.players.find(p => p.id === data.targetId);
             if (target) {
-                const result = target.lastTurnHackerAction ? "POSITIVE (Suspicious Activity Found)" : "NEGATIVE (Clean)";
+                const result = (target.lastTurnHackerAction || target.performedHackerAction) ? "POSITIVE (Suspicious Activity Found)" : "NEGATIVE (Clean)";
                 // 個別通知
                 io.to(player.id).emit('private_message', {
                     senderId: 'SYSTEM',
