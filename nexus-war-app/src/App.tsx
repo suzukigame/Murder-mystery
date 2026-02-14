@@ -61,6 +61,9 @@ function App() {
     const [hasSubmittedFinalVote, setHasSubmittedFinalVote] = useState(false);
     const [finalVotingResult, setFinalVotingResult] = useState<string>('none');
     const [finalVotedCount, setFinalVotedCount] = useState(0);
+    // GM観戦モード用
+    const [isSpectator, setIsSpectator] = useState(false);
+    const [gmPlayerInfo, setGmPlayerInfo] = useState<any[]>([]);
 
 
     // --- ログ ---
@@ -138,6 +141,15 @@ function App() {
             addLog(`SYSTEM ALERT: RESOURCE THROTTLE SCHEDULED. AP -${data.amount} NEXT TURN.`, 'critical');
         });
 
+        // GM観戦モード用イベント
+        socket.on('spectator_confirmed', () => {
+            setIsSpectator(true);
+            setIsJoined(true);
+        });
+        socket.on('gm_info', (info: any[]) => {
+            setGmPlayerInfo(info);
+        });
+
         return () => {
             socket.off('state_update');
             socket.off('log_update');
@@ -145,6 +157,8 @@ function App() {
             socket.off('private_message');
             socket.off('role_assigned');
             socket.off('ap_debuff');
+            socket.off('spectator_confirmed');
+            socket.off('gm_info');
         };
     }, []);
 
@@ -352,6 +366,17 @@ function App() {
                     <div className="mt-8 text-center text-xs text-green-900 border-t border-green-900/50 pt-4">
                         SECURE CONNECTION :: UNAUTHORIZED ACCESS PROHIBITED :: ID VERIFICATION MANDATORY
                     </div>
+
+                    {/* GM観戦ボタン */}
+                    <div className="mt-4 text-center">
+                        <button
+                            onClick={() => socket.emit('join_spectator')}
+                            className="border border-yellow-600/50 text-yellow-600 px-6 py-2 hover:bg-yellow-600/10 hover:border-yellow-400 transition-all text-sm"
+                        >
+                            <Eye size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} />
+                            GM OBSERVER MODE
+                        </button>
+                    </div>
                 </div>
 
                 {/* Background Grid Effect */}
@@ -359,6 +384,105 @@ function App() {
                     backgroundImage: 'linear-gradient(green 1px, transparent 1px), linear-gradient(90deg, green 1px, transparent 1px)',
                     backgroundSize: '40px 40px'
                 }}></div>
+            </div>
+        );
+    }
+
+    // --- GM観戦モードのUI ---
+    if (isSpectator) {
+        return (
+            <div className="app-container">
+                <header className="stat-bar">
+                    <div className="stat-item" style={{ color: '#ffcc00' }}>
+                        <Eye size={14} /> <span className="font-bold">GM OBSERVER</span>
+                    </div>
+                    <div className="stat-item">
+                        <Cpu size={14} /> <span>HP: {systemHp}%</span>
+                    </div>
+                    <div className="stat-item">
+                        <Database size={14} /> <span>LEAK: {dataLeak}%</span>
+                    </div>
+                    <div className="stat-item">
+                        <Search size={14} /> <span>ANALYSIS: {evidenceAnalysis}%</span>
+                    </div>
+                    <div className="stat-item phase-tag">
+                        <span>{getPhaseLabel()}</span>
+                    </div>
+                    <div className="stat-item">
+                        TURN {turn}/8 | {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+                    </div>
+                </header>
+
+                <div style={{ display: 'flex', gap: '1rem', padding: '1rem', height: 'calc(100vh - 50px)' }}>
+                    {/* プレイヤー情報パネル */}
+                    <div style={{
+                        width: '300px', flexShrink: 0, background: '#0a0a1a',
+                        border: '1px solid #333', borderRadius: '8px', padding: '1rem', overflowY: 'auto'
+                    }}>
+                        <h3 style={{ color: '#ffcc00', fontSize: '0.9rem', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
+                            <Eye size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+                            PLAYER INTEL
+                        </h3>
+                        {gmPlayerInfo.length > 0 ? gmPlayerInfo.map((p: any) => (
+                            <div key={p.id} style={{
+                                padding: '0.6rem', marginBottom: '0.5rem', borderRadius: '4px',
+                                border: `1px solid ${p.isHacker ? '#00ff88' : p.isMurderer ? '#ff4444' : '#444'}`,
+                                background: p.isIsolated ? 'rgba(255,0,0,0.1)' : 'rgba(255,255,255,0.03)'
+                            }}>
+                                <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '0.85rem' }}>
+                                    {p.name}
+                                    <span style={{ color: '#888', fontSize: '0.7rem', marginLeft: '6px' }}>{p.role}</span>
+                                </div>
+                                <div style={{ fontSize: '0.75rem', marginTop: '4px' }}>
+                                    {p.isHacker && <span style={{ color: '#00ff88', fontWeight: 'bold', marginRight: '8px' }}>HACKER</span>}
+                                    {p.isMurderer && <span style={{ color: '#ff4444', fontWeight: 'bold', marginRight: '8px' }}>MURDERER</span>}
+                                    {!p.isHacker && !p.isMurderer && <span style={{ color: '#888' }}>EMPLOYEE</span>}
+                                    {p.isIsolated && <span style={{ color: '#ff8800', marginLeft: '8px' }}>ISOLATED</span>}
+                                </div>
+                                <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>VOTES: {p.votes}</div>
+                            </div>
+                        )) : (
+                            <p style={{ color: '#555', fontSize: '0.8rem' }}>ゲーム開始待ち... ({players.length}/6 接続)</p>
+                        )}
+
+                        {/* デバッグ用: 強制開始ボタン */}
+                        {players.length > 0 && gmPlayerInfo.length === 0 && (
+                            <button
+                                onClick={() => socket.emit('start_game_force')}
+                                style={{
+                                    width: '100%', marginTop: '1rem', padding: '0.5rem',
+                                    background: '#333', color: '#ffcc00', border: '1px solid #ffcc00',
+                                    borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem'
+                                }}
+                            >
+                                FORCE START GAME
+                            </button>
+                        )}
+                    </div>
+
+                    {/* ログパネル */}
+                    <div style={{
+                        flex: 1, background: '#0a0a1a',
+                        border: '1px solid #333', borderRadius: '8px', padding: '1rem', overflowY: 'auto'
+                    }}>
+                        <h3 style={{ color: '#00ff88', fontSize: '0.9rem', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
+                            <Terminal size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+                            SYSTEM LOG
+                        </h3>
+                        <div style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                            {logs.map(log => (
+                                <div key={log.id} style={{
+                                    padding: '2px 0', color:
+                                        log.level === 'critical' ? '#ff4444' :
+                                            log.level === 'warn' ? '#ffcc00' :
+                                                log.level === 'system' ? '#00ff88' : '#888'
+                                }}>
+                                    <span style={{ color: '#555' }}>[{log.time}]</span> {log.content}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }

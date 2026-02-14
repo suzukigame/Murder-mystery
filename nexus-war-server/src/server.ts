@@ -98,6 +98,9 @@ const getInitialState = (): GameState => ({
 
 let gameState = getInitialState();
 
+// GM観戦者のSocket IDセット (プレイヤーリストとは別管理)
+const spectatorIds = new Set<string>();
+
 // ログ追加関数
 const addLog = (content: string, level: 'info' | 'warn' | 'critical' | 'system' = 'info') => {
     const log = {
@@ -115,6 +118,22 @@ const addLog = (content: string, level: 'info' | 'warn' | 'critical' | 'system' 
 setInterval(() => {
     // 状態送信は常に継続（ハートビート）
     io.emit('state_update', gameState);
+
+    // GM観戦者に役割情報を送信
+    if (spectatorIds.size > 0 && gameState.isGameStarted) {
+        const gmInfo = gameState.players.map(p => ({
+            id: p.id,
+            name: p.name,
+            role: p.role,
+            isHacker: p.isHacker,
+            isMurderer: p.isMurderer,
+            isIsolated: p.isIsolated,
+            votes: p.votes
+        }));
+        spectatorIds.forEach(sid => {
+            io.to(sid).emit('gm_info', gmInfo);
+        });
+    }
 
     if (gameState.isPaused || gameState.turn > 8 || gameState.phase === 'final_voting') return;
 
@@ -389,6 +408,14 @@ io.on('connection', (socket) => {
         }
     });
 
+    // GM観戦モードで参加
+    socket.on('join_spectator', () => {
+        spectatorIds.add(socket.id);
+        addLog('GM OBSERVER CONNECTED.', 'system');
+        socket.emit('spectator_confirmed', true);
+        io.emit('state_update', gameState);
+    });
+
     // キャラクターごとの秘密情報の定義（ベーステキスト：役割通知時に上書きされる）
     const CHARACTER_SECRETS: { [key: string]: string } = {
         'Network Admin': 'マイニングの証拠',
@@ -639,6 +666,12 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
+        // 観戦者の切断処理
+        if (spectatorIds.has(socket.id)) {
+            spectatorIds.delete(socket.id);
+            console.log('Spectator disconnected:', socket.id);
+            return;
+        }
         const playerIndex = gameState.players.findIndex(p => p.id === socket.id);
         if (playerIndex !== -1) {
             const player = gameState.players[playerIndex];
