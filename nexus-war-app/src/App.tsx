@@ -37,9 +37,10 @@ function App() {
     const [phase, setPhase] = useState<TurnPhase>('discussion');
     const [systemHp, setSystemHp] = useState(100);
     const [dataLeak, setDataLeak] = useState(0);
-    const [evidenceAnalysis, setEvidenceAnalysis] = useState(0); // 新: 証拠解析率
+    const [evidenceAnalysis, setEvidenceAnalysis] = useState(0); // 証拠解析率
     const [gameResult, setGameResult] = useState<GameResult>('playing');
-    const [nextTurnDebuff, setNextTurnDebuff] = useState(0); // 新: 次ターンのデバフ一時保存
+    const [nextTurnDebuff, setNextTurnDebuff] = useState(0); // 次ターンのデバフ一時保存
+    const [chargedAp, setChargedAp] = useState(0); // チャージAP（ハッカー/殺人犯専用）
 
     // --- UI状態 (ローカル) ---
     const [isJoined, setIsJoined] = useState(false);
@@ -54,6 +55,7 @@ function App() {
     const [isDdosMode, setIsDdosMode] = useState(false); // DDOS target selection mode
     const [isFalseFlagMode, setIsFalseFlagMode] = useState(false); // False flag targeting mode
     const [isLockoutMode, setIsLockoutMode] = useState(false); // Lockout targeting mode
+    const [isCleanupMode, setIsCleanupMode] = useState(false); // Cleanup targeting mode
     const [showHackerMenu, setShowHackerMenu] = useState(false);
     const [isAlert, setIsAlert] = useState(false);
     // 最終投票フェーズ用
@@ -72,13 +74,12 @@ function App() {
     // --- ログ ---
     const [logs, setLogs] = useState<LogEntry[]>([]);
 
-    // --- ターン更新時のAP処理 (デバフ適用) ---
+    // --- ターン更新時のAP処理 (デバフ・チャージ適用) ---
     useEffect(() => {
-        // ターンが1より大きい場合のみ（初期化時は除く、あるいは初期化時も3でOK）
-        // サーバーからのstate_updateでturnが更新されたタイミングで実行
-        setAp(Math.max(0, 3 - nextTurnDebuff));
+        const maxAp = 3 + chargedAp;
+        setAp(Math.min(6, Math.max(0, maxAp - nextTurnDebuff)));
         setNextTurnDebuff(0); // 適用したらリセット
-    }, [turn]);
+    }, [turn, chargedAp]);
 
     // --- Socketイベント設定 ---
     useEffect(() => {
@@ -91,10 +92,11 @@ function App() {
             setPhase(newState.phase);
             setPlayers(newState.players);
 
-            // 自分の隔離状態を確認
+            // 自分の状態を確認
             const me = newState.players.find((p: any) => p.id === socket.id);
             if (me) {
                 setIsIsolated(me.isIsolated);
+                setChargedAp(me.chargedAp || 0); // サーバーのプレイヤーデータからチャージAPを取得
                 if (me.role && me.role !== 'TBD') setMyRole(me.role);
             }
 
@@ -141,11 +143,14 @@ function App() {
             addLog(`RESTRICTED DATA RECEIVED: ${roleIntel}. Intel decrypted.`, 'system');
         });
 
-        // DDOSデバフ通知の受信
-        socket.on('ap_debuff', (data: { amount: number }) => {
+        // デバフ・チャージ通知の受信
+        socket.on('ap_debuff', (data: { amount: number, chargedAp: number }) => {
             // 次のターンに適用するために一時保存
             setNextTurnDebuff(data.amount);
-            addLog(`SYSTEM ALERT: RESOURCE THROTTLE SCHEDULED. AP -${data.amount} NEXT TURN.`, 'critical');
+            setChargedAp(data.chargedAp || 0);
+            if (data.amount > 0) {
+                addLog(`SYSTEM ALERT: RESOURCE THROTTLE SCHEDULED. AP -${data.amount} NEXT TURN.`, 'critical');
+            }
         });
 
         // GM観戦モード用イベント
@@ -528,7 +533,7 @@ function App() {
                     <Cpu size={14} /> <span>HP: {systemHp}%</span>
                 </div>
                 <div className="stat-item ap-gauge">
-                    <Zap size={14} /> <span>AP: {ap}/3</span>
+                    <Zap size={14} /> <span>AP: {ap}/{(isHacker || isMurderer) ? 6 : 3}</span>
                 </div>
                 <div className="stat-item phase-tag">
                     <span>{getPhaseLabel()}</span>
@@ -571,7 +576,7 @@ function App() {
                 </div>
                 {isIsolated && (
                     <div className="isolated-alert text-red-500 font-bold flex items-center gap-2 mt-2">
-                        <AlertTriangle size={16} /> アカウント凍結中: アクション実行不可
+                        <AlertTriangle size={16} /> リソース制限中: 投票により -3 AP
                     </div>
                 )}
             </div>
@@ -602,6 +607,7 @@ function App() {
                         {isDdosMode && <span className="ml-2 text-red-400 animate-pulse">[DDOS攻撃: 対象を選択してください]</span>}
                         {isFalseFlagMode && <span className="ml-2 text-purple-400 animate-pulse">[偽装工作: 対象を選択してください]</span>}
                         {isLockoutMode && <span className="ml-2 text-red-400 animate-pulse">[ロックアウト: 対象を選択してください]</span>}
+                        {isCleanupMode && <span className="ml-2 text-blue-400 animate-pulse">[クリーンアップ: 対象を選択してください]</span>}
                     </div>
                     <div className="player-grid">
                         {players.map(p => (
@@ -613,7 +619,7 @@ function App() {
                                 </div>
                                 {isJoined && p.id !== socket.id && (
                                     <>
-                                        {!isTraceMode && !isDdosMode && !isFalseFlagMode && !isLockoutMode && (
+                                        {!isTraceMode && !isDdosMode && !isFalseFlagMode && !isLockoutMode && !isCleanupMode && (
                                             <button onClick={() => handleVote(p.id)} className="btn-vote">投票</button>
                                         )}
                                         {isTraceMode && myRole === 'ネットワーク管理者' && (
@@ -676,6 +682,18 @@ function App() {
                                                 LOCK
                                             </button>
                                         )}
+                                        {isCleanupMode && myRole === 'システムオペレーター' && (
+                                            <button
+                                                onClick={() => {
+                                                    handleAction('CLEANUP', 2, p.id);
+                                                    setIsCleanupMode(false);
+                                                }}
+                                                className="btn-vote"
+                                                style={{ borderColor: '#3b82f6', color: '#3b82f6' }}
+                                            >
+                                                CLEAN
+                                            </button>
+                                        )}
                                     </>
                                 )}
                             </div>
@@ -688,13 +706,7 @@ function App() {
                         {isHacker ? 'ハッカーコンソール' : '社員用コンソール'}
                     </div>
 
-                    {isIsolated ? (
-                        <div style={{ padding: '20px', textAlign: 'center', color: '#ff4444', border: '1px solid #ff4444', borderRadius: '8px', margin: '10px 0' }}>
-                            <AlertTriangle size={32} style={{ marginBottom: '8px' }} />
-                            <div style={{ fontSize: '14px', fontWeight: 'bold' }}>⚠ 投票によりアカウント凍結中 ⚠</div>
-                            <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>コンソールアクセス拒否。このターンは投票のみ可能です。</div>
-                        </div>
-                    ) : !isHacker ? (
+                    {!isHacker ? (
                         /* === 防衛側ボタン === */
                         <div className="action-grid">
                             {!isMurderer && (
@@ -751,21 +763,24 @@ function App() {
                                         className="btn-action btn-analyze"
                                         disabled={phase === 'resolve' || ap < 1}
                                         style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
-                                        title="Secretly reduce evidence analysis progress"
                                     >
                                         <Database size={18} /> <span>証拠改ざん</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} 解析-5%</span>
                                     </button>
                                     <button
-                                        onClick={() => {
-                                            setIsFalseFlagMode(!isFalseFlagMode);
-                                            setIsLockoutMode(false);
-                                        }}
+                                        onClick={() => handleAction('BLACKOUT', 2)}
                                         className="btn-action btn-analyze"
-                                        disabled={phase === 'resolve' || ap < 1}
-                                        style={isFalseFlagMode ? { backgroundColor: 'rgba(204, 68, 255, 0.2)', borderColor: '#cc44ff', color: '#cc44ff' } : { borderColor: '#cc44ff', color: '#cc44ff' }}
-                                        title="Plant False Evidence"
+                                        disabled={phase === 'resolve' || ap < 2}
+                                        style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                     >
-                                        <AlertTriangle size={18} /> <span>偽装工作</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} POSITIVE偽装</span>
+                                        <Zap size={18} /> <span>停電工作</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} 議論短縮</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleAction('PHYSICAL_DESTROY', 2)}
+                                        className="btn-action btn-analyze"
+                                        disabled={phase === 'resolve' || ap < 2}
+                                        style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
+                                    >
+                                        <AlertTriangle size={18} /> <span>物理破壊</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} BOT破壊</span>
                                     </button>
                                     <button
                                         onClick={() => {
@@ -775,7 +790,6 @@ function App() {
                                         className="btn-action btn-analyze"
                                         disabled={phase === 'resolve' || ap < 2}
                                         style={isLockoutMode ? { backgroundColor: 'rgba(204, 68, 255, 0.2)', borderColor: '#cc44ff', color: '#cc44ff' } : { borderColor: '#cc44ff', color: '#cc44ff' }}
-                                        title="Lockout Target Terminal"
                                     >
                                         <Lock size={18} /> <span>ロックアウト</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} 行動封鎖</span>
                                     </button>
@@ -792,6 +806,7 @@ function App() {
                                         setIsDdosMode(false);
                                         setIsFalseFlagMode(false);
                                         setIsLockoutMode(false);
+                                        setIsCleanupMode(false);
                                     }}
                                     className="btn-action btn-special"
                                     disabled={phase === 'resolve' || ap < 1}
@@ -807,18 +822,30 @@ function App() {
                                 </button>
                             )}
                             {myRole === 'DBエンジニア' && (
-                                <button onClick={() => handleAction('DATA_RECOVERY', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
-                                    <Database size={18} /> <span>データ復旧</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP</span>
+                                <button onClick={() => handleAction('HONEY_POT', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                    <Database size={18} /> <span>ハニーポット</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP</span>
                                 </button>
                             )}
                             {myRole === 'システムオペレーター' && (
-                                <button onClick={() => handleAction('SYS_ROLLBACK', 3)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 3} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
-                                    <RotateCcw size={18} /> <span>ロールバック</span><span className="ap-cost">3AP (HP+25)</span>
+                                <button
+                                    onClick={() => {
+                                        setIsCleanupMode(!isCleanupMode);
+                                        // Reset other modes
+                                        setIsTraceMode(false);
+                                        setIsDdosMode(false);
+                                        setIsFalseFlagMode(false);
+                                        setIsLockoutMode(false);
+                                    }}
+                                    className="btn-action btn-special"
+                                    disabled={phase === 'resolve' || ap < 2}
+                                    style={isCleanupMode ? { backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: '#3b82f6', color: '#3b82f6' } : { borderColor: '#3b82f6', color: '#3b82f6' }}
+                                >
+                                    <RotateCcw size={18} /> <span>クリーンアップ</span><span className="ap-cost">2AP (状況復旧)</span>
                                 </button>
                             )}
                             {myRole === 'インフラリーダー' && (
-                                <button onClick={() => handleAction('SERVER_BOOST', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
-                                    <Zap size={18} /> <span>ブースト</span><span className="ap-cost">2AP (解析+15%)</span>
+                                <button onClick={() => handleAction('SERVER_OVERCLOCK', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                    <Zap size={18} /> <span>オーバークロック</span><span className="ap-cost">2AP (解析1.5倍)</span>
                                 </button>
                             )}
                             {myRole === 'DevOps' && (
