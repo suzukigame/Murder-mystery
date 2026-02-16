@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: nexus-war
+    name: aether-judas
     env: node
     plan: free
     buildCommand: npm run build

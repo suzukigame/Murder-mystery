@@ -388,8 +388,8 @@ function App() {
                     .lobby-container { background: radial-gradient(circle, rgba(0,20,0,1) 0%, rgba(0,0,0,1) 100%); }
                 `}</style>
                 <div className="mb-12 text-center z-10">
-                    <h1 className="text-6xl font-bold mb-2 glitch-text tracking-tighter text-shadow-green" data-text="NEXUS_WAR">NEXUS_WAR</h1>
-                    <p className="text-green-700 tracking-widest text-sm typing-anim">CYBER WARFARE SIMULATION PROTOCOL</p>
+                    <h1 className="text-6xl font-bold mb-2 glitch-text tracking-tighter text-shadow-green" data-text="AETHER-JUDAS">AETHER-JUDAS</h1>
+                    <p className="text-green-700 tracking-widest text-sm typing-anim">THE JUDAS PROTOCOL :: GLOBAL INCIDENT</p>
                 </div>
 
                 <div className="border border-green-500/50 p-8 rounded bg-black/90 max-w-4xl w-full shadow-[0_0_20px_rgba(0,255,0,0.2)] relative overflow-hidden backdrop-blur-sm z-10">

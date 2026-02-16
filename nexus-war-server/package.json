@@ -1,5 +1,5 @@
 {
-  "name": "nexus-war-server",
+  "name": "aether-judas-server",
   "version": "1.0.0",
   "main": "dist/server.js",
   "scripts": {

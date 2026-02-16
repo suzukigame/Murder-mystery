@@ -1,4 +1,4 @@
-# GM用進行ガイド: NEXUS_WAR - The Judas Protocol (Revised v2)
+# GM用進行ガイド: AETHER-JUDAS - The Judas Protocol (Revised v2)
 
 このドキュメントは、GMが「殺人犯（証拠隠滅）」と「ハッカー（データ漏洩）」の対立構造を管理するための指針です。
 
