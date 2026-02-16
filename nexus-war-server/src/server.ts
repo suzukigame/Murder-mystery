@@ -42,6 +42,10 @@ interface Player {
     apDebuff: number;    // 次ターンのAPデバフ（DDOS・投票用）
     chargedAp: number;   // チャージAP（殺人犯・ハッカー専用、最大3）
     apSpentThisTurn: number; // 現在のターンに消費したAP合計（チャージ計算用）
+    // バフ・デバフ状態
+    isIpBlocked: boolean;    // IP_BLOCKを受けているか
+    isPatched: boolean;      // PATCHを受けているか（デバフ無効）
+    pipelineActive: boolean; // PIPELINE効果中（解析+5%）
 }
 
 interface GameState {
@@ -66,7 +70,9 @@ interface GameState {
     isGameStarted: boolean;            // 新: ゲーム開始フラグ (役割割り当て済みか)
     // 新スキル用フラグ
     honeyPotActive: boolean;    // ハニーポット (DB Engineer)
+    honeyPotTarget: string;     // ハニーポットのターゲット（実質不要だが拡張性のため）
     isOverclocked: boolean;     // オーバークロック (Infra Lead)
+    loadBalancerActive: boolean; // 負荷分散 (Infra Lead)
     blackoutActive: boolean;    // 停電 (Murderer)
 
     // 最終投票フェーズ用
@@ -100,7 +106,9 @@ const getInitialState = (): GameState => ({
 
     // 新スキル用フラグ初期化
     honeyPotActive: false,
+    honeyPotTarget: '',
     isOverclocked: false,
+    loadBalancerActive: false,
     blackoutActive: false,
 
     finalVotesMurderer: {},
@@ -214,6 +222,15 @@ setInterval(() => {
             checkWinCondition();
         }
 
+        // PIPELINEの処理 (ターン終了時)
+        const pipelinePlayers = gameState.players.filter(p => p.pipelineActive);
+        if (pipelinePlayers.length > 0) {
+            const pipelineProgress = pipelinePlayers.length * 5;
+            gameState.evidenceAnalysisProgress = Math.min(100, gameState.evidenceAnalysisProgress + pipelineProgress);
+            addLog(`CI/CDパイプラインによる継続的解析: +${pipelineProgress}%`, 'info');
+            checkWinCondition();
+        }
+
         // 投票集計の前に、前ターンの隔離状態を解除
         gameState.players.forEach(p => {
             p.isIsolated = false;
@@ -263,11 +280,21 @@ setInterval(() => {
             gameState.currentTurnAttackActions = 0;
             gameState.currentTurnManipActions = 0;
             gameState.turn++;
-            gameState.timeLeft = TURN_DURATION;
+            if (gameState.blackoutActive) {
+                gameState.timeLeft = Math.floor(TURN_DURATION / 2);
+                gameState.blackoutActive = false; // フラグ消費
+                addLog(`停電の影響により、メインコアの電力が制限されています：第 ${gameState.turn} ターンの議論時間が半減しました。`, 'critical');
+            } else {
+                gameState.timeLeft = TURN_DURATION;
+            }
             gameState.phase = 'discussion';
             gameState.totalPublicAp = 0;
             gameState.totalActualAp = 0;
             gameState.firewallActive = false; // Firewallリセット
+            gameState.honeyPotActive = false; // HoneyPotリセット
+            gameState.isOverclocked = false;  // Overclockリセット
+            gameState.loadBalancerActive = false; // LoadBalancerリセット
+            gameState.blackoutActive = false; // Blackoutリセット（念のため）
             gameState.votedPlayers = {}; // 投票履歴リセット
             gameState.players.forEach(p => {
                 p.votes = 0;
@@ -281,7 +308,11 @@ setInterval(() => {
                     let remaining = Math.max(0, thisTurnMaxAp - p.apSpentThisTurn);
 
                     // 2. デバフを適用（投票-3AP、DDOS等）
-                    if (p.apDebuff > 0) {
+                    // 2. デバフを適用（投票-3AP、DDOS等）
+                    // セキュリティパッチ(PATCH)がある場合は無効化
+                    if (p.isPatched) {
+                        addLog(`防御発動: ${p.name} へのデバフ攻撃がパッチにより無効化されました。`, 'info');
+                    } else if (p.apDebuff > 0) {
                         remaining = Math.max(0, remaining - p.apDebuff);
                         addLog(`ネットワーク遅延: ${p.name} のリソースが制限されました (-${p.apDebuff} AP)。`, 'warn');
                     }
@@ -301,15 +332,25 @@ setInterval(() => {
                     io.to(p.id).emit('ap_debuff', { amount: 0, chargedAp: p.chargedAp });
                 } else {
                     // 社員: デバフのみ適用（チャージなし）
-                    if (p.apDebuff > 0) {
+                    // 社員: デバフのみ適用（チャージなし）
+                    if (p.isPatched) {
+                        addLog(`防御発動: ${p.name} へのデバフ攻撃がパッチにより無効化されました。`, 'info');
+                        io.to(p.id).emit('ap_debuff', { amount: 0, chargedAp: 0 });
+                    } else if (p.apDebuff > 0) {
                         addLog(`ネットワーク遅延: ${p.name} のリソースが制限されました (-${p.apDebuff} AP)。`, 'warn');
                         io.to(p.id).emit('ap_debuff', { amount: p.apDebuff, chargedAp: 0 });
                     } else {
                         io.to(p.id).emit('ap_debuff', { amount: 0, chargedAp: 0 });
                     }
                 }
+            });
+            // ターン終了時にフラグリセット
+            gameState.players.forEach(p => {
                 p.apSpentThisTurn = 0;
                 p.apDebuff = 0;
+                p.isIpBlocked = false;  // IP_BLOCK解除
+                p.isPatched = false;    // PATCH解除
+                p.pipelineActive = false; // PIPELINE解除
             });
 
             addLog(`ターン ${gameState.turn - 1} 終了。ターン ${gameState.turn} を開始します。`, 'system');
@@ -449,7 +490,10 @@ io.on('connection', (socket) => {
                 lastTurnHackerAction: false,
                 apDebuff: 0,
                 chargedAp: 0,
-                apSpentThisTurn: 0
+                apSpentThisTurn: 0,
+                isIpBlocked: false,
+                isPatched: false,
+                pipelineActive: false
             });
             addLog(`新規接続: ${data.name} 確立。`, 'system');
 
@@ -577,19 +621,132 @@ io.on('connection', (socket) => {
             return;
         }
 
+        // 行動阻害チェック (IP_BLOCK)
+        if (player.isIpBlocked) {
+            socket.emit('error', '通信遮断: IPブロックによりアクションが拒否されました。');
+            addLog(`アクション失敗: ${player.name} は通信遮断されています。`, 'warn');
+            return;
+        }
+
+        // 5. 負荷分散 (LOAD_BALANCER) の副作用処理関数
+        const triggerLoadBalancer = () => {
+            if (gameState.loadBalancerActive) {
+                gameState.players.forEach(p => {
+                    p.apSpentThisTurn += 1; // 全員のAPを強制消費扱いに
+                    io.to(p.id).emit('private_message', {
+                        senderId: 'SYSTEM',
+                        senderName: 'LoadBalancer',
+                        message: `システム負荷分散: APリソースが徴収されました (-1 AP)。`
+                    });
+                });
+                addLog(`負荷分散発動: システムダメージ軽減のため、全職員のリソースが消費されました。`, 'warn');
+            }
+        };
+
         // 基本アクション
-        if (data.type === 'INJECT_MALWARE') {
+        if (data.type === 'INJECT_MALWARE' || data.type === 'INJECT') {
             gameState.currentTurnAttackActions++;
             if (gameState.firewallActive) {
                 addLog(`マルウェア検知。ファイアウォールによりブロックされました。`, 'info', executorName);
                 gameState.firewallActive = false; // 消費
             } else {
                 // Overclock効果: ダメージ1.5倍
-                const damage = gameState.isOverclocked ? 60 : 40;
+                let damage = gameState.isOverclocked ? 60 : 40;
+
+                // LoadBalancer効果: ダメージ半減
+                if (gameState.loadBalancerActive) {
+                    damage = Math.floor(damage / 2);
+                    triggerLoadBalancer(); // 副作用
+                }
+
                 gameState.hp = Math.max(0, gameState.hp - damage);
                 addLog(`緊急警報: マルウェア検知。送信元: [暗号化済]。システムHP低下 (-${damage})。`, 'critical', executorName);
+
+                // 勝利判定はcheckWinConditionで
             }
-        } else if (data.type === 'RESTORE_SYSTEM') {
+        }
+        // 1APスキル群
+        else if (data.type === 'TRACE_LOG') { // NW Admin 1AP
+            const target = gameState.players.find(p => p.id === data.targetId);
+            if (target) {
+                const result = target.lastTurnHackerAction ? 'Positive (黒)' : 'Negative (白)';
+                io.to(player.id).emit('private_message', {
+                    senderId: 'SYSTEM',
+                    senderName: 'TraceLog',
+                    message: `調査結果 [${target.name}]: ${result}`
+                });
+                addLog(`ログ追跡: ${player.name} が ${target.name} のログを解析しました。`, 'info');
+            }
+        }
+        else if (data.type === 'PATCH') { // Sec Analyst 1AP
+            const target = gameState.players.find(p => p.id === data.targetId);
+            if (target) {
+                target.isPatched = true;
+                addLog(`セキュリティパッチ: ${player.name} が ${target.name} に防御パッチを適用しました。`, 'info');
+            }
+        }
+        else if (data.type === 'MASKING') { // DB Eng 1AP
+            gameState.leak = Math.max(0, gameState.leak - 5);
+            addLog(`データマスキング: ${player.name} がデータの隠蔽を行いました (LEAK -5%)。`, 'info');
+        }
+        else if (data.type === 'TRANSFER') { // Sys Op 1AP
+            const target = gameState.players.find(p => p.id === data.targetId);
+            if (target) {
+                // 次ターンのためにチャージ扱いにする、あるいは消費APを減らす
+                // ここでは消費APを減らすことで次ターンの残りを増やす（間接的チャージ）
+                target.apSpentThisTurn = Math.max(0, target.apSpentThisTurn - 1);
+                addLog(`リソース譲渡: ${player.name} が ${target.name} にAPリソースを提供しました。`, 'info');
+            }
+        }
+        else if (data.type === 'LOAD_BALANCER') { // Infra 1AP
+            gameState.loadBalancerActive = true;
+            addLog(`負荷分散: ${player.name} がロードバランサを起動。次ターンのダメージを軽減します。`, 'info');
+        }
+        else if (data.type === 'DEBUG') { // DevOps 1AP
+            player.apSpentThisTurn = Math.max(0, player.apSpentThisTurn - 1); // 消費0にする＝自分が実質+1
+            addLog(`デバッグ作業: ${player.name} がリソースを最適化しました。`, 'info');
+        }
+        else if (data.type === 'PIPELINE') { // DevOps 1AP (New)
+            const target = gameState.players.find(p => p.id === data.targetId);
+            if (target) {
+                player.pipelineActive = true;
+                target.pipelineActive = true;
+                addLog(`パイプライン構築: ${player.name} と ${target.name} の解析効率が向上しました。`, 'info');
+            }
+        }
+
+        // 2APスキル群 (必殺技)
+        else if (data.type === 'IP_BLOCK') { // NW Admin 2AP
+            const target = gameState.players.find(p => p.id === data.targetId);
+            if (target) {
+                target.isIpBlocked = true; // 次ターン有効
+                addLog(`通信遮断(IP BLOCK): ${player.name} が ${target.name} の接続を強制切断しました。`, 'warn');
+            }
+        }
+        else if (data.type === 'FIREWALL') { // Sec Analyst 2AP
+            gameState.firewallActive = true;
+            addLog(`ファイアウォール展開: システム防御壁が有効化されました。`, 'info');
+        }
+        else if (data.type === 'HONEY_POT') { // DB Eng 2AP
+            gameState.honeyPotActive = true;
+            addLog(`ハニーポット設置: 誘引トラップが仕掛けられました。`, 'info');
+        }
+        else if (data.type === 'FORCE_REBOOT') { // Sys Op 2AP
+            gameState.hp = Math.min(100, gameState.hp + 20);
+            gameState.players.forEach(p => p.apSpentThisTurn += 1); // 全員-1AP
+            addLog(`緊急再起動: システムHP回復(+20)。副作用により全職員のAPが減少しました。`, 'warn');
+        }
+        else if (data.type === 'SERVER_OVERCLOCK') { // Infra 2AP
+            gameState.isOverclocked = true;
+            addLog(`オーバークロック: サーバー限界突破。解析速度UP / 被ダメージUP。`, 'warn');
+        }
+        else if (data.type === 'DEPLOY_BOT') { // DevOps 2AP
+            gameState.devOpsBots = Math.min(3, gameState.devOpsBots + 1);
+            addLog(`解析ボット配備: 現在稼働数 ${gameState.devOpsBots}台。`, 'info');
+        }
+
+        // 既存アクションの修正
+        else if (data.type === 'RESTORE_SYSTEM') {
             gameState.hp = Math.min(100, gameState.hp + 10);
             addLog(`システムパッチ適用。HP回復。`, 'info', executorName);
         } else if (data.type === 'EXFILTRATE' || data.type === 'EXFIL') {
