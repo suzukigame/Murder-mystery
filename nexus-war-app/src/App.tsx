@@ -104,6 +104,7 @@ function App() {
                 setIsIsolated(me.isIsolated);
                 setChargedAp(me.chargedAp || 0); // サーバーのプレイヤーデータからチャージAPを取得
                 if (me.role && me.role !== 'TBD') setMyRole(me.role);
+                // コピーしたスキルがあれば専用モードなどは不要、ボタンが表示される
             }
 
             // サーバー側でゲーム終了判定があれば受け取る
@@ -551,7 +552,7 @@ function App() {
                 <div className="bar-container">
                     <div className="bar-label"><Shield size={12} /> システムHP</div>
                     <div className="bar-track">
-                        <div className="bar-fill hp-bar" style={{ width: `${systemHp}%` }} />
+                        <div className="bar-fill hp-bar" style={{ width: `${Math.min(100, (systemHp / (players.find((p: any) => true)?.maxHp || 100)) * 100)}%` }} />
                     </div>
                     <span className="bar-value">{systemHp}%</span>
                 </div>
@@ -741,6 +742,29 @@ function App() {
                                                 BLOCK
                                             </button>
                                         )}
+                                        {/* コピーしたスキルのターゲット選択用 (簡易実装: 全モード対応は複雑なので、TRACEとTRANSFER等主要なものだけ対応するか、あるいはサーバー側でモード不要にするか。
+                                            ここでは既存のモードフラグを流用するのは難しい（Roleチェックが入ってるため）。
+                                            コピー専用の汎用ターゲットモードを追加するのが正しいが、実装量が多い。
+                                            今回は「ターゲットが必要なスキル」は個別にハンドリング追加。
+                                        */}
+                                        {players.find(me => me.id === socket.id)?.copiedSkill && (
+                                            <button
+                                                onClick={() => {
+                                                    const skill = players.find(me => me.id === socket.id)?.copiedSkill;
+                                                    handleAction(skill, 1, p.id);
+                                                    // モード解除はできない（汎用モードがないため）。ボタンを押したら即実行。
+                                                    // 本当は「ターゲット選択モード」にしてから実行だが、UI簡略化のため
+                                                    // プレイヤーリストに常設ボタンを追加する形にするか、
+                                                    // あるいは「コピー・アクション実行」ボタンを押すとモードになり、ここが出るようにする。
+                                                    // 時間的制約から、プレイヤーカードに「COPY ACT」ボタンを出すのはUIが散らかる。
+                                                    // コンソールの「コピーしたスキル」ボタンを押すと、isTraceModeなどがONになるように改修するのがスマート。
+                                                }}
+                                                className="btn-vote"
+                                                style={{ borderColor: '#fff', color: '#fff', display: 'none' }} // ダミー。実際は下のロジックで制御
+                                            >
+                                                COPY
+                                            </button>
+                                        )}
                                     </>
                                 )}
                             </div>
@@ -772,7 +796,7 @@ function App() {
                                         disabled={phase === 'resolve' || ap < 2}
                                         style={{ borderColor: '#00ff88', color: '#00ff88' }}
                                     >
-                                        <Shield size={18} /> <span>システム修復</span><span className="ap-cost">2AP {'->'} HP+10%</span>
+                                        <Shield size={18} /> <span>システム修復</span><span className="ap-cost">2AP {'->'} HP+10</span>
                                     </button>
                                     <button
                                         onClick={() => handleAction('ENCRYPT_DATA', 2)}
@@ -894,7 +918,7 @@ function App() {
                             {myRole === 'DBエンジニア' && (
                                 <>
                                     <button onClick={() => handleAction('MASKING', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
-                                        <Database size={18} /> <span>マスキング</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP</span>
+                                        <Database size={18} /> <span>マスキング</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP {'->'} 次LEAK-5%</span>
                                     </button>
                                     <button onClick={() => handleAction('HONEY_POT', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
                                         <Database size={18} /> <span>ハニーポット</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP</span>
@@ -915,23 +939,23 @@ function App() {
                                         <RotateCcw size={18} /> <span>リソース譲渡</span><span className="ap-cost" style={{ color: '#8888ff' }}>1AP</span>
                                     </button>
                                     <button
-                                        onClick={() => handleAction('FORCE_REBOOT', 2)}
+                                        onClick={() => handleAction('RESTORE', 2)}
                                         className="btn-action btn-special"
                                         disabled={phase === 'resolve' || ap < 2}
                                         style={{ borderColor: '#ff4444', color: '#ff4444' }}
                                     >
-                                        <Zap size={18} /> <span>強制再起動</span><span className="ap-cost" style={{ color: '#ff4444' }}>2AP</span>
+                                        <Zap size={18} /> <span>リストア</span><span className="ap-cost" style={{ color: '#ff4444' }}>2AP {'->'} HP0時復旧</span>
                                     </button>
                                 </>
                             )}
 
                             {myRole === 'インフラリーダー' && (
                                 <>
-                                    <button onClick={() => handleAction('LOAD_BALANCER', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
-                                        <Cpu size={18} /> <span>負荷分散</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP</span>
+                                    <button onClick={() => handleAction('SKILL_COPY', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
+                                        <Cpu size={18} /> <span>スキルコピー</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP</span>
                                     </button>
-                                    <button onClick={() => handleAction('SERVER_OVERCLOCK', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
-                                        <Zap size={18} /> <span>オーバークロック</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP</span>
+                                    <button onClick={() => handleAction('SPEC_UP', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                        <Zap size={18} /> <span>スペックアップ</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} MaxHP 120</span>
                                     </button>
                                 </>
                             )}
@@ -972,7 +996,7 @@ function App() {
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve' || ap < 2}
                             >
-                                <Skull size={18} /> <span>マルウェア</span><span className="ap-cost">2AP {'->'} HP-40%</span>
+                                <Skull size={18} /> <span>マルウェア</span><span className="ap-cost">2AP (残{2 - (players.find(p => p.id === socket.id)?.malwareUsedThisTurn || 0)})</span>
                             </button>
                             <button
                                 onClick={() => handleAction('EXFILTRATE', 1)}

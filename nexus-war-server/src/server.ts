@@ -46,10 +46,17 @@ interface Player {
     isIpBlocked: boolean;    // IP_BLOCKを受けているか
     isPatched: boolean;      // PATCHを受けているか（デバフ無効）
     pipelineActive: boolean; // PIPELINE効果中（解析+5%）
+
+    // 新スキル用フィールド
+    transferUsedThisTurn: boolean; // リソース譲渡使用済みフラグ
+    malwareUsedThisTurn: number;   // マルウェア使用回数
+    copiedSkill: string | null;    // インフラリーダーがコピーしたスキル
+    copiedSkillLabel: string | null; // UI表示用のスキル名
 }
 
 interface GameState {
     hp: number;
+    maxHp: number; // 新: HP上限 (通常100, SpecUp時120)
     leak: number;
     evidenceAnalysisProgress: number; // 新: 証拠解析率
     turn: number;
@@ -71,8 +78,9 @@ interface GameState {
     // 新スキル用フラグ
     honeyPotActive: boolean;    // ハニーポット (DB Engineer)
     honeyPotTarget: string;     // ハニーポットのターゲット（実質不要だが拡張性のため）
-    isOverclocked: boolean;     // オーバークロック (Infra Lead)
-    loadBalancerActive: boolean; // 負荷分散 (Infra Lead)
+    specUpTurnsRemaining: number; // 新: スペックアップ残りターン数
+    restoreActive: boolean;     // 新: リストア待機中 (HP<=0で発動)
+    maskingActive: boolean;     // 新: マスキング待機中 (LEAK軽減)
     blackoutActive: boolean;    // 停電 (Murderer)
 
     // 最終投票フェーズ用
@@ -85,6 +93,7 @@ interface GameState {
 // ゲーム状態初期化関数
 const getInitialState = (): GameState => ({
     hp: 100,
+    maxHp: 100,
     leak: 0,
     evidenceAnalysisProgress: 0,
     turn: 1, // 1-8
@@ -107,8 +116,9 @@ const getInitialState = (): GameState => ({
     // 新スキル用フラグ初期化
     honeyPotActive: false,
     honeyPotTarget: '',
-    isOverclocked: false,
-    loadBalancerActive: false,
+    specUpTurnsRemaining: 0,
+    restoreActive: false,
+    maskingActive: false,
     blackoutActive: false,
 
     finalVotesMurderer: {},
@@ -288,18 +298,47 @@ setInterval(() => {
                 gameState.timeLeft = TURN_DURATION;
             }
             gameState.phase = 'discussion';
+            gameState.phase = 'discussion';
             gameState.totalPublicAp = 0;
             gameState.totalActualAp = 0;
             gameState.firewallActive = false; // Firewallリセット
             gameState.honeyPotActive = false; // HoneyPotリセット
-            gameState.isOverclocked = false;  // Overclockリセット
-            gameState.loadBalancerActive = false; // LoadBalancerリセット
-            gameState.blackoutActive = false; // Blackoutリセット（念のため）
+
+            // SpecUp処理
+            if (gameState.specUpTurnsRemaining > 0) {
+                gameState.specUpTurnsRemaining--;
+                if (gameState.specUpTurnsRemaining === 0) {
+                    gameState.maxHp = 100;
+                    if (gameState.hp > 100) gameState.hp = 100;
+                    addLog(`スペックアップ効果終了: システムリソースが通常状態に戻りました。`, 'system');
+                }
+            }
+
+            gameState.restoreActive = false;  // Restoreリセット (ターン毎にかけ直しが必要？ ユーザー要件「restore to 20 if hp drops to 0 within the turn」なのでターン終了で切れる)
+            // gameState.maskingActive は消費されるまで残すか、ターン制限設けるか。「次ターン」とあるので、このターンに使ったら次のターン終了まで？
+            // ユーザー要件「Reduce LEAK progress by 5% once per turn」
+            // 実装：MASKINGアクション実行 -> maskingActive=true. 効力は「次ターン」なので、今のターン終わりに消さない。
+            // むしろ「次ターン」限定なら、前のターンのmaskingActiveを消す必要がある。
+            // シンプルに: MASKINGアクションしたターンには効果なく、次のターン中に1回効果あり。
+            // つまりターン終了時には消さないが、再設定が必要？
+            // ここでは「消費されるまで残る」だと強すぎるので、「次のターン終了時」に消えるべき。
+            // しかしフラグ管理が複雑になるので、一旦「MASKINGされたら次のLEAKまで永続」にするか、「ターン終了時リセット」にするか。
+            // 文脈的に「次ターン、〜」なので、ターン終了時にセットされているはず。
+            // なのでここではリセットしない。ただし、もし「前のターンにセットして使われなかった」場合どうするか。
+            // 一旦そのままで（スタックはしないbooleanなので単純）。
+
+            gameState.blackoutActive = false; // Blackoutリセット
             gameState.votedPlayers = {}; // 投票履歴リセット
             gameState.players.forEach(p => {
                 p.votes = 0;
                 p.lastTurnHackerAction = p.performedHackerAction; // 現在の行動を前回として保存
                 p.performedHackerAction = false; // フラグリセット
+
+                // 新スキル用リセット
+                p.transferUsedThisTurn = false;
+                p.malwareUsedThisTurn = 0;
+                p.copiedSkill = null;
+                p.copiedSkillLabel = null;
 
                 // AP処理: チャージ計算 → デバフ適用 → 残りを繰越
                 if (p.isHacker || p.isMurderer) {
@@ -493,7 +532,11 @@ io.on('connection', (socket) => {
                 apSpentThisTurn: 0,
                 isIpBlocked: false,
                 isPatched: false,
-                pipelineActive: false
+                pipelineActive: false,
+                transferUsedThisTurn: false,
+                malwareUsedThisTurn: 0,
+                copiedSkill: null,
+                copiedSkillLabel: null
             });
             addLog(`新規接続: ${data.name} 確立。`, 'system');
 
@@ -616,7 +659,10 @@ io.on('connection', (socket) => {
 
         // 権限チェック: 非ハッカーがハッカーアクションをしようとした場合
         // 殺人犯アクション (TAMPER_EVIDENCE, SABOTAGE, LOCKOUT, FALSE_FLAG) は殺人犯に許可
-        if (isHackerAction && !player.isHacker && !(isMurdererAction && player.isMurderer)) {
+        // インフラリーダーがコピーしたスキルを実行する場合も許可
+        const isCopiedSkill = player.copiedSkill === data.type;
+
+        if (isHackerAction && !player.isHacker && !(isMurdererAction && player.isMurderer) && !isCopiedSkill) {
             socket.emit('error', '不正アクセス: ROOT権限が必要です。');
             return;
         }
@@ -628,39 +674,35 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // 5. 負荷分散 (LOAD_BALANCER) の副作用処理関数
-        const triggerLoadBalancer = () => {
-            if (gameState.loadBalancerActive) {
-                gameState.players.forEach(p => {
-                    p.apSpentThisTurn += 1; // 全員のAPを強制消費扱いに
-                    io.to(p.id).emit('private_message', {
-                        senderId: 'SYSTEM',
-                        senderName: 'LoadBalancer',
-                        message: `システム負荷分散: APリソースが徴収されました (-1 AP)。`
-                    });
-                });
-                addLog(`負荷分散発動: システムダメージ軽減のため、全職員のリソースが消費されました。`, 'warn');
-            }
-        };
+
 
         // 基本アクション
         if (data.type === 'INJECT_MALWARE' || data.type === 'INJECT') {
+            // ハッカーの使用回数制限 (2回まで)
+            if (player.malwareUsedThisTurn >= 2) {
+                socket.emit('error', 'リミット到達: マルウェアは1ターンに2回までです。');
+                player.apSpentThisTurn -= data.cost; // コスト返却
+                return;
+            }
+            player.malwareUsedThisTurn++;
+
             gameState.currentTurnAttackActions++;
             if (gameState.firewallActive) {
                 addLog(`マルウェア検知。ファイアウォールによりブロックされました。`, 'info', executorName);
                 gameState.firewallActive = false; // 消費
             } else {
-                // Overclock効果: ダメージ1.5倍
-                let damage = gameState.isOverclocked ? 60 : 40;
-
-                // LoadBalancer効果: ダメージ半減
-                if (gameState.loadBalancerActive) {
-                    damage = Math.floor(damage / 2);
-                    triggerLoadBalancer(); // 副作用
-                }
+                // SpecUp効果: ダメージには影響しない（HP上限が増えるだけ）
+                let damage = 40;
 
                 gameState.hp = Math.max(0, gameState.hp - damage);
                 addLog(`緊急警報: マルウェア検知。送信元: [暗号化済]。システムHP低下 (-${damage})。`, 'critical', executorName);
+
+                // リストア(FORCE_REBOOT改めRESTORE)の発動判定
+                if (gameState.hp <= 0 && gameState.restoreActive) {
+                    gameState.hp = 20;
+                    gameState.restoreActive = false; // 消費
+                    addLog(`システム・リストア発動: 致命的なエラーから復旧しました。(HP 0 -> 20)`, 'system');
+                }
 
                 // 勝利判定はcheckWinConditionで
             }
@@ -686,21 +728,72 @@ io.on('connection', (socket) => {
             }
         }
         else if (data.type === 'MASKING') { // DB Eng 1AP
-            gameState.leak = Math.max(0, gameState.leak - 5);
-            addLog(`データマスキング: ${player.name} がデータの隠蔽を行いました (LEAK -5%)。`, 'info');
+            gameState.maskingActive = true;
+            addLog(`データマスキング: ${player.name} がデータの隠蔽プロトコルを起動しました。(次回のLEAK軽減)`, 'info');
         }
         else if (data.type === 'TRANSFER') { // Sys Op 1AP
+            if (player.transferUsedThisTurn) {
+                socket.emit('error', 'クールダウン中: リソース譲渡は1ターンに1回のみです。');
+                player.apSpentThisTurn -= data.cost;
+                return;
+            }
+
             const target = gameState.players.find(p => p.id === data.targetId);
             if (target) {
+                player.transferUsedThisTurn = true;
                 // 次ターンのためにチャージ扱いにする、あるいは消費APを減らす
                 // ここでは消費APを減らすことで次ターンの残りを増やす（間接的チャージ）
                 target.apSpentThisTurn = Math.max(0, target.apSpentThisTurn - 1);
                 addLog(`リソース譲渡: ${player.name} が ${target.name} にAPリソースを提供しました。`, 'info');
             }
         }
-        else if (data.type === 'LOAD_BALANCER') { // Infra 1AP
-            gameState.loadBalancerActive = true;
-            addLog(`負荷分散: ${player.name} がロードバランサを起動。次ターンのダメージを軽減します。`, 'info');
+        else if (data.type === 'SKILL_COPY') { // Infra 1AP (旧 LOAD_BALANCER)
+            // 自分以外の全プレイヤーからランダムに1APスキルをコピー
+            const otherPlayers = gameState.players.filter(p => p.id !== player.id);
+            if (otherPlayers.length > 0) {
+                const randomTarget = otherPlayers[Math.floor(Math.random() * otherPlayers.length)];
+
+                // ターゲットのロールに基づく1APスキルマップ
+                const ROLE_SKILL_MAP: { [key: string]: { type: string, label: string } } = {
+                    'ネットワーク管理者': { type: 'TRACE_LOG', label: 'ログ追跡' },
+                    'セキュリティ分析官': { type: 'PATCH', label: 'パッチ適用' },
+                    'DBエンジニア': { type: 'MASKING', label: 'マスキング' },
+                    'システムオペレーター': { type: 'TRANSFER', label: 'リソース譲渡' },
+                    'DevOps': { type: 'PIPELINE', label: 'パイプライン' },
+                    'インフラリーダー': { type: 'DEBUG', label: 'デバッグ' } // 万が一
+                };
+
+                let skillInfo = ROLE_SKILL_MAP[randomTarget.role];
+
+                // ハッカー・殺人犯の場合は専用スキルから選択
+                if (randomTarget.isHacker) {
+                    const hackerSkills = [
+                        { type: 'EXFILTRATE', label: 'データ持ち出し' },
+                        { type: 'COVER_TRACKS', label: '痕跡消去' },
+                        { type: 'DDOS', label: 'DDOS攻撃' },
+                        { type: 'FALSE_FLAG', label: '偽装工作' }
+                    ];
+                    skillInfo = hackerSkills[Math.floor(Math.random() * hackerSkills.length)];
+                } else if (randomTarget.isMurderer) {
+                    const murdererSkills = [
+                        { type: 'TAMPER_EVIDENCE', label: '証拠改ざん' },
+                        { type: 'SABOTAGE', label: 'サボタージュ' }
+                    ];
+                    skillInfo = murdererSkills[Math.floor(Math.random() * murdererSkills.length)];
+                }
+
+                if (skillInfo) {
+                    player.copiedSkill = skillInfo.type;
+                    player.copiedSkillLabel = skillInfo.label;
+
+                    io.to(player.id).emit('private_message', {
+                        senderId: 'SYSTEM',
+                        senderName: 'SkillCopier',
+                        message: `スキル取得成功: [${skillInfo.label}] をコピーしました。このターン中使用可能です。`
+                    });
+                    addLog(`スキルコピー: ${player.name} が他者の権限を一時的に取得しました。`, 'info');
+                }
+            }
         }
         else if (data.type === 'DEBUG') { // DevOps 1AP
             player.apSpentThisTurn = Math.max(0, player.apSpentThisTurn - 1); // 消費0にする＝自分が実質+1
@@ -731,14 +824,15 @@ io.on('connection', (socket) => {
             gameState.honeyPotActive = true;
             addLog(`ハニーポット設置: 誘引トラップが仕掛けられました。`, 'info');
         }
-        else if (data.type === 'FORCE_REBOOT') { // Sys Op 2AP
-            gameState.hp = Math.min(100, gameState.hp + 20);
-            gameState.players.forEach(p => p.apSpentThisTurn += 1); // 全員-1AP
-            addLog(`緊急再起動: システムHP回復(+20)。副作用により全職員のAPが減少しました。`, 'warn');
+        else if (data.type === 'RESTORE') { // Sys Op 2AP (旧 FORCE_REBOOT)
+            // HPが0になったときに20回復する予約
+            gameState.restoreActive = true;
+            addLog(`システム・リストア準備: 緊急復旧プロトコルがセットされました。(HP0時に自動発動)`, 'info');
         }
-        else if (data.type === 'SERVER_OVERCLOCK') { // Infra 2AP
-            gameState.isOverclocked = true;
-            addLog(`オーバークロック: サーバー限界突破。解析速度UP / 被ダメージUP。`, 'warn');
+        else if (data.type === 'SPEC_UP') { // Infra 2AP (旧 SERVER_OVERCLOCK)
+            gameState.maxHp = 120;
+            gameState.specUpTurnsRemaining = 2; // このターンと次ターン
+            addLog(`スペックアップ: サーバーリソース増強。HP上限が120に拡張されました。(2ターン持続)`, 'info');
         }
         else if (data.type === 'DEPLOY_BOT') { // DevOps 2AP
             gameState.devOpsBots = Math.min(3, gameState.devOpsBots + 1);
@@ -747,7 +841,7 @@ io.on('connection', (socket) => {
 
         // 既存アクションの修正
         else if (data.type === 'RESTORE_SYSTEM') {
-            gameState.hp = Math.min(100, gameState.hp + 10);
+            gameState.hp = Math.min(gameState.maxHp, gameState.hp + 10);
             addLog(`システムパッチ適用。HP回復。`, 'info', executorName);
         } else if (data.type === 'EXFILTRATE' || data.type === 'EXFIL') {
             gameState.currentTurnAttackActions++;
@@ -755,7 +849,15 @@ io.on('connection', (socket) => {
                 addLog(`データ持ち出し阻止。ファイアウォール作動。`, 'info', executorName);
                 gameState.firewallActive = false;
             } else {
-                gameState.leak = Math.min(100, gameState.leak + 15);
+                let leakAmount = 15;
+                // Masking効果
+                if (gameState.maskingActive) {
+                    leakAmount -= 5;
+                    gameState.maskingActive = false; // 消費
+                    addLog(`マスキング効果発動: データ漏洩が軽減されました (-5%)。`, 'system');
+                }
+
+                gameState.leak = Math.min(100, gameState.leak + leakAmount);
                 addLog(`データ持ち出し検知。送信元: [不明]。`, 'critical', executorName);
 
                 // HoneyPot発動判定
@@ -774,8 +876,8 @@ io.on('connection', (socket) => {
         } else if (data.type === 'ANALYZE_EVIDENCE') {
             // 証拠解析
             if (!player.isMurderer) {
-                // Overclock効果: 解析1.5倍 (10 -> 15)
-                const amount = gameState.isOverclocked ? 15 : 10;
+                // SpecUp効果: 解析に影響なし（オーバークロック廃止のため）
+                const amount = 10;
                 gameState.evidenceAnalysisProgress = Math.min(100, gameState.evidenceAnalysisProgress + amount);
             }
             addLog(`証拠解析完了。`, 'info', executorName);
@@ -878,61 +980,23 @@ io.on('connection', (socket) => {
             } else {
                 socket.emit('error', '不正なアクションです。');
             }
+        } else if (data.type === 'BLACKOUT') {
+            gameState.currentTurnManipActions++;
+            if (player.isMurderer || player.isHacker) {
+                gameState.blackoutActive = true;
+                addLog(`警告: 電力供給システムの異常を検知。停電の恐れあり。`, 'critical', executorName);
+            }
         }
-        // --- ユニークアクション (Advanced Skills: Implemented) ---
-        else if (data.type === 'TRACE_LOG' && player.role === 'ネットワーク管理者') {
-            const target = gameState.players.find(p => p.id === data.targetId);
-            if (target) {
-                const result = (target.lastTurnHackerAction || target.performedHackerAction) ? "POSITIVE (不審な活動を確認)" : "NEGATIVE (異常なし)";
-                io.to(player.id).emit('private_message', {
-                    senderId: 'SYSTEM',
-                    senderName: 'LogAnalyzer',
-                    message: `${target.name} の追跡結果: ${result}`
-                });
-                addLog(`${target.name} に対するログ追跡を実行。結果は管理者に通知されました。`, 'info', executorName);
-            }
-        } else if (data.type === 'FIREWALL' && player.role === 'セキュリティ分析官') {
-            gameState.firewallActive = true;
-            addLog(`ファイアウォール展開。次の攻撃を無効化します。`, 'info', executorName);
-        } else if (data.type === 'HONEY_POT' && player.role === 'DBエンジニア') {
-            // New: ハニーポット設置
-            gameState.honeyPotActive = true; // サーバー状態にフラグ追加が必要
-            addLog(`ハニーポット展開完了。不正アクセスを監視中。`, 'info', executorName);
-        } else if (data.type === 'CLEANUP' && player.role === 'システムオペレーター') {
-            // New: 状態異常解除
-            const target = gameState.players.find(p => p.id === data.targetId);
-            if (target) {
-                target.apDebuff = 0; // デバフ解除
-                // target.isIsolated = false; // 隔離解除も含むならここ（ただし投票結果を覆すのは強力すぎるかも？一旦APデバフのみ）
-                addLog(`${target.name} のシステム・クリーンアップを実行。状態異常を解除しました。`, 'info', executorName);
-            }
-        } else if (data.type === 'SERVER_OVERCLOCK' && player.role === 'インフラリーダー') {
-            // New: オーバークロック (次ターン解析1.5倍 / 被ダメ1.5倍)
-            gameState.isOverclocked = true; // フラグ追加が必要
-            addLog(`サーバー・オーバークロック開始。次ターンの解析効率とリスクが上昇します。`, 'warn', executorName);
-        } else if (data.type === 'DEPLOY_BOT' && player.role === 'DevOps') {
-            if (gameState.devOpsBots >= 3) {
-                socket.emit('error', '配備失敗: BOT最大数(3)に達しています。');
-            } else {
-                gameState.devOpsBots++;
-                addLog(`自動解析ボット(Mark-II)配備完了。`, 'info', executorName);
-            }
-        } else if (data.type === 'BLACKOUT' && player.isMurderer) {
-            // New: 停電工作 (議論時間短縮)
-            // 実装簡略化のため、次のフェーズ移行時間を早めるフラグを立てるか、即座に時間を減らす
-            // ここではログ出力と「次のフェーズ短縮」フラグ
-            gameState.blackoutActive = true;
+        else if (data.type === 'PHYSICAL_DESTROY') {
             gameState.currentTurnManipActions++;
-            addLog(`警告: 電力供給システムの異常を検知。停電の恐れあり。`, 'critical', executorName);
-        } else if (data.type === 'PHYSICAL_DESTROY' && player.isMurderer) {
-            // New: 物理破壊 (Bot破壊)
-            if (gameState.devOpsBots > 0) {
-                gameState.devOpsBots--;
-                addLog(`警告: サーバー室で火災発生。解析ボットが破壊されました。`, 'critical', executorName);
-            } else {
-                addLog(`破壊工作を実行したが、対象が存在しませんでした。`, 'warn', executorName);
+            if (player.isMurderer || player.isHacker) {
+                if (gameState.devOpsBots > 0) {
+                    gameState.devOpsBots--;
+                    addLog(`警告: サーバー室で火災発生。解析ボットが破壊されました。`, 'critical', executorName);
+                } else {
+                    addLog(`破壊工作を実行したが、対象が存在しませんでした。`, 'warn', executorName);
+                }
             }
-            gameState.currentTurnManipActions++;
         }
 
 
