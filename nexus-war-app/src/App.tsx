@@ -32,10 +32,11 @@ function App() {
     // --- ゲーム状態 (サーバー同期) ---
     const [ap, setAp] = useState(3);
     const [turn, setTurn] = useState<number>(1);
-    const [timeLeft, setTimeLeft] = useState(3 * 60); // 開発用 3分
+    const [timeLeft, setTimeLeft] = useState(1 * 60); // 開発用 1分
     // const [timeLeft, setTimeLeft] = useState(10 * 60); // 本番用 10分
     const [phase, setPhase] = useState<TurnPhase>('discussion');
     const [systemHp, setSystemHp] = useState(100);
+    const [maxHp, setMaxHp] = useState(100);
     const [dataLeak, setDataLeak] = useState(0);
     const [evidenceAnalysis, setEvidenceAnalysis] = useState(0); // 証拠解析率
     const [gameResult, setGameResult] = useState<GameResult>('playing');
@@ -50,6 +51,7 @@ function App() {
     const [isHacker, setIsHacker] = useState(false);
     const [isMurderer, setIsMurderer] = useState(false); // 新: 殺人犯フラグ
     const [isIsolated, setIsIsolated] = useState(false);
+    const [isIpBlocked, setIsIpBlocked] = useState(false); // IPブロック状態
     const [players, setPlayers] = useState<any[]>([]);
     const [isTraceMode, setIsTraceMode] = useState(false); // Trace mode state
     const [isDdosMode, setIsDdosMode] = useState(false); // DDOS target selection mode
@@ -59,8 +61,14 @@ function App() {
     // 新スキル用モード
     const [isPipelineMode, setIsPipelineMode] = useState(false);
     const [isTransferMode, setIsTransferMode] = useState(false);
+    const [transferUsedThisTurn, setTransferUsedThisTurn] = useState(false);
     const [isPatchMode, setIsPatchMode] = useState(false);
     const [isIpBlockMode, setIsIpBlockMode] = useState(false);
+
+    // コピーしたスキル用
+    const [copiedSkill, setCopiedSkill] = useState<string | null>(null);
+    const [copiedSkillLabel, setCopiedSkillLabel] = useState<string | null>(null);
+    const [isCopiedSkillMode, setIsCopiedSkillMode] = useState(false);
 
     const [showHackerMenu, setShowHackerMenu] = useState(false);
     const [isAlert, setIsAlert] = useState(false);
@@ -85,6 +93,7 @@ function App() {
         const maxAp = 3 + chargedAp;
         setAp(Math.min(6, Math.max(0, maxAp - nextTurnDebuff)));
         setNextTurnDebuff(0); // 適用したらリセット
+        setTransferUsedThisTurn(false); // ターン変更時にTRANSFER使用済みフラグをリセット
     }, [turn, chargedAp]);
 
     // --- Socketイベント設定 ---
@@ -92,6 +101,7 @@ function App() {
         socket.on('state_update', (newState) => {
             setTurn(newState.turn); // ここでturnが更新されると上のuseEffectが発火
             setSystemHp(newState.hp);
+            setMaxHp(newState.maxHp || 100);
             setDataLeak(newState.leak);
             setEvidenceAnalysis(newState.evidenceAnalysisProgress || 0);
             setTimeLeft(newState.timeLeft);
@@ -102,9 +112,18 @@ function App() {
             const me = newState.players.find((p: any) => p.id === socket.id);
             if (me) {
                 setIsIsolated(me.isIsolated);
+                setIsIpBlocked(me.isIpBlocked || false); // サーバーからの状態を反映
                 setChargedAp(me.chargedAp || 0); // サーバーのプレイヤーデータからチャージAPを取得
                 if (me.role && me.role !== 'TBD') setMyRole(me.role);
-                // コピーしたスキルがあれば専用モードなどは不要、ボタンが表示される
+
+                // コピーしたスキルがあればステートに反映
+                if (me.copiedSkill) {
+                    setCopiedSkill(me.copiedSkill);
+                    setCopiedSkillLabel(me.copiedSkillLabel || me.copiedSkill);
+                } else {
+                    setCopiedSkill(null);
+                    setCopiedSkillLabel(null);
+                }
             }
 
             // サーバー側でゲーム終了判定があれば受け取る
@@ -250,6 +269,10 @@ function App() {
     // --- 防衛側アクション ---
     const handleAction = (name: string, cost: number, targetId?: string) => {
         if (gameResult !== 'playing') return;
+        if (isIpBlocked) {
+            addLog('ERROR: CONNECTION SEVERED. IP BLOCKED.', 'critical');
+            return;
+        }
         // if (phase === 'resolve') return; // Tests
 
         if (ap >= cost) {
@@ -264,6 +287,10 @@ function App() {
     // --- ハッカー専用アクション ---
     const handleHackerAction = (name: string, cost: number) => {
         if (gameResult !== 'playing') return;
+        if (isIpBlocked) {
+            addLog('ERROR: CONNECTION SEVERED. IP BLOCKED.', 'critical');
+            return;
+        }
 
         if (ap >= cost) {
             setAp(prev => prev - cost);
@@ -392,7 +419,13 @@ function App() {
                         SECURE CONNECTION :: UNAUTHORIZED ACCESS PROHIBITED :: ID VERIFICATION MANDATORY
                     </div>
 
-                    {/* GM観戦ボタン */}
+                    {/* Main Action UI */}
+                    {isIpBlocked && (
+                        <div className="alert-box critical">
+                            <AlertTriangle size={24} />
+                            <span>WARNING: IP BLOCKED BY ADMINISTRATOR. ACTIONS DISABLED.</span>
+                        </div>
+                    )}
                     <div className="mt-4 text-center">
                         <button
                             onClick={() => socket.emit('join_spectator')}
@@ -422,7 +455,7 @@ function App() {
                         <Eye size={14} /> <span className="font-bold">GM観戦中</span>
                     </div>
                     <div className="stat-item">
-                        <Cpu size={14} /> <span>HP: {systemHp}%</span>
+                        <Cpu size={14} /> <span>HP: {maxHp > 100 ? `${systemHp}/${maxHp}` : `${systemHp}%`}</span>
                     </div>
                     <div className="stat-item">
                         <Database size={14} /> <span>LEAK: {dataLeak}%</span>
@@ -537,7 +570,7 @@ function App() {
                     <User size={14} /> <span className="font-bold">{myPlayerName}</span> <span className="text-xs opacity-70">[{myRole}]</span>
                 </div>
                 <div className="stat-item">
-                    <Cpu size={14} /> <span>HP: {systemHp}%</span>
+                    <Cpu size={14} /> <span>HP: {maxHp > 100 ? `${systemHp}/${maxHp}` : `${systemHp}%`}</span>
                 </div>
                 <div className="stat-item ap-gauge">
                     <Zap size={14} /> <span>AP: {ap}/{(isHacker || isMurderer) ? 6 : 3}</span>
@@ -552,9 +585,9 @@ function App() {
                 <div className="bar-container">
                     <div className="bar-label"><Shield size={12} /> システムHP</div>
                     <div className="bar-track">
-                        <div className="bar-fill hp-bar" style={{ width: `${Math.min(100, (systemHp / (players.find((p: any) => true)?.maxHp || 100)) * 100)}%` }} />
+                        <div className="bar-fill hp-bar" style={{ width: `${Math.min(100, (systemHp / maxHp) * 100)}%` }} />
                     </div>
-                    <span className="bar-value">{systemHp}%</span>
+                    <span className="bar-value">{maxHp > 100 ? `${systemHp}/${maxHp}` : `${systemHp}%`}</span>
                 </div>
                 <div className="bar-container">
                     <div className="bar-label"><Database size={12} /> データ漏洩</div>
@@ -618,6 +651,7 @@ function App() {
                         {isTransferMode && <span className="ml-2 text-indigo-400 animate-pulse">[リソース譲渡: 送信先を選択]</span>}
                         {isPatchMode && <span className="ml-2 text-green-400 animate-pulse">[パッチ適用: 対象を選択]</span>}
                         {isIpBlockMode && <span className="ml-2 text-red-400 animate-pulse">[IPブロック: 遮断対象を選択]</span>}
+                        {isCopiedSkillMode && <span className="ml-2 text-purple-400 animate-pulse">[{copiedSkillLabel}: 対象を選択]</span>}
                     </div>
                     <div className="player-grid">
                         {players.map(p => (
@@ -711,6 +745,7 @@ function App() {
                                                 onClick={() => {
                                                     handleAction('TRANSFER', 1, p.id);
                                                     setIsTransferMode(false);
+                                                    setTransferUsedThisTurn(true);
                                                 }}
                                                 className="btn-vote"
                                                 style={{ borderColor: '#8888ff', color: '#8888ff' }}
@@ -742,27 +777,18 @@ function App() {
                                                 BLOCK
                                             </button>
                                         )}
-                                        {/* コピーしたスキルのターゲット選択用 (簡易実装: 全モード対応は複雑なので、TRACEとTRANSFER等主要なものだけ対応するか、あるいはサーバー側でモード不要にするか。
-                                            ここでは既存のモードフラグを流用するのは難しい（Roleチェックが入ってるため）。
-                                            コピー専用の汎用ターゲットモードを追加するのが正しいが、実装量が多い。
-                                            今回は「ターゲットが必要なスキル」は個別にハンドリング追加。
-                                        */}
-                                        {players.find(me => me.id === socket.id)?.copiedSkill && (
+
+                                        {/* コピーしたスキル用ターゲット選択ボタン */}
+                                        {isCopiedSkillMode && copiedSkill && (
                                             <button
                                                 onClick={() => {
-                                                    const skill = players.find(me => me.id === socket.id)?.copiedSkill;
-                                                    handleAction(skill, 1, p.id);
-                                                    // モード解除はできない（汎用モードがないため）。ボタンを押したら即実行。
-                                                    // 本当は「ターゲット選択モード」にしてから実行だが、UI簡略化のため
-                                                    // プレイヤーリストに常設ボタンを追加する形にするか、
-                                                    // あるいは「コピー・アクション実行」ボタンを押すとモードになり、ここが出るようにする。
-                                                    // 時間的制約から、プレイヤーカードに「COPY ACT」ボタンを出すのはUIが散らかる。
-                                                    // コンソールの「コピーしたスキル」ボタンを押すと、isTraceModeなどがONになるように改修するのがスマート。
+                                                    handleAction(copiedSkill, 1, p.id);
+                                                    setIsCopiedSkillMode(false);
                                                 }}
                                                 className="btn-vote"
-                                                style={{ borderColor: '#fff', color: '#fff', display: 'none' }} // ダミー。実際は下のロジックで制御
+                                                style={{ borderColor: '#bc13fe', color: '#bc13fe' }}
                                             >
-                                                COPY
+                                                USE SKILL
                                             </button>
                                         )}
                                     </>
@@ -851,7 +877,7 @@ function App() {
                                         disabled={phase === 'resolve' || ap < 2}
                                         style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                     >
-                                        <AlertTriangle size={18} /> <span>物理破壊</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} BOT破壊</span>
+                                        <AlertTriangle size={18} /> <span>ノード・デストラクション</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} BOT破壊</span>
                                     </button>
                                     <button
                                         onClick={() => {
@@ -863,6 +889,17 @@ function App() {
                                         style={isLockoutMode ? { backgroundColor: 'rgba(204, 68, 255, 0.2)', borderColor: '#cc44ff', color: '#cc44ff' } : { borderColor: '#cc44ff', color: '#cc44ff' }}
                                     >
                                         <Lock size={18} /> <span>ロックアウト</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} 行動封鎖</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setIsFalseFlagMode(!isFalseFlagMode);
+                                            setIsLockoutMode(false);
+                                        }}
+                                        className="btn-action btn-analyze"
+                                        disabled={phase === 'resolve' || ap < 1}
+                                        style={isFalseFlagMode ? { backgroundColor: 'rgba(255, 0, 255, 0.2)', borderColor: '#ff00ff', color: '#ff00ff' } : { borderColor: '#ff00ff', color: '#ff00ff' }}
+                                    >
+                                        <Eye size={18} /> <span>偽装工作</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} 偽装</span>
                                     </button>
                                 </>
                             )}
@@ -933,10 +970,10 @@ function App() {
                                             setIsTransferMode(!isTransferMode);
                                         }}
                                         className="btn-action btn-special"
-                                        disabled={phase === 'resolve' || ap < 1}
+                                        disabled={phase === 'resolve' || ap < 1 || transferUsedThisTurn}
                                         style={isTransferMode ? { backgroundColor: 'rgba(136, 136, 255, 0.2)', borderColor: '#8888ff', color: '#8888ff' } : { borderColor: '#8888ff', color: '#8888ff' }}
                                     >
-                                        <RotateCcw size={18} /> <span>リソース譲渡</span><span className="ap-cost" style={{ color: '#8888ff' }}>1AP</span>
+                                        <RotateCcw size={18} /> <span>リソース・デプロイメント</span><span className="ap-cost" style={{ color: '#8888ff' }}>1AP</span>
                                     </button>
                                     <button
                                         onClick={() => handleAction('RESTORE', 2)}
@@ -952,7 +989,7 @@ function App() {
                             {myRole === 'インフラリーダー' && (
                                 <>
                                     <button onClick={() => handleAction('SKILL_COPY', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
-                                        <Cpu size={18} /> <span>スキルコピー</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP</span>
+                                        <Cpu size={18} /> <span>レプリケーション</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP</span>
                                     </button>
                                     <button onClick={() => handleAction('SPEC_UP', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
                                         <Zap size={18} /> <span>スペックアップ</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} MaxHP 120</span>
@@ -978,6 +1015,27 @@ function App() {
                                 </>
                             )}
 
+                            {/* コピーしたスキル（レプリケーション）の起動ボタン */}
+                            {copiedSkill && (
+                                <button
+                                    onClick={() => {
+                                        const needsTarget = ['TRACE_LOG', 'PATCH', 'TRANSFER', 'PIPELINE', 'IP_BLOCK'].includes(copiedSkill);
+                                        if (needsTarget) {
+                                            setIsCopiedSkillMode(!isCopiedSkillMode);
+                                        } else {
+                                            handleAction(copiedSkill, 1);
+                                        }
+                                    }}
+                                    className="btn-action btn-special"
+                                    disabled={phase === 'resolve' || ap < 1}
+                                    style={isCopiedSkillMode
+                                        ? { backgroundColor: 'rgba(188, 19, 254, 0.2)', borderColor: '#bc13fe', color: '#bc13fe' }
+                                        : { borderColor: '#bc13fe', color: '#bc13fe' }}
+                                >
+                                    <Cpu size={18} /> <span>★ {copiedSkillLabel}</span><span className="ap-cost" style={{ color: '#bc13fe' }}>1AP (コピー)</span>
+                                </button>
+                            )}
+
                             <button
                                 onContextMenu={(e) => { e.preventDefault(); setIsHacker(!isHacker); }}
                                 onClick={() => {
@@ -994,7 +1052,7 @@ function App() {
                             <button
                                 onClick={() => handleAction('INJECT_MALWARE', 2)}
                                 className="btn-action btn-hacker-action"
-                                disabled={phase === 'resolve' || ap < 2}
+                                disabled={phase === 'resolve' || ap < 2 || (players.find(p => p.id === socket.id)?.malwareUsedThisTurn || 0) >= 2}
                             >
                                 <Skull size={18} /> <span>マルウェア</span><span className="ap-cost">2AP (残{2 - (players.find(p => p.id === socket.id)?.malwareUsedThisTurn || 0)})</span>
                             </button>
