@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: aether-judas
+    name: sky-magycc-judas
     env: node
     plan: free
     buildCommand: npm run build

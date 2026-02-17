@@ -1,6 +1,6 @@
-# AETHER-JUDAS - The Judas Protocol
+# SKY-MAGYCC JUDAS - The Judas Protocol
 
-「AETHER-JUDAS」は、世界経済を牛耳る超巨大テック企業「AETHER Global」を舞台にした、サイバーパンクな世界観の非対称対戦型マーダーミステリー・オンラインゲームです。
+「SKY-MAGYCC JUDAS」は、世界経済を牛耳る超巨大テック企業「AETHER Global」を舞台にした、サイバーパンクな世界観の非対称対戦型マーダーミステリー・オンラインゲームです。
 
 ## 1. システムアーキテクチャ
 
@@ -90,4 +90,4 @@ murder-mystery/
 ブラウザで `http://localhost:5173` にアクセスしてください。
 
 ---
-Created by **Team CYCY-MAGSK** (K/G/S/C/Y/C/Y/A/M) for AETHER-JUDAS project.
+Created by **Team SKY-MAGYCC** (K/G/S/C/Y/C/Y/A/M) for SKY-MAGYCC JUDAS project.

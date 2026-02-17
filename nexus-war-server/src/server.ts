@@ -7,7 +7,7 @@ import path from 'path';
 const app = express();
 app.use(cors());
 
-// フロントエンドのビルド成果物のパス (プロジェクト: AETHER-JUDAS)
+// フロントエンドのビルド成果物のパス (プロジェクト: SKY-MAGYCC JUDAS)
 const clientDistPath = path.resolve(__dirname, '../../nexus-war-app/dist');
 
 // フロントエンドのビルド成果物を配信
