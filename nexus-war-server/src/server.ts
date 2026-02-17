@@ -94,6 +94,7 @@ interface GameState {
     finalVotesHacker: { [voterId: string]: string };   // ハッカーへの投票
     finalVotingComplete: boolean;                       // 最終投票完了フラグ
     finalVotingResult: 'none' | 'employee_perfect_win' | 'employee_win' | 'murderer_escape'; // 最終投票結果
+    revealedMurdererName: string | null; // 証拠解析100%で判明した殺人犯の名前
 }
 
 // ゲーム状態初期化関数
@@ -131,7 +132,8 @@ const getInitialState = (): GameState => ({
     finalVotesMurderer: {},
     finalVotesHacker: {},
     finalVotingComplete: false,
-    finalVotingResult: 'none'
+    finalVotingResult: 'none',
+    revealedMurdererName: null
 });
 
 let gameState = getInitialState();
@@ -356,7 +358,8 @@ setInterval(() => {
                 // AP処理: チャージ計算 → デバフ適用 → 残りを繰越
                 if (p.isHacker || p.isMurderer) {
                     // 1. このターンの実効AP（基本3 + チャージ）から消費分を引く
-                    const thisTurnMaxAp = 3 + p.chargedAp + (p.transferBonusNextTurn || 0);
+                    // 修正: transferBonusNextTurn はここでは含めず、チャージ上限適用後に加算する
+                    const thisTurnMaxAp = 3 + p.chargedAp;
                     let remaining = Math.max(0, thisTurnMaxAp - p.apSpentThisTurn);
 
                     // 2. デバフを適用（投票-3AP、DDOS等）
@@ -370,7 +373,8 @@ setInterval(() => {
                     }
 
                     // 3. 残りAPをチャージとして保存（最大3、次ターンは3+チャージ）
-                    p.chargedAp = Math.min(3, remaining);
+                    // 修正: チャージ上限(3)適用後にボーナス分を加算
+                    p.chargedAp = Math.min(3, remaining) + (p.transferBonusNextTurn || 0);
 
                     if (p.chargedAp > 0) {
                         io.to(p.id).emit('private_message', {
@@ -429,11 +433,12 @@ setInterval(() => {
 }, 1000); // 実時間進行 (デバッグ時はここを変更)
 
 function checkWinCondition() {
-    if (gameState.evidenceAnalysisProgress >= 100) {
+    if (gameState.evidenceAnalysisProgress >= 100 && !gameState.revealedMurdererName) {
         const murderer = gameState.players.find(p => p.isMurderer);
         const name = murderer ? murderer.name : "UNKNOWN";
-        addLog(`!!! 証拠解析コンプリート !!! 殺人犯を特定: ${name}`, 'critical');
-        gameState.isPaused = true;
+        gameState.revealedMurdererName = name;
+        addLog(`!!! 証拠解析コンプリート !!! 殺人犯が判明しました: ${name}`, 'critical');
+        // gameState.isPaused = true; // 100%でもゲームは続行（投票で決着）
     }
     if (gameState.leak >= 100) {
         addLog(`!!! データ漏洩 100% !!! ハッカーの勝利。システムは陥落しました。`, 'critical');
