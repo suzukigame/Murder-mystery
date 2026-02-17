@@ -57,6 +57,7 @@ interface Player {
     malwareUsedThisTurn: number;   // マルウェア使用回数
     copiedSkill: string | null;    // インフラリーダーがコピーしたスキル
     copiedSkillLabel: string | null; // UI表示用のスキル名
+    sessionToken: string;         // 再接続認証用トークン
 }
 
 interface GameState {
@@ -95,6 +96,7 @@ interface GameState {
     finalVotingComplete: boolean;                       // 最終投票完了フラグ
     finalVotingResult: 'none' | 'employee_perfect_win' | 'employee_win' | 'murderer_escape'; // 最終投票結果
     revealedMurdererName: string | null; // 証拠解析100%で判明した殺人犯の名前
+    turnDuration: number;               // 1ターンの基本的な時間 (秒)
 }
 
 // ゲーム状態初期化関数
@@ -133,7 +135,8 @@ const getInitialState = (): GameState => ({
     finalVotesHacker: {},
     finalVotingComplete: false,
     finalVotingResult: 'none',
-    revealedMurdererName: null
+    revealedMurdererName: null,
+    turnDuration: TURN_DURATION
 });
 
 let gameState = getInitialState();
@@ -183,7 +186,7 @@ setInterval(() => {
         });
     }
 
-    if (gameState.isPaused || gameState.turn > 8 || gameState.phase === 'final_voting') return;
+    if (gameState.isPaused || gameState.turn > 8 || gameState.phase === 'final_voting' || !gameState.isGameStarted) return;
 
     gameState.timeLeft--;
 
@@ -197,11 +200,12 @@ setInterval(() => {
     // ...
 
     // フェーズ遷移ロジック
-    const elapsed = TURN_DURATION - gameState.timeLeft;
+    const elapsed = gameState.turnDuration - gameState.timeLeft;
 
+    // 比率ベースでのフェーズ配分 (Discussion 2/3, Action 1/4, Resolve 残り)
     // 開発用 (1分): Discussion 40秒 -> Action 15秒 -> Resolve 5秒
-    const ACTION_START = 40;   // 40秒経過でアクション開始 (残20秒)
-    const RESOLVE_START = 40 + 15; // 55秒経過で解決開始 (残5秒)
+    const ACTION_START = Math.floor(gameState.turnDuration * (40 / 60));
+    const RESOLVE_START = Math.floor(gameState.turnDuration * (55 / 60));
 
     // 本番用 (10分): Discussion 7分 -> Action 2分 -> Resolve 1分
     // const ACTION_START = 7 * 60;   // 7分経過でアクション開始 (残3分)
@@ -306,11 +310,11 @@ setInterval(() => {
             gameState.currentTurnManipActions = 0;
             gameState.turn++;
             if (gameState.blackoutActive) {
-                gameState.timeLeft = Math.floor(TURN_DURATION / 2);
+                gameState.timeLeft = Math.floor(gameState.turnDuration / 2);
                 gameState.blackoutActive = false; // フラグ消費
                 addLog(`停電の影響により、メインコアの電力が制限されています：第 ${gameState.turn} ターンの議論時間が半減しました。`, 'critical');
             } else {
-                gameState.timeLeft = TURN_DURATION;
+                gameState.timeLeft = gameState.turnDuration;
             }
             gameState.phase = 'discussion';
             gameState.phase = 'discussion';
@@ -521,36 +525,45 @@ io.on('connection', (socket) => {
     socket.emit('log_history', gameState.logs);
 
     // 参加登録
-    socket.on('join_game', (data: { name: string, role: string }) => {
+    socket.on('join_game', (data: { name: string, role: string, token?: string }) => {
         // 名前で既存プレイヤーを検索 (再接続対応)
         const existingByName = gameState.players.find(p => p.name === data.name);
 
         if (existingByName) {
-            // IDを最新のものに更新
-            existingByName.id = socket.id;
-            addLog(`再接続: ${data.name} 復帰しました。`, 'system');
+            // トークンが一致する場合のみ再接続を許可
+            if (data.token === existingByName.sessionToken) {
+                existingByName.id = socket.id;
+                addLog(`再接続: ${data.name} 復帰しました。`, 'system');
 
-            // 役割がある場合は個別に再通知
-            if (gameState.isGameStarted) {
-                socket.emit('role_assigned', {
-                    isHacker: existingByName.isHacker,
-                    isMurderer: existingByName.isMurderer,
-                    roleName: existingByName.role,
-                    secret: existingByName.secret
-                });
+                // 役割がある場合は個別に再通知
+                if (gameState.isGameStarted) {
+                    socket.emit('role_assigned', {
+                        isHacker: existingByName.isHacker,
+                        isMurderer: existingByName.isMurderer,
+                        roleName: existingByName.role,
+                        secret: existingByName.secret
+                    });
+                }
+
+                socket.emit('join_success', { name: existingByName.name, token: existingByName.sessionToken });
+                io.emit('state_update', gameState);
+                return;
             }
 
-            // 【重要】再接続であっても、6人揃っていて未開始なら開始する
-            if (gameState.players.length === 6 && !gameState.isGameStarted) {
-                assignRoles();
+            // ゲーム開始前なら「既に使用中」として拒否 (排他制御)
+            if (!gameState.isGameStarted) {
+                socket.emit('error', 'このキャラクターは既に他のプレイヤーが選択しています。');
+                return;
             }
 
-            io.emit('state_update', gameState);
+            // ゲーム開始後かつトークン不一致なら拒否
+            socket.emit('error', '認証エラー: 以前のセッション情報が一致しません。');
             return;
         }
 
         const existingById = gameState.players.find(p => p.id === socket.id);
         if (!existingById) {
+            const newToken = Math.random().toString(36).substring(2, 15);
             gameState.players.push({
                 id: socket.id,
                 name: data.name,
@@ -575,9 +588,12 @@ io.on('connection', (socket) => {
                 transferBonusNextTurn: 0,
                 malwareUsedThisTurn: 0,
                 copiedSkill: null,
-                copiedSkillLabel: null
+                copiedSkillLabel: null,
+                sessionToken: newToken
             });
             addLog(`新規接続: ${data.name} 確立。`, 'system');
+
+            socket.emit('join_success', { name: data.name, token: newToken });
 
             // 6人揃っていて、かつ未開始なら役割を割り当てる
             if (gameState.players.length === 6 && !gameState.isGameStarted) {
@@ -585,19 +601,59 @@ io.on('connection', (socket) => {
             }
 
             io.emit('state_update', gameState);
-        } else {
-            // 名前変更などの場合
-            existingById.name = data.name;
-            existingById.role = data.role;
+        }
+    });
+
+    // GM観戦モード入室
+    socket.on('join_spectator', () => {
+        spectatorIds.add(socket.id);
+        console.log('--- NEW GM SPECTATOR CONNECTED ---', socket.id);
+        socket.emit('spectator_confirmed');
+        // 現在のログ履歴を送信
+        socket.emit('log_history', gameState.logs);
+        // 役割情報を送信（開始済みなら）
+        if (gameState.isGameStarted) {
+            const gmInfo = gameState.players.map(p => ({
+                id: p.id,
+                name: p.name,
+                role: p.role,
+                isHacker: p.isHacker,
+                isMurderer: p.isMurderer,
+                isIsolated: p.isIsolated,
+                votes: p.votes
+            }));
+            socket.emit('gm_info', gmInfo);
+        }
+    });
+
+    // 退室
+    socket.on('leave_game', () => {
+        // 観戦者の場合
+        if (spectatorIds.has(socket.id)) {
+            spectatorIds.delete(socket.id);
+            addLog('観戦者が退室しました。', 'system');
+            return;
+        }
+
+        const index = gameState.players.findIndex(p => p.id === socket.id);
+        if (index !== -1) {
+            const player = gameState.players[index];
+            addLog(`退室: ${player.name} がロビーに戻りました。`, 'system');
+            gameState.players.splice(index, 1);
             io.emit('state_update', gameState);
         }
     });
 
-    // GM観戦モードで参加
-    socket.on('join_spectator', () => {
-        spectatorIds.add(socket.id);
-        addLog('GM観戦モード: 接続しました。', 'system');
-        socket.emit('spectator_confirmed', true);
+    // 設定変更
+    socket.on('update_settings', (data: { turnDuration?: number }) => {
+        // ゲーム開始前のみ変更可能
+        if (gameState.isGameStarted) return;
+
+        if (data.turnDuration !== undefined) {
+            gameState.turnDuration = data.turnDuration;
+            gameState.timeLeft = data.turnDuration;
+            addLog(`システム設定変更: 1ターンの時間を ${data.turnDuration} 秒に設定しました。`, 'system');
+        }
         io.emit('state_update', gameState);
     });
 
@@ -1090,8 +1146,11 @@ io.on('connection', (socket) => {
     // ゲームリセット要求
     socket.on('reset_game', () => {
         const currentPlayers = gameState.players;
+        const currentDuration = gameState.turnDuration;
         gameState = getInitialState();
         gameState.players = currentPlayers; // プレイヤーリストは維持
+        gameState.turnDuration = currentDuration;
+        gameState.timeLeft = currentDuration;
         addLog('SYSTEM REBOOT INITIATED... NEW SESSION STARTED.', 'system');
 
         // 6人揃っていれば自動で役割を振り直して開始
