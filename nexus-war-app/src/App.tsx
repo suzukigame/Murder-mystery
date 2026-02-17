@@ -809,14 +809,6 @@ function App() {
                             {!isMurderer && (
                                 <>
                                     <button
-                                        onClick={() => handleAction('ANALYZE_EVIDENCE', 2)}
-                                        className="btn-action btn-analyze"
-                                        disabled={phase === 'resolve' || ap < 2}
-                                        style={{ borderColor: '#00ff88', color: '#00ff88' }}
-                                    >
-                                        <Search size={18} /> <span>証拠解析</span><span className="ap-cost">2AP {'->'} 解析+10%</span>
-                                    </button>
-                                    <button
                                         onClick={() => handleAction('RESTORE_SYSTEM', 2)}
                                         className="btn-action"
                                         disabled={phase === 'resolve' || ap < 2}
@@ -831,6 +823,14 @@ function App() {
                                         style={{ borderColor: '#00ff88', color: '#00ff88' }}
                                     >
                                         <Lock size={18} /> <span>データ暗号化</span><span className="ap-cost">2AP {'->'} 漏洩-10%</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleAction('ANALYZE_EVIDENCE', 2)}
+                                        className="btn-action btn-analyze"
+                                        disabled={phase === 'resolve' || ap < 2}
+                                        style={{ borderColor: '#00ff88', color: '#00ff88' }}
+                                    >
+                                        <Search size={18} /> <span>証拠解析</span><span className="ap-cost">2AP {'->'} 解析+10%</span>
                                     </button>
                                 </>
                             )}
