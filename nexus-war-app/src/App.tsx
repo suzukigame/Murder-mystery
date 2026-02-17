@@ -864,20 +864,23 @@ function App() {
                                         <Database size={18} /> <span>証拠改ざん</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} 解析-5%</span>
                                     </button>
                                     <button
+                                        onClick={() => {
+                                            setIsFalseFlagMode(!isFalseFlagMode);
+                                            setIsLockoutMode(false);
+                                        }}
+                                        className="btn-action btn-analyze"
+                                        disabled={phase === 'resolve' || ap < 1}
+                                        style={isFalseFlagMode ? { backgroundColor: 'rgba(204, 68, 255, 0.2)', borderColor: '#cc44ff', color: '#cc44ff' } : { borderColor: '#cc44ff', color: '#cc44ff' }}
+                                    >
+                                        <Eye size={18} /> <span>偽装工作</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} 偽装</span>
+                                    </button>
+                                    <button
                                         onClick={() => handleAction('BLACKOUT', 2)}
                                         className="btn-action btn-analyze"
                                         disabled={phase === 'resolve' || ap < 2}
                                         style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                     >
                                         <Zap size={18} /> <span>停電工作</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} 議論短縮</span>
-                                    </button>
-                                    <button
-                                        onClick={() => handleAction('PHYSICAL_DESTROY', 2)}
-                                        className="btn-action btn-analyze"
-                                        disabled={phase === 'resolve' || ap < 2}
-                                        style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
-                                    >
-                                        <AlertTriangle size={18} /> <span>ノード・デストラクション</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} BOT破壊</span>
                                     </button>
                                     <button
                                         onClick={() => {
@@ -891,15 +894,12 @@ function App() {
                                         <Lock size={18} /> <span>ロックアウト</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} 行動封鎖</span>
                                     </button>
                                     <button
-                                        onClick={() => {
-                                            setIsFalseFlagMode(!isFalseFlagMode);
-                                            setIsLockoutMode(false);
-                                        }}
+                                        onClick={() => handleAction('PHYSICAL_DESTROY', 2)}
                                         className="btn-action btn-analyze"
-                                        disabled={phase === 'resolve' || ap < 1}
-                                        style={isFalseFlagMode ? { backgroundColor: 'rgba(255, 0, 255, 0.2)', borderColor: '#ff00ff', color: '#ff00ff' } : { borderColor: '#ff00ff', color: '#ff00ff' }}
+                                        disabled={phase === 'resolve' || ap < 2}
+                                        style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                     >
-                                        <Eye size={18} /> <span>偽装工作</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} 偽装</span>
+                                        <AlertTriangle size={18} /> <span>ノード・デストラクション</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} BOT破壊</span>
                                     </button>
                                 </>
                             )}
@@ -1094,12 +1094,143 @@ function App() {
                             </button>
                             <button
                                 onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
-                                className="btn-action"
+                                className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve' || ap < 1}
-                                style={{ borderColor: '#ff4444', color: '#ff4444' }}
                             >
                                 <Eye size={18} /> <span>監査(偽装)</span><span className="ap-cost">1AP {'->'} ログ調査(偽装)</span>
                             </button>
+
+
+
+                            {/* --- 割り当て職業の固有スキル（偽装用） --- */}
+                            {myRole === 'ネットワーク管理者' && (
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            setIsTraceMode(!isTraceMode);
+                                            setIsIpBlockMode(false);
+                                        }}
+                                        className="btn-action btn-special"
+                                        disabled={phase === 'resolve' || ap < 1}
+                                        style={isTraceMode ? { backgroundColor: 'rgba(255, 255, 0, 0.2)', borderColor: '#ffff00', color: '#ffff00' } : { borderColor: '#ffff00', color: '#ffff00' }}
+                                    >
+                                        <Search size={18} /> <span>ログ追跡</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setIsIpBlockMode(!isIpBlockMode);
+                                            setIsTraceMode(false);
+                                        }}
+                                        className="btn-action btn-special"
+                                        disabled={phase === 'resolve' || ap < 2}
+                                        style={isIpBlockMode ? { backgroundColor: 'rgba(255, 68, 68, 0.2)', borderColor: '#ff4444', color: '#ff4444' } : { borderColor: '#ff4444', color: '#ff4444' }}
+                                    >
+                                        <Lock size={18} /> <span>IPブロック</span><span className="ap-cost" style={{ color: '#ff4444' }}>2AP</span>
+                                    </button>
+                                </>
+                            )}
+
+                            {myRole === 'セキュリティ分析官' && (
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            setIsPatchMode(!isPatchMode);
+                                        }}
+                                        className="btn-action btn-special"
+                                        disabled={phase === 'resolve' || ap < 1}
+                                        style={isPatchMode ? { backgroundColor: 'rgba(0, 255, 136, 0.2)', borderColor: '#00ff88', color: '#00ff88' } : { borderColor: '#00ff88', color: '#00ff88' }}
+                                    >
+                                        <Shield size={18} /> <span>パッチ適用</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP</span>
+                                    </button>
+                                    <button onClick={() => handleAction('FIREWALL', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                        <Shield size={18} /> <span>ファイアウォール</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP</span>
+                                    </button>
+                                </>
+                            )}
+
+                            {myRole === 'DBエンジニア' && (
+                                <>
+                                    <button onClick={() => handleAction('MASKING', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
+                                        <Database size={18} /> <span>マスキング</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP {'->'} 次LEAK-5%</span>
+                                    </button>
+                                    <button onClick={() => handleAction('HONEY_POT', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                        <Database size={18} /> <span>ハニーポット</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP</span>
+                                    </button>
+                                </>
+                            )}
+
+                            {myRole === 'システムオペレーター' && (
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            setIsTransferMode(!isTransferMode);
+                                        }}
+                                        className="btn-action btn-special"
+                                        disabled={phase === 'resolve' || ap < 1 || transferUsedThisTurn}
+                                        style={isTransferMode ? { backgroundColor: 'rgba(136, 136, 255, 0.2)', borderColor: '#8888ff', color: '#8888ff' } : { borderColor: '#8888ff', color: '#8888ff' }}
+                                    >
+                                        <RotateCcw size={18} /> <span>リソース・デプロイメント</span><span className="ap-cost" style={{ color: '#8888ff' }}>1AP</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleAction('RESTORE', 2)}
+                                        className="btn-action btn-special"
+                                        disabled={phase === 'resolve' || ap < 2}
+                                        style={{ borderColor: '#ff4444', color: '#ff4444' }}
+                                    >
+                                        <Zap size={18} /> <span>リストア</span><span className="ap-cost" style={{ color: '#ff4444' }}>2AP {'->'} HP0時復旧</span>
+                                    </button>
+                                </>
+                            )}
+
+                            {myRole === 'インフラリーダー' && (
+                                <>
+                                    <button onClick={() => handleAction('SKILL_COPY', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
+                                        <Cpu size={18} /> <span>レプリケーション</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP</span>
+                                    </button>
+                                    <button onClick={() => handleAction('SPEC_UP', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                        <Zap size={18} /> <span>スペックアップ</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} MaxHP 120</span>
+                                    </button>
+                                </>
+                            )}
+
+                            {myRole === 'DevOps' && (
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            setIsPipelineMode(!isPipelineMode);
+                                        }}
+                                        className="btn-action btn-special"
+                                        disabled={phase === 'resolve' || ap < 1}
+                                        style={isPipelineMode ? { backgroundColor: 'rgba(0, 255, 255, 0.2)', borderColor: '#00ffff', color: '#00ffff' } : { borderColor: '#00ffff', color: '#00ffff' }}
+                                    >
+                                        <Cpu size={18} /> <span>CI/CDパイプライン</span><span className="ap-cost" style={{ color: '#00ffff' }}>1AP</span>
+                                    </button>
+                                    <button onClick={() => handleAction('DEPLOY_BOT', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                        <Cpu size={18} /> <span>解析BOT配備</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP</span>
+                                    </button>
+                                </>
+                            )}
+
+                            {/* コピーしたスキル（レプリケーション）の起動ボタン */}
+                            {copiedSkill && (
+                                <button
+                                    onClick={() => {
+                                        const needsTarget = ['TRACE_LOG', 'PATCH', 'TRANSFER', 'PIPELINE', 'IP_BLOCK'].includes(copiedSkill);
+                                        if (needsTarget) {
+                                            setIsCopiedSkillMode(!isCopiedSkillMode);
+                                        } else {
+                                            handleAction(copiedSkill, 1);
+                                        }
+                                    }}
+                                    className="btn-action btn-special"
+                                    disabled={phase === 'resolve' || ap < 1}
+                                    style={isCopiedSkillMode
+                                        ? { backgroundColor: 'rgba(188, 19, 254, 0.2)', borderColor: '#bc13fe', color: '#bc13fe' }
+                                        : { borderColor: '#bc13fe', color: '#bc13fe' }}
+                                >
+                                    <Cpu size={18} /> <span>★ {copiedSkillLabel}</span><span className="ap-cost" style={{ color: '#bc13fe' }}>1AP (コピー)</span>
+                                </button>
+                            )}
 
                             <button
                                 onContextMenu={(e) => { e.preventDefault(); setIsHacker(!isHacker); }}
