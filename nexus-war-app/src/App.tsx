@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import './App.css';
-import { Terminal, Shield, AlertTriangle, Zap, Cpu, Eye, Skull, Lock, X, Database, Search, RotateCcw, Trophy, User } from 'lucide-react';
+import { Terminal, Shield, AlertTriangle, Zap, Cpu, Eye, Skull, Lock, X, Database, Search, RotateCcw, Trophy, User, LogOut } from 'lucide-react';
 import io from 'socket.io-client';
 
 // ソケット接続 (開発環境用URL)
@@ -42,6 +42,7 @@ function App() {
     const [gameResult, setGameResult] = useState<GameResult>('playing');
     const [nextTurnDebuff, setNextTurnDebuff] = useState(0); // 次ターンのデバフ一時保存
     const [chargedAp, setChargedAp] = useState(0); // チャージAP（ハッカー/殺人犯専用）
+    const [turnDuration, setTurnDuration] = useState(1 * 60); // デフォルト1分
 
     // --- UI状態 (ローカル) ---
     const [isJoined, setIsJoined] = useState(false);
@@ -57,6 +58,7 @@ function App() {
     const [isDdosMode, setIsDdosMode] = useState(false); // DDOS target selection mode
     const [isFalseFlagMode, setIsFalseFlagMode] = useState(false); // False flag targeting mode
     const [isLockoutMode, setIsLockoutMode] = useState(false); // Lockout targeting mode
+    const [sessionToken, setSessionToken] = useState<string | null>(localStorage.getItem('nexus_session_token'));
 
     // 新スキル用モード
     const [isPipelineMode, setIsPipelineMode] = useState(false);
@@ -105,6 +107,7 @@ function App() {
             setMaxHp(newState.maxHp || 100);
             setDataLeak(newState.leak);
             setEvidenceAnalysis(newState.evidenceAnalysisProgress || 0);
+            setTurnDuration(newState.turnDuration || 60);
             setTimeLeft(newState.timeLeft);
             setPhase(newState.phase);
             setPlayers(newState.players);
@@ -366,15 +369,62 @@ function App() {
             addLog('>>> RESOLVE PHASE. PROCESSING ALL ACTIONS... <<<', 'system');
         }
         */
-    }, [timeLeft, addLog]);
+    }, [timeLeft, addLog, turnDuration]);
+
+    // --- セッション復帰 (自動入室) ---
+    useEffect(() => {
+        const savedName = localStorage.getItem('nexus_player_name');
+        const savedToken = localStorage.getItem('nexus_session_token');
+        if (savedName && savedToken) {
+            console.log('Attempting session recovery...', savedName);
+            socket.emit('join_game', { name: savedName, role: 'reconnect', token: savedToken });
+        }
+    }, []);
+
+    // --- 入室結果のハンドリング ---
+    useEffect(() => {
+        const handleJoinSuccess = (data: { name: string, token: string }) => {
+            setIsJoined(true);
+            setMyPlayerName(data.name);
+            setSessionToken(data.token);
+            localStorage.setItem('nexus_player_name', data.name);
+            localStorage.setItem('nexus_session_token', data.token);
+            addLog(`SESSION VERIFIED: ${data.name}. ACCESS GRANTED.`, 'system');
+        };
+
+        const handleError = (msg: string) => {
+            addLog(`SECURITY ALERT: ${msg}`, 'critical');
+            if (msg.includes('認証エラー')) {
+                localStorage.removeItem('nexus_player_name');
+                localStorage.removeItem('nexus_session_token');
+                setSessionToken(null);
+            }
+        };
+
+        socket.on('join_success', handleJoinSuccess);
+        socket.on('error', handleError);
+
+        return () => {
+            socket.off('join_success', handleJoinSuccess);
+            socket.off('error', handleError);
+        };
+    }, [addLog]);
 
     // --- ロビー画面 ---
     const handleJoin = (name: string) => {
-        socket.emit('join_game', { name, role: 'TBD' });
-        setIsJoined(true);
+        const token = localStorage.getItem('nexus_session_token') || undefined;
+        socket.emit('join_game', { name, role: 'TBD', token });
         setMyPlayerName(name);
-        setMyRole('待機中...');
-        addLog(`IDENTITY VERIFIED: ${name}`, 'system');
+    };
+
+    const handleLeave = () => {
+        socket.emit('leave_game');
+        localStorage.removeItem('nexus_player_name');
+        localStorage.removeItem('nexus_session_token');
+        setIsJoined(false);
+        setMyPlayerName('');
+        setSessionToken(null);
+        addLog('LOGOUT: SECURITY CLEARANCE REVOKED.', 'system');
     };
 
     if (!isJoined) {
@@ -403,18 +453,33 @@ function App() {
                     </h2>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {PLAYERS.map(p => (
-                            <button
-                                key={p.id}
-                                onClick={() => handleJoin(p.name)}
-                                className="group relative border border-green-800 p-4 hover:border-green-400 hover:bg-green-500/10 text-left transition-all duration-300 overflow-hidden"
-                            >
-                                <div className="absolute top-0 left-0 w-1 h-full bg-green-800 group-hover:bg-green-400 transition-colors"></div>
-                                <div className="font-bold text-lg text-green-500 group-hover:text-green-300 mb-1 flex items-center gap-2 pl-2">
-                                    {p.name}
-                                </div>
-                            </button>
-                        ))}
+                        {PLAYERS.map(p => {
+                            const isTaken = players.some(pl => pl.name === p.name);
+                            const isMe = myPlayerName === p.name && !!sessionToken;
+
+                            return (
+                                <button
+                                    key={p.id}
+                                    onClick={() => handleJoin(p.name)}
+                                    disabled={isTaken && !isMe}
+                                    className={`group relative border p-4 text-left transition-all duration-300 overflow-hidden ${isTaken && !isMe
+                                        ? 'border-red-900 bg-red-900/10 cursor-not-allowed opacity-50'
+                                        : isMe
+                                            ? 'border-blue-500 bg-blue-500/10 hover:border-blue-300'
+                                            : 'border-green-800 hover:border-green-400 hover:bg-green-500/10'
+                                        }`}
+                                >
+                                    <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${isTaken && !isMe ? 'bg-red-900' : isMe ? 'bg-blue-500' : 'bg-green-800 group-hover:bg-green-400'
+                                        }`}></div>
+                                    <div className={`font-bold text-lg mb-1 flex items-center justify-between gap-2 pl-2 ${isTaken && !isMe ? 'text-red-700' : isMe ? 'text-blue-400' : 'text-green-500 group-hover:text-green-300'
+                                        }`}>
+                                        <span>{p.name}</span>
+                                        {isTaken && !isMe && <span className="text-[10px] bg-red-900/30 px-2 py-0.5 rounded border border-red-900/50">IN USE</span>}
+                                        {isMe && <span className="text-[10px] bg-blue-900/30 px-2 py-0.5 rounded border border-blue-900/50">RECONNECT</span>}
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
 
                     <div className="mt-8 text-center text-xs text-green-900 border-t border-green-900/50 pt-4">
@@ -437,6 +502,32 @@ function App() {
                             GM観戦モード
                         </button>
                     </div>
+
+                    {/* ターン時間設定 (ロビー) */}
+                    {!players.some(p => p.id === socket.id) && (
+                        <div className="mt-8 pt-6 border-t border-green-900/50">
+                            <h3 className="text-sm text-green-400 mb-4 flex items-center justify-center gap-2">
+                                <Zap size={14} /> システム設定（ホスト）
+                            </h3>
+                            <div className="flex flex-col items-center gap-3">
+                                <label className="text-xs text-green-700">1ターンの長さ: {turnDuration / 60} 分</label>
+                                <input
+                                    type="range"
+                                    min="60"
+                                    max="600"
+                                    step="60"
+                                    value={turnDuration}
+                                    onChange={(e) => socket.emit('update_settings', { turnDuration: parseInt(e.target.value) })}
+                                    className="w-64 accent-green-500 bg-green-900/30 h-1 rounded-lg appearance-none cursor-pointer"
+                                />
+                                <div className="flex justify-between w-64 text-[10px] text-green-900 mt-1">
+                                    <span>1 MIN</span>
+                                    <span>5 MIN</span>
+                                    <span>10 MIN</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Background Grid Effect */}
@@ -580,6 +671,9 @@ function App() {
                 <div className="stat-item phase-tag">
                     <span>{getPhaseLabel()}</span>
                 </div>
+                <button onClick={handleLeave} className="stat-item hover:text-red-500 transition-colors ml-auto flex items-center gap-1">
+                    <LogOut size={14} /> <span>退室</span>
+                </button>
             </header>
 
             {/* --- HP & Leak & Analysis Bars --- */}
