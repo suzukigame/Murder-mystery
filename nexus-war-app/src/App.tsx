@@ -672,7 +672,11 @@ function App() {
                         {isCopiedSkillMode && <span className="ml-2 text-purple-400 animate-pulse">[{copiedSkillLabel}: 対象を選択]</span>}
                     </div>
                     <div className="player-grid">
-                        {players.map(p => (
+                        {[...players].sort((a, b) => {
+                            const indexA = PLAYERS.findIndex(p => p.name === a.name);
+                            const indexB = PLAYERS.findIndex(p => p.name === b.name);
+                            return indexA - indexB;
+                        }).map(p => (
                             <div key={p.id} className={`player-card ${p.isIsolated ? 'isolated' : ''}`}>
                                 <div className="p-info">
                                     <div className="p-name">{p.name}</div>
