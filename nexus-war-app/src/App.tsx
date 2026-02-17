@@ -78,6 +78,7 @@ function App() {
     const [hasSubmittedFinalVote, setHasSubmittedFinalVote] = useState(false);
     const [finalVotingResult, setFinalVotingResult] = useState<string>('none');
     const [finalVotedCount, setFinalVotedCount] = useState(0);
+    const [revealedMurdererName, setRevealedMurdererName] = useState<string | null>(null);
     // GM観戦モード用
     const [isSpectator, setIsSpectator] = useState(false);
     const [gmPlayerInfo, setGmPlayerInfo] = useState<any[]>([]);
@@ -107,6 +108,7 @@ function App() {
             setTimeLeft(newState.timeLeft);
             setPhase(newState.phase);
             setPlayers(newState.players);
+            setRevealedMurdererName(newState.revealedMurdererName || null);
 
             // 自分の状態を確認
             const me = newState.players.find((p: any) => p.id === socket.id);
@@ -598,8 +600,24 @@ function App() {
                 </div>
                 <div className="bar-container">
                     <div className="bar-label"><Search size={12} /> 証拠解析</div>
-                    <div className="bar-track">
+                    <div className="bar-track" style={{ position: 'relative', overflow: 'visible' }}>
                         <div className="bar-fill" style={{ width: `${evidenceAnalysis}%`, backgroundColor: '#00ffff', boxShadow: '0 0 10px #00ffff' }} />
+                        {revealedMurdererName && (
+                            <div className="absolute right-0 flex items-center pr-1" style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', right: 0, zIndex: 10 }}>
+                                <span style={{
+                                    color: '#fff',
+                                    background: '#ff0044',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.8rem',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    boxShadow: '0 0 5px rgba(0,0,0,0.5)',
+                                    whiteSpace: 'nowrap'
+                                }}>
+                                    犯人特定: {revealedMurdererName}
+                                </span>
+                            </div>
+                        )}
                     </div>
                     <span className="bar-value">{evidenceAnalysis}%</span>
                 </div>
