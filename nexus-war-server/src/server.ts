@@ -58,6 +58,7 @@ interface Player {
     copiedSkill: string | null;    // インフラリーダーがコピーしたスキル
     copiedSkillLabel: string | null; // UI表示用のスキル名
     sessionToken: string;         // 再接続認証用トークン
+    deployBotUsedThisTurn: boolean; // ターン内のBOT配備制限フラグ
 }
 
 interface GameState {
@@ -239,18 +240,14 @@ setInterval(() => {
     if (gameState.timeLeft <= 0) {
         // DevOps Botの処理 (ターン終了時)
         if (gameState.devOpsBots > 0) {
-            // PIPELINEボーナス判定: CONNECTした両者が共に証拠解析を実行したか
+            // PIPELINEボーナス判定: DevOpsがCONNECTした対象が証拠解析を実行したか
             let pipelineBonus = 0;
-            const pipelinePairs = gameState.players.filter(p => p.pipelineActive && p.pipelinePartnerId);
-            if (pipelinePairs.length >= 2) {
-                // 接続ペアが存在する場合、両方が解析を実行したかチェック
-                const devOps = pipelinePairs.find(p => p.pipelinePartnerId !== null);
-                if (devOps) {
-                    const partner = gameState.players.find(p => p.id === devOps.pipelinePartnerId);
-                    if (partner && devOps.analyzedThisTurn && partner.analyzedThisTurn) {
-                        pipelineBonus = 2;
-                        addLog(`CI/CDパイプラインボーナス発動: ${devOps.name}と${partner.name}の協力解析によりBOT効率が向上しました。(BOT1台あたり +${pipelineBonus}%)`, 'info');
-                    }
+            const devOps = gameState.players.find(p => p.role === 'DevOps' && p.pipelineActive && p.pipelinePartnerId);
+            if (devOps) {
+                const target = gameState.players.find(p => p.id === devOps.pipelinePartnerId);
+                if (target && target.analyzedThisTurn) {
+                    pipelineBonus = 2;
+                    addLog(`CI/CDパイプラインボーナス発動: 対象 ${target.name} の解析完了によりBOT効率が向上しました。(BOT1台あたり +${pipelineBonus}%)`, 'info');
                 }
             }
             const botProgressPerUnit = 3 + pipelineBonus;
@@ -358,6 +355,7 @@ setInterval(() => {
                 p.malwareUsedThisTurn = 0;
                 p.copiedSkill = null;
                 p.copiedSkillLabel = null;
+                p.deployBotUsedThisTurn = false;
 
                 // AP処理: チャージ計算 → デバフ適用 → 残りを繰越
                 if (p.isHacker || p.isMurderer) {
@@ -583,7 +581,8 @@ io.on('connection', (socket) => {
                 malwareUsedThisTurn: 0,
                 copiedSkill: null,
                 copiedSkillLabel: null,
-                sessionToken: newToken
+                sessionToken: newToken,
+                deployBotUsedThisTurn: false
             });
             addLog(`新規接続: ${data.name} 確立。`, 'system');
 
@@ -912,9 +911,8 @@ io.on('connection', (socket) => {
             if (target) {
                 player.pipelineActive = true;
                 player.pipelinePartnerId = target.id;
-                target.pipelineActive = true;
-                target.pipelinePartnerId = player.id;
-                addLog(`CI/CDパイプライン構築: ${player.name} と ${target.name} を接続しました。両者が証拠解析を実行するとBOT効率UP！`, 'info');
+                // 一方通行（DevOps -> Target）の関係にする
+                addLog(`CI/CDパイプライン構築: ${player.name} が ${target.name} を接続しました。対象が証拠解析を実行するとBOT効率UP！`, 'info');
             }
         }
 
@@ -945,7 +943,12 @@ io.on('connection', (socket) => {
             addLog(`スペックアップ: サーバーリソース増強。HP上限が120に拡張されました。(2ターン持続)`, 'info');
         }
         else if (data.type === 'DEPLOY_BOT') { // DevOps 2AP
+            if (player.deployBotUsedThisTurn) {
+                socket.emit('error', 'このスキルは1ターンに1回までしか使用できません。');
+                return;
+            }
             gameState.devOpsBots = Math.min(3, gameState.devOpsBots + 1);
+            player.deployBotUsedThisTurn = true;
             addLog(`解析ボット配備: 現在稼働数 ${gameState.devOpsBots}台。`, 'info');
         }
 
