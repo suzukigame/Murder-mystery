@@ -66,6 +66,7 @@ function App() {
     const [transferUsedThisTurn, setTransferUsedThisTurn] = useState(false);
     const [isPatchMode, setIsPatchMode] = useState(false);
     const [isIpBlockMode, setIsIpBlockMode] = useState(false);
+    const [deployBotUsedThisTurn, setDeployBotUsedThisTurn] = useState(false);
 
     // コピーしたスキル用
     const [copiedSkill, setCopiedSkill] = useState<string | null>(null);
@@ -119,6 +120,7 @@ function App() {
                 setIsIsolated(me.isIsolated);
                 setIsIpBlocked(me.isIpBlocked || false); // サーバーからの状態を反映
                 setChargedAp(me.chargedAp || 0); // サーバーのプレイヤーデータからチャージAPを取得
+                setDeployBotUsedThisTurn(me.deployBotUsedThisTurn || false);
                 if (me.role && me.role !== 'TBD') setMyRole(me.role);
 
                 // コピーしたスキルがあればステートに反映
@@ -791,7 +793,7 @@ function App() {
                                 </div>
                                 {isJoined && p.id !== socket.id && (
                                     <>
-                                        {!isTraceMode && !isDdosMode && !isFalseFlagMode && !isLockoutMode && !isPipelineMode && !isTransferMode && !isPatchMode && !isIpBlockMode && (
+                                        {!isTraceMode && !isDdosMode && !isFalseFlagMode && !isLockoutMode && !isPipelineMode && !isTransferMode && !isPatchMode && !isIpBlockMode && p.id !== socket.id && (
                                             <button onClick={() => handleVote(p.id)} className="btn-vote">投票</button>
                                         )}
                                         {isTraceMode && myRole === 'ネットワーク管理者' && (
@@ -1137,7 +1139,7 @@ function App() {
                                     >
                                         <Cpu size={18} /> <span>CI/CDパイプライン</span><span className="ap-cost" style={{ color: '#00ffff' }}>1AP</span>
                                     </button>
-                                    <button onClick={() => handleAction('DEPLOY_BOT', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                    <button onClick={() => handleAction('DEPLOY_BOT', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2 || deployBotUsedThisTurn} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
                                         <Cpu size={18} /> <span>解析BOT配備</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP</span>
                                     </button>
                                 </>
