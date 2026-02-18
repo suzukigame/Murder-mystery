@@ -46,7 +46,7 @@ function App() {
 
     // --- UI状態 (ローカル) ---
     const [isJoined, setIsJoined] = useState(false);
-    const [myPlayerName, setMyPlayerName] = useState('');
+    const [myPlayerName, setMyPlayerName] = useState(sessionStorage.getItem('nexus_player_name') || '');
     const [myRole, setMyRole] = useState('');
     const [mySecret, setMySecret] = useState('');
     const [isHacker, setIsHacker] = useState(false);
@@ -58,7 +58,7 @@ function App() {
     const [isDdosMode, setIsDdosMode] = useState(false); // DDOS target selection mode
     const [isFalseFlagMode, setIsFalseFlagMode] = useState(false); // False flag targeting mode
     const [isLockoutMode, setIsLockoutMode] = useState(false); // Lockout targeting mode
-    const [sessionToken, setSessionToken] = useState<string | null>(localStorage.getItem('nexus_session_token'));
+    const [sessionToken, setSessionToken] = useState<string | null>(sessionStorage.getItem('nexus_session_token'));
 
     // 新スキル用モード
     const [isPipelineMode, setIsPipelineMode] = useState(false);
@@ -373,8 +373,8 @@ function App() {
 
     // --- セッション復帰 (自動入室) ---
     useEffect(() => {
-        const savedName = localStorage.getItem('nexus_player_name');
-        const savedToken = localStorage.getItem('nexus_session_token');
+        const savedName = sessionStorage.getItem('nexus_player_name');
+        const savedToken = sessionStorage.getItem('nexus_session_token');
         if (savedName && savedToken) {
             console.log('Attempting session recovery...', savedName);
             socket.emit('join_game', { name: savedName, role: 'reconnect', token: savedToken });
@@ -387,16 +387,16 @@ function App() {
             setIsJoined(true);
             setMyPlayerName(data.name);
             setSessionToken(data.token);
-            localStorage.setItem('nexus_player_name', data.name);
-            localStorage.setItem('nexus_session_token', data.token);
+            sessionStorage.setItem('nexus_player_name', data.name);
+            sessionStorage.setItem('nexus_session_token', data.token);
             addLog(`SESSION VERIFIED: ${data.name}. ACCESS GRANTED.`, 'system');
         };
 
         const handleError = (msg: string) => {
             addLog(`SECURITY ALERT: ${msg}`, 'critical');
             if (msg.includes('認証エラー')) {
-                localStorage.removeItem('nexus_player_name');
-                localStorage.removeItem('nexus_session_token');
+                sessionStorage.removeItem('nexus_player_name');
+                sessionStorage.removeItem('nexus_session_token');
                 setSessionToken(null);
             }
         };
@@ -412,15 +412,15 @@ function App() {
 
     // --- ロビー画面 ---
     const handleJoin = (name: string) => {
-        const token = localStorage.getItem('nexus_session_token') || undefined;
+        const token = sessionStorage.getItem('nexus_session_token') || undefined;
         socket.emit('join_game', { name, role: 'TBD', token });
         setMyPlayerName(name);
     };
 
     const handleLeave = () => {
         socket.emit('leave_game');
-        localStorage.removeItem('nexus_player_name');
-        localStorage.removeItem('nexus_session_token');
+        sessionStorage.removeItem('nexus_player_name');
+        sessionStorage.removeItem('nexus_session_token');
         setIsJoined(false);
         setMyPlayerName('');
         setSessionToken(null);
@@ -465,11 +465,11 @@ function App() {
                                     className={`group relative border p-4 text-left transition-all duration-300 overflow-hidden ${isTaken && !isMe
                                         ? 'border-red-900 bg-red-900/10 cursor-not-allowed opacity-50'
                                         : isMe
-                                            ? 'border-blue-500 bg-blue-500/10 hover:border-blue-300'
+                                            ? 'border-blue-500 bg-blue-500/20 hover:border-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.5)]'
                                             : 'border-green-800 hover:border-green-400 hover:bg-green-500/10'
                                         }`}
                                 >
-                                    <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${isTaken && !isMe ? 'bg-red-900' : isMe ? 'bg-blue-500' : 'bg-green-800 group-hover:bg-green-400'
+                                    <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${isTaken && !isMe ? 'bg-red-900' : isMe ? 'bg-blue-400' : 'bg-green-800 group-hover:bg-green-400'
                                         }`}></div>
                                     <div className={`font-bold text-lg mb-1 flex items-center justify-between gap-2 pl-2 ${isTaken && !isMe ? 'text-red-700' : isMe ? 'text-blue-400' : 'text-green-500 group-hover:text-green-300'
                                         }`}>

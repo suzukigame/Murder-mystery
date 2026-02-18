@@ -89,5 +89,27 @@ murder-mystery/
 
 ブラウザで `http://localhost:5173` にアクセスしてください。
 
+## 6. トラブルシューティング
+
+### EADDRINUSE: address already in use 0.0.0.0:3000
+Windows環境でサーバーが異常終了した場合、ポート3000が残留プロセスによって占有されることがあります。その場合は以下の手順でプロセスを強制的に終了させてください。
+
+1. **管理権限のターミナル（PowerShell等）を開く**
+2. **ポート3000を使用しているプロセスの特定**
+   ```powershell
+   netstat -ano | findstr :3000
+   ```
+   （一番右側の数値が PID です）
+3. **プロセスの終了**
+   ```powershell
+   taskkill /F /PID <特定したPID>
+   ```
+
+### 開発用クリーンアップ
+全ての Node プロセスを一括で終了させたい場合：
+```powershell
+taskkill /F /IM node.exe
+```
+
 ---
 Created by **Team SKY-MAGYCC**  for SKY-MAGYCC JUDAS project.

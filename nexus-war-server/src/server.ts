@@ -550,14 +550,8 @@ io.on('connection', (socket) => {
                 return;
             }
 
-            // ゲーム開始前なら「既に使用中」として拒否 (排他制御)
-            if (!gameState.isGameStarted) {
-                socket.emit('error', 'このキャラクターは既に他のプレイヤーが選択しています。');
-                return;
-            }
-
-            // ゲーム開始後かつトークン不一致なら拒否
-            socket.emit('error', '認証エラー: 以前のセッション情報が一致しません。');
+            // トークン不一致の場合のみ、使用中として拒否
+            socket.emit('error', 'このキャラクターは既に他のプレイヤーが選択しています。以前のセッション情報の復元に失敗しました。');
             return;
         }
 
