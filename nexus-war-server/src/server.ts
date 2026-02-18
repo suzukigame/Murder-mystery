@@ -640,6 +640,27 @@ io.on('connection', (socket) => {
             const player = gameState.players[index];
             addLog(`退室: ${player.name} がロビーに戻りました。`, 'system');
             gameState.players.splice(index, 1);
+
+            // 全員退室したらゲーム状態をリセット (再設定可能にするため)
+            if (gameState.players.length === 0) {
+                gameState.isGameStarted = false;
+                gameState.turn = 1;
+                gameState.phase = 'discussion';
+                gameState.timeLeft = gameState.turnDuration;
+                gameState.hp = 100;
+                gameState.maxHp = 100;
+                gameState.leak = 0;
+                gameState.evidenceAnalysisProgress = 0;
+                gameState.logs = [];
+                gameState.logs.push({
+                    id: Date.now().toString(),
+                    time: new Date().toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour12: false }),
+                    level: 'system',
+                    content: '全プレイヤーが退室しました。ゲーム状態をリセットし、設定変更を受け付けます。'
+                });
+                spectatorIds.clear(); // 観戦者もクリア
+            }
+
             io.emit('state_update', gameState);
         }
     });

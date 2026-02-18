@@ -379,12 +379,54 @@
 }
 
 /* === Footer === */
-.footer {
-    text-align: center;
-    font-size: 0.75rem;
-    padding: 4px;
-    color: var(--text-dim);
+/* === Footer Timer === */
+.timer-footer {
+    position: relative;
+    height: 24px;
+    background: #000;
     border-top: 1px solid var(--border-color);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timer-progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: rgba(0, 255, 136, 0.2);
+    border-right: 2px solid var(--accent-cyan);
+    transition: width 1s linear, background-color 0.5s;
+    z-index: 1;
+}
+
+.timer-progress-bar.urgent {
+    background: rgba(255, 0, 68, 0.3);
+    border-color: var(--accent-red);
+    animation: pulse-bg 1s infinite alternate;
+}
+
+.timer-text {
+    position: relative;
+    z-index: 2;
+    font-size: 0.75rem;
+    font-weight: bold;
+    font-family: var(--font-mono);
+    color: #fff;
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+    display: flex;
+    gap: 12px;
+}
+
+@keyframes pulse-bg {
+    from {
+        opacity: 0.6;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 /* === Modal Overlay === */

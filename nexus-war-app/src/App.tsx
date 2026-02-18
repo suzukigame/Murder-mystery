@@ -559,9 +559,6 @@ function App() {
                     <div className="stat-item phase-tag">
                         <span>{getPhaseLabel()}</span>
                     </div>
-                    <div className="stat-item">
-                        TURN {turn}/8 | {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
-                    </div>
                 </header>
 
                 <div style={{ display: 'flex', gap: '1rem', padding: '1rem', height: 'calc(100vh - 50px)' }}>
@@ -645,6 +642,21 @@ function App() {
                         </div>
                     </div>
                 </div>
+
+                {/* --- Footer Timer (GM) --- */}
+                <footer className="timer-footer">
+                    <div
+                        className={`timer-progress-bar ${timeLeft / turnDuration <= 0.2 ? 'urgent' : ''}`}
+                        style={{ width: `${(timeLeft / turnDuration) * 100}%` }}
+                    />
+                    <div className="timer-text">
+                        <span>TURN {turn}/8</span>
+                        <span>|</span>
+                        <span>{formatTime(timeLeft)}</span>
+                        <span>|</span>
+                        <span>{getPhaseLabel()}</span>
+                    </div>
+                </footer>
             </div>
         );
     }
@@ -1362,10 +1374,18 @@ function App() {
                 </section>
             </main>
 
-            {/* --- Footer --- */}
-            <footer className="footer">
-                <div className="turn-info">
-                    TURN {turn} / 8 | {formatTime(timeLeft)} | {getPhaseLabel()}
+            {/* --- Footer Timer (Player) --- */}
+            <footer className="timer-footer">
+                <div
+                    className={`timer-progress-bar ${timeLeft / turnDuration <= 0.2 ? 'urgent' : ''}`}
+                    style={{ width: `${(timeLeft / turnDuration) * 100}%` }}
+                />
+                <div className="timer-text">
+                    <span>TURN {turn}/8</span>
+                    <span>|</span>
+                    <span>{formatTime(timeLeft)}</span>
+                    <span>|</span>
+                    <span>{getPhaseLabel()}</span>
                 </div>
                 <button
                     onClick={forceStart}
