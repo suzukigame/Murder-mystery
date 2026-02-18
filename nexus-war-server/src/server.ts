@@ -273,13 +273,12 @@ setInterval(() => {
         // 最多得票者リストを作成
         const candidates = gameState.players.filter(p => p.votes === maxVotes && maxVotes > 0);
 
-        if (candidates.length === 1) {
-            const victim = candidates[0];
-            victim.apDebuff += 3; // -3 AP（社員は行動不能、犯人側はチャージがあれば動ける）
-            victim.isIsolated = true; // UI表示用フラグ
-            addLog(`投票結果: ${victim.name} のネットワーク権限が制限されました (-3 AP)。`, 'warn');
-        } else if (candidates.length > 1) {
-            addLog(`投票結果: 票数が拮抗しています (${maxVotes}票)。処置は見送られました。`, 'info');
+        if (candidates.length > 0) {
+            candidates.forEach(victim => {
+                victim.apDebuff += 3; // -3 AP（社員は行動不能、犯人側はチャージがあれば動ける）
+                victim.isIsolated = true; // UI表示用フラグ
+                addLog(`投票結果: ${victim.name} のネットワーク権限が制限されました (-3 AP)。`, 'warn');
+            });
         }
 
         // AP不一致のログ出力
