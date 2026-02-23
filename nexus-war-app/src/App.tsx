@@ -95,7 +95,6 @@ function App() {
         const maxAp = 3 + chargedAp;
         setAp(Math.min(6, Math.max(0, maxAp - nextTurnDebuff)));
         setNextTurnDebuff(0); // 適用したらリセット
-        setTransferUsedThisTurn(false); // ターン変更時にTRANSFER使用済みフラグをリセット
     }, [turn, chargedAp]);
 
     // --- Socketイベント設定 ---
@@ -118,7 +117,6 @@ function App() {
                 setIsIsolated(me.isIsolated);
                 setIsIpBlocked(me.isIpBlocked || false); // サーバーからの状態を反映
                 setChargedAp(me.chargedAp || 0); // サーバーのプレイヤーデータからチャージAPを取得
-                setDeployBotUsedThisTurn(me.deployBotUsedThisTurn || false);
                 if (me.role && me.role !== 'TBD') setMyRole(me.role);
 
                 // コピーしたスキルがあればステートに反映
@@ -881,7 +879,6 @@ function App() {
                                                 onClick={() => {
                                                     handleAction('TRANSFER', 1, p.id);
                                                     setIsTransferMode(false);
-                                                    setTransferUsedThisTurn(true);
                                                 }}
                                                 className="btn-vote"
                                                 style={{ borderColor: '#8888ff', color: '#8888ff' }}
