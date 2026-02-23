@@ -353,6 +353,7 @@ setInterval(() => {
                 p.votes = 0;
                 p.lastTurnHackerAction = p.performedHackerAction; // 現在の行動を前回として保存
                 p.performedHackerAction = false; // フラグリセット
+                p.isIsolated = false; // 1ターン経過したので隔離状態をリセット
 
                 // 新スキル用リセット
                 p.transferUsedThisTurn = false;
@@ -756,6 +757,19 @@ io.on('connection', (socket) => {
         const player = gameState.players.find(p => p.id === socket.id);
         if (!player) return;
 
+        // 【修正】投票による隔離（行動不能）のチェック
+        if (player.isIsolated) {
+            socket.emit('error', 'アクセス権限が制限されています（行動不能状態）。');
+            return;
+        }
+
+        // 【追加】サーバー側での厳密なAPチェック
+        let ap = 3 - player.apDebuff + player.transferBonusNextTurn + player.chargedAp - player.apSpentThisTurn;
+        if (ap < data.cost) {
+            socket.emit('error', 'AP不足です。');
+            return;
+        }
+
         // アクション実行: AP消費を累積（チャージ計算用）
         player.apSpentThisTurn += data.cost;
 
@@ -948,12 +962,7 @@ io.on('connection', (socket) => {
             addLog(`スペックアップ: サーバーリソース増強。HP上限が120に拡張されました。(2ターン持続)`, 'info');
         }
         else if (data.type === 'DEPLOY_BOT') { // DevOps 2AP
-            // マーダー兼DevOpsの場合は無料 (コスト返却)
-            if (player.isMurderer && player.role === 'DevOps' && data.cost > 0) {
-                player.apSpentThisTurn -= data.cost;
-                gameState.totalActualAp -= data.cost;
-                gameState.totalPublicAp -= data.cost;
-            }
+            // 犯人+DevOps強化としての配置無料化は撤回（2AP固定）
             gameState.devOpsBots = Math.min(3, gameState.devOpsBots + 1);
             addLog(`解析ボット配備: 現在稼働数 ${gameState.devOpsBots}台。`, 'info', executorName);
         }
