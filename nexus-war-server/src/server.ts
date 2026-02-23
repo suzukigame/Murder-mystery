@@ -1095,19 +1095,10 @@ io.on('connection', (socket) => {
 
             // 無効化実行
             player.nullifyUsedThisTurn = true;
-            addLog(`>>> 異常なパケット干渉を検知。実行中の全アクションが強制終了されました。 <<<`, 'critical');
+            addLog(`>>> 異常なパケット干渉を検知。実行中の全アクションが強制終了されました。 <<<`, 'critical', player.name);
 
             // 全ての保留アクションを破棄
-            pendingActions.forEach(pa => {
-                clearTimeout(pa.timerId);
-                // コスト返却 (AP不一致を避けるため)
-                const actor = gameState.players.find(p => p.id === pa.playerId);
-                if (actor) {
-                    actor.apSpentThisTurn -= pa.cost;
-                    gameState.totalActualAp -= pa.cost;
-                    gameState.totalPublicAp -= pa.publicCost;
-                }
-            });
+            pendingActions.forEach(pa => clearTimeout(pa.timerId));
             pendingActions = [];
             gameState.hasPendingActions = false;
 
