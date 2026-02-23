@@ -1148,10 +1148,10 @@ function App() {
                                     <button
                                         onClick={() => handleAction('DEPLOY_BOT', ((isMurderer || isHacker) && myRole === 'DevOps') ? 0 : 2)}
                                         className="btn-action btn-special"
-                                        disabled={phase === 'resolve' || (!((isMurderer || isHacker) && myRole === 'DevOps') && ap < 2)}
+                                        disabled={phase === 'resolve' || (!((isMurderer || isHacker) && myRole === 'DevOps') && ap < 2) || (((isMurderer || isHacker) && myRole === 'DevOps') && (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0) >= 1)}
                                         style={{ borderColor: '#ffff00', color: '#ffff00' }}
                                     >
-                                        <Cpu size={18} /> <span>解析BOT配備</span><span className="ap-cost" style={{ color: '#ffff00' }}>{((isMurderer || isHacker) && myRole === 'DevOps') ? '0AP' : '2AP'}</span>
+                                        <Cpu size={18} /> <span>解析BOT配備</span><span className="ap-cost" style={{ color: '#ffff00' }}>{((isMurderer || isHacker) && myRole === 'DevOps') ? `0AP (残${1 - (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0)})` : '2AP'}</span>
                                     </button>
                                 </>
                             )}

@@ -58,6 +58,7 @@ interface Player {
     exfilUsedThisTurn: number;     // EXFIL使用回数
     copiedSkill: string | null;    // インフラリーダーがコピーしたスキル
     copiedSkillLabel: string | null; // UI表示用のスキル名
+    deployBotUsedThisTurn: number; // 【追加】解析BOT配置使用回数（犯人×DevOps用）
     sessionToken: string;         // 再接続認証用トークン
 }
 
@@ -359,6 +360,7 @@ setInterval(() => {
                 p.transferUsedThisTurn = false;
                 p.malwareUsedThisTurn = 0;
                 p.exfilUsedThisTurn = 0;
+                p.deployBotUsedThisTurn = 0; // 【リセット】
                 p.copiedSkill = null;
                 p.copiedSkillLabel = null;
 
@@ -587,6 +589,7 @@ io.on('connection', (socket) => {
                 exfilUsedThisTurn: 0,
                 copiedSkill: null,
                 copiedSkillLabel: null,
+                deployBotUsedThisTurn: 0,
                 sessionToken: newToken
             });
             addLog(`新規接続: ${data.name} 確立。`, 'system');
@@ -962,11 +965,19 @@ io.on('connection', (socket) => {
             addLog(`スペックアップ: サーバーリソース増強。HP上限が120に拡張されました。(2ターン持続)`, 'info');
         }
         else if (data.type === 'DEPLOY_BOT') { // DevOps 2AP
-            // 【再修正】犯人（マーダー/ハッカー）かつ DevOps の場合は無料 (コスト返却)
-            if ((player.isMurderer || player.isHacker) && player.role === 'DevOps' && data.cost > 0) {
-                player.apSpentThisTurn -= data.cost;
-                gameState.totalActualAp -= data.cost;
-                gameState.totalPublicAp -= 0; // 犯人アクションは公表コスト0
+            // 【再修正】犯人（マーダー/ハッカー）かつ DevOps の場合は無料 (コスト返却) + 1回/ターン制限
+            if ((player.isMurderer || player.isHacker) && player.role === 'DevOps') {
+                if (player.deployBotUsedThisTurn >= 1) {
+                    socket.emit('error', 'リミット到達: 犯人権限でのBOT配置は1ターンに1回までです。');
+                    player.apSpentThisTurn -= data.cost; // コスト返却
+                    return;
+                }
+                if (data.cost > 0) {
+                    player.apSpentThisTurn -= data.cost;
+                    gameState.totalActualAp -= data.cost;
+                    gameState.totalPublicAp -= 0; // 犯人アクションは公表コスト0
+                }
+                player.deployBotUsedThisTurn++;
             }
             gameState.devOpsBots = Math.min(3, gameState.devOpsBots + 1);
             addLog(`解析ボット配備: 現在稼働数 ${gameState.devOpsBots}台。`, 'info', executorName);
