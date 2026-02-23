@@ -1051,7 +1051,7 @@ function App() {
                                     <button
                                         onClick={() => handleAction('NULLIFY', 0)}
                                         className={`btn-action ${hasPendingActions ? 'btn-urgent pulse' : 'btn-analyze'}`}
-                                        disabled={phase !== 'action' || !hasPendingActions || nullifyUsedThisTurn}
+                                        disabled={!hasPendingActions || nullifyUsedThisTurn}
                                         style={hasPendingActions && !nullifyUsedThisTurn ? { backgroundColor: 'rgba(255, 0, 0, 0.2)', borderColor: '#ff0000', color: '#ff0000', fontWeight: 'bold' } : { borderColor: '#555', color: '#555' }}
                                     >
                                         <X size={18} /> <span>パケット無効化 (Nullify)</span>
