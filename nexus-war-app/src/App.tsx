@@ -314,6 +314,11 @@ function App() {
         socket.emit('vote', { targetId });
     };
 
+    // 投票取消
+    const handleCancelVote = () => {
+        socket.emit('cancel_vote');
+    };
+
     // 最終投票送信
     const handleFinalVoteSubmit = () => {
         if (!finalMurdererVote || !finalHackerVote) return;
@@ -792,7 +797,10 @@ function App() {
                                 {isJoined && p.id !== socket.id && (
                                     <>
                                         {!isTraceMode && !isDdosMode && !isFalseFlagMode && !isLockoutMode && !isPipelineMode && !isTransferMode && !isPatchMode && !isIpBlockMode && (
-                                            <button onClick={() => handleVote(p.id)} className="btn-vote">投票</button>
+                                            <>
+                                                <button onClick={() => handleVote(p.id)} className="btn-vote">投票</button>
+                                                <button onClick={() => handleCancelVote()} className="btn-vote" style={{ backgroundColor: 'rgba(255,68,68,0.15)', borderColor: '#ff4444', color: '#ff8888', marginLeft: '4px', fontSize: '0.7rem', padding: '2px 6px' }}>取消</button>
+                                            </>
                                         )}
                                         {isTraceMode && myRole === 'ネットワーク管理者' && (
                                             <button
@@ -1022,12 +1030,12 @@ function App() {
                                         <Lock size={18} /> <span>ロックアウト</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} 行動封鎖</span>
                                     </button>
                                     <button
-                                        onClick={() => handleAction('PHYSICAL_DESTROY', 2)}
+                                        onClick={() => handleAction('PHYSICAL_DESTROY', (players.find(p => p.id === socket.id)?.role === 'DevOps') ? 0 : 1)}
                                         className="btn-action btn-analyze"
-                                        disabled={phase === 'resolve' || ap < 2}
+                                        disabled={phase === 'resolve' || (!(players.find(p => p.id === socket.id)?.role === 'DevOps') && ap < 1)}
                                         style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                     >
-                                        <AlertTriangle size={18} /> <span>ノード・デストラクション</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} BOT破壊</span>
+                                        <AlertTriangle size={18} /> <span>ノード・デストラクション</span><span className="ap-cost" style={{ color: '#ffff00' }}>{(players.find(p => p.id === socket.id)?.role === 'DevOps') ? '0AP' : '1AP'} {'->'}BOT破壊</span>
                                     </button>
                                 </>
                             )}
@@ -1180,16 +1188,16 @@ function App() {
                             <button
                                 onClick={() => handleAction('INJECT_MALWARE', 2)}
                                 className="btn-action btn-hacker-action"
-                                disabled={phase === 'resolve' || ap < 2 || (players.find(p => p.id === socket.id)?.malwareUsedThisTurn || 0) >= 2}
+                                disabled={phase === 'resolve' || ap < 2 || (players.find(p => p.id === socket.id)?.malwareUsedThisTurn || 0) >= 1}
                             >
-                                <Skull size={18} /> <span>マルウェア</span><span className="ap-cost">2AP (残{2 - (players.find(p => p.id === socket.id)?.malwareUsedThisTurn || 0)})</span>
+                                <Skull size={18} /> <span>マルウェア</span><span className="ap-cost">2AP (残{1 - (players.find(p => p.id === socket.id)?.malwareUsedThisTurn || 0)})</span>
                             </button>
                             <button
                                 onClick={() => handleAction('EXFILTRATE', 1)}
                                 className="btn-action btn-hacker-action"
-                                disabled={phase === 'resolve' || ap < 1}
+                                disabled={phase === 'resolve' || ap < 1 || (players.find(p => p.id === socket.id)?.exfilUsedThisTurn || 0) >= 3}
                             >
-                                <Database size={18} /> <span>持ち出し</span><span className="ap-cost">1AP {'->'} 漏洩+15%</span>
+                                <Database size={18} /> <span>持ち出し</span><span className="ap-cost">1AP {'->'} 漏洩+15% (残{3 - (players.find(p => p.id === socket.id)?.exfilUsedThisTurn || 0)})</span>
                             </button>
                             <button
                                 onClick={() => handleAction('COVER_TRACKS', 1)}
