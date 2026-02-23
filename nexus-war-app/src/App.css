@@ -818,3 +818,48 @@
     50% { border-color: rgba(188, 19, 254, 0.8); box-shadow: 0 0 15px rgba(188, 19, 254, 0.2); }
     100% { border-color: rgba(188, 19, 254, 0.3); box-shadow: 0 0 5px rgba(188, 19, 254, 0.1); }
 }
+
+/* === Action Chanting & Nullify Visuals === */
+.btn-urgent {
+    animation: blink-red-bg 0.5s infinite alternate;
+}
+
+@keyframes blink-red-bg {
+    from {
+        background: rgba(255, 0, 0, 0.1);
+        box-shadow: 0 0 5px rgba(255, 0, 0, 0.3);
+    }
+    to {
+        background: rgba(255, 0, 0, 0.4);
+        box-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+    }
+}
+
+.pulse {
+    animation: pulse-button 1.5s infinite;
+}
+
+@keyframes pulse-button {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+.activity-alert {
+    background: rgba(255, 230, 0, 0.1);
+    border: 1px solid var(--accent-yellow);
+    color: var(--accent-yellow);
+    padding: 4px 10px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    animation: blink-yellow 1s infinite alternate;
+}
+
+@keyframes blink-yellow {
+    from { opacity: 0.6; }
+    to { opacity: 1; }
+}
