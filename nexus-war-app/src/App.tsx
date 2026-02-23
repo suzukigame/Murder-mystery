@@ -1106,10 +1106,10 @@ function App() {
                                             setIsTransferMode(!isTransferMode);
                                         }}
                                         className="btn-action btn-special"
-                                        disabled={phase === 'resolve' || ap < 1 || transferUsedThisTurn}
+                                        disabled={phase === 'resolve' || ap < 1 || (players.find(p => p.id === socket.id)?.transferUsedThisTurn || false)}
                                         style={isTransferMode ? { backgroundColor: 'rgba(136, 136, 255, 0.2)', borderColor: '#8888ff', color: '#8888ff' } : { borderColor: '#8888ff', color: '#8888ff' }}
                                     >
-                                        <RotateCcw size={18} /> <span>リソース・デプロイメント</span><span className="ap-cost" style={{ color: '#8888ff' }}>1AP</span>
+                                        <RotateCcw size={18} /> <span>リソース・デプロイメント</span><span className="ap-cost" style={{ color: '#8888ff' }}>1AP (残${(players.find(p => p.id === socket.id)?.transferUsedThisTurn || false) ? 0 : 1})</span>
                                     </button>
                                     <button
                                         onClick={() => handleAction('RESTORE', 2)}
@@ -1307,10 +1307,10 @@ function App() {
                                             setIsTransferMode(!isTransferMode);
                                         }}
                                         className="btn-action btn-special"
-                                        disabled={phase === 'resolve' || ap < 1 || transferUsedThisTurn}
+                                        disabled={phase === 'resolve' || ap < 1 || (players.find(p => p.id === socket.id)?.transferUsedThisTurn || false)}
                                         style={isTransferMode ? { backgroundColor: 'rgba(136, 136, 255, 0.2)', borderColor: '#8888ff', color: '#8888ff' } : { borderColor: '#8888ff', color: '#8888ff' }}
                                     >
-                                        <RotateCcw size={18} /> <span>リソース・デプロイメント</span><span className="ap-cost" style={{ color: '#8888ff' }}>1AP</span>
+                                        <RotateCcw size={18} /> <span>リソース・デプロイメント</span><span className="ap-cost" style={{ color: '#8888ff' }}>1AP (残${(players.find(p => p.id === socket.id)?.transferUsedThisTurn || false) ? 0 : 1})</span>
                                     </button>
                                     <button
                                         onClick={() => handleAction('RESTORE', 2)}
@@ -1346,8 +1346,13 @@ function App() {
                                     >
                                         <Cpu size={18} /> <span>CI/CDパイプライン</span><span className="ap-cost" style={{ color: '#00ffff' }}>1AP</span>
                                     </button>
-                                    <button onClick={() => handleAction('DEPLOY_BOT', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
-                                        <Cpu size={18} /> <span>解析BOT配備</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP</span>
+                                    <button
+                                        onClick={() => handleAction('DEPLOY_BOT', ((isMurderer || isHacker) && myRole === 'DevOps') ? 0 : 2)}
+                                        className="btn-action btn-special"
+                                        disabled={phase === 'resolve' || (!((isMurderer || isHacker) && myRole === 'DevOps') && ap < 2) || (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0) >= 1}
+                                        style={{ borderColor: '#ffff00', color: '#ffff00' }}
+                                    >
+                                        <Cpu size={18} /> <span>解析BOT配備</span><span className="ap-cost" style={{ color: '#ffff00' }}>{((isMurderer || isHacker) && myRole === 'DevOps') ? `0AP (残${1 - (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0)})` : `2AP (残${1 - (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0)})`}</span>
                                     </button>
                                 </>
                             )}
