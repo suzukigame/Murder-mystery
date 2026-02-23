@@ -83,6 +83,8 @@ function App() {
     // GM観戦モード用
     const [isSpectator, setIsSpectator] = useState(false);
     const [gmPlayerInfo, setGmPlayerInfo] = useState<any[]>([]);
+    const [hasPendingActions, setHasPendingActions] = useState(false);
+    const [nullifyUsedThisTurn, setNullifyUsedThisTurn] = useState(false);
     // GM用: アクター情報付きログ (logId -> actor名)
     const [gmActorMap, setGmActorMap] = useState<{ [logId: string]: string }>({});
 
@@ -109,6 +111,7 @@ function App() {
             setTimeLeft(newState.timeLeft);
             setPhase(newState.phase);
             setPlayers(newState.players);
+            setHasPendingActions(newState.hasPendingActions || false);
             setRevealedMurdererName(newState.revealedMurdererName || null);
 
             // 自分の状態を確認
@@ -118,6 +121,7 @@ function App() {
                 setIsIpBlocked(me.isIpBlocked || false); // サーバーからの状態を反映
                 setChargedAp(me.chargedAp || 0); // サーバーのプレイヤーデータからチャージAPを取得
                 if (me.role && me.role !== 'TBD') setMyRole(me.role);
+                setNullifyUsedThisTurn(me.nullifyUsedThisTurn || false);
 
                 // コピーしたスキルがあればステートに反映
                 if (me.copiedSkill) {
@@ -732,6 +736,14 @@ function App() {
                 </div>
             </div>
 
+            {/* 行動詠唱中の警告表示 */}
+            {hasPendingActions && (
+                <div className="activity-alert">
+                    <Zap size={16} className="pulse" />
+                    <span>不審なプロセスを検知中: システム負荷が上昇しています...</span>
+                </div>
+            )}
+
             {/* --- Personal Secret --- */}
             <div className="secret-intel-box">
                 <div className="secret-header"><Lock size={12} /> 機密情報 (あなたの秘密)</div>
@@ -1033,6 +1045,19 @@ function App() {
                                         style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                     >
                                         <AlertTriangle size={18} /> <span>ノード・デストラクション</span><span className="ap-cost" style={{ color: '#ffff00' }}>{((isMurderer || isHacker) && myRole === 'DevOps') ? '0AP' : '1AP'} {'->'}BOT破壊</span>
+                                    </button>
+
+                                    {/* 新機能: 無効化 (Nullify) */}
+                                    <button
+                                        onClick={() => handleAction('NULLIFY', 0)}
+                                        className={`btn-action ${hasPendingActions ? 'btn-urgent pulse' : 'btn-analyze'}`}
+                                        disabled={!hasPendingActions || nullifyUsedThisTurn}
+                                        style={hasPendingActions && !nullifyUsedThisTurn ? { backgroundColor: 'rgba(255, 0, 0, 0.2)', borderColor: '#ff0000', color: '#ff0000', fontWeight: 'bold' } : { borderColor: '#555', color: '#555' }}
+                                    >
+                                        <X size={18} /> <span>パケット無効化 (Nullify)</span>
+                                        <span className="ap-cost" style={{ color: '#ffff00' }}>
+                                            {nullifyUsedThisTurn ? '使用済' : (hasPendingActions ? '待機中アクション有' : '待機中なし')}
+                                        </span>
                                     </button>
                                 </>
                             )}
