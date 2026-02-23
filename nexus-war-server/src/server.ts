@@ -55,10 +55,11 @@ interface Player {
     transferUsedThisTurn: boolean; // リソース譲渡使用済みフラグ
     transferBonusNextTurn: number; // リソース譲渡による次ターンAPボーナス
     malwareUsedThisTurn: number;   // マルウェア使用回数
+    exfilUsedThisTurn: number;     // EXFIL使用回数
     copiedSkill: string | null;    // インフラリーダーがコピーしたスキル
     copiedSkillLabel: string | null; // UI表示用のスキル名
+    deployBotUsedThisTurn: number; // 【追加】解析BOT配置使用回数（犯人×DevOps用）
     sessionToken: string;         // 再接続認証用トークン
-    deployBotUsedThisTurn: boolean; // ターン内のBOT配備制限フラグ
 }
 
 interface GameState {
@@ -348,13 +349,15 @@ setInterval(() => {
                 p.votes = 0;
                 p.lastTurnHackerAction = p.performedHackerAction; // 現在の行動を前回として保存
                 p.performedHackerAction = false; // フラグリセット
+                p.isIsolated = false; // 1ターン経過したので隔離状態をリセット
 
                 // 新スキル用リセット
                 p.transferUsedThisTurn = false;
                 p.malwareUsedThisTurn = 0;
+                p.exfilUsedThisTurn = 0;
+                p.deployBotUsedThisTurn = 0; // 【リセット】
                 p.copiedSkill = null;
                 p.copiedSkillLabel = null;
-                p.deployBotUsedThisTurn = false;
 
                 // AP処理: チャージ計算 → デバフ適用 → 残りを繰越
                 if (p.isHacker || p.isMurderer) {
@@ -578,10 +581,11 @@ io.on('connection', (socket) => {
                 transferUsedThisTurn: false,
                 transferBonusNextTurn: 0,
                 malwareUsedThisTurn: 0,
+                exfilUsedThisTurn: 0,
                 copiedSkill: null,
                 copiedSkillLabel: null,
-                sessionToken: newToken,
-                deployBotUsedThisTurn: false
+                deployBotUsedThisTurn: 0,
+                sessionToken: newToken
             });
             addLog(`新規接続: ${data.name} 確立。`, 'system');
 
@@ -751,6 +755,19 @@ io.on('connection', (socket) => {
         const player = gameState.players.find(p => p.id === socket.id);
         if (!player) return;
 
+        // 【修正】投票による隔離（行動不能）のチェック
+        if (player.isIsolated) {
+            socket.emit('error', 'アクセス権限が制限されています（行動不能状態）。');
+            return;
+        }
+
+        // 【追加】サーバー側での厳密なAPチェック
+        let ap = 3 - player.apDebuff + player.transferBonusNextTurn + player.chargedAp - player.apSpentThisTurn;
+        if (ap < data.cost) {
+            socket.emit('error', 'AP不足です。');
+            return;
+        }
+
         // アクション実行: AP消費を累積（チャージ計算用）
         player.apSpentThisTurn += data.cost;
 
@@ -792,9 +809,9 @@ io.on('connection', (socket) => {
 
         // 基本アクション
         if (data.type === 'INJECT_MALWARE' || data.type === 'INJECT') {
-            // ハッカーの使用回数制限 (2回まで)
-            if (player.malwareUsedThisTurn >= 2) {
-                socket.emit('error', 'リミット到達: マルウェアは1ターンに2回までです。');
+            // ハッカーの使用回数制限 (1回まで)
+            if (player.malwareUsedThisTurn >= 1) {
+                socket.emit('error', 'リミット到達: マルウェアは1ターンに1回までです。');
                 player.apSpentThisTurn -= data.cost; // コスト返却
                 return;
             }
@@ -831,19 +848,19 @@ io.on('connection', (socket) => {
                     senderName: 'TraceLog',
                     message: `調査結果 [${target.name}]: ${result}`
                 });
-                addLog(`ログ追跡: ${player.name} が ${target.name} のログを解析しました。`, 'info');
+                addLog(`ログ追跡が実行されました。`, 'info', executorName);
             }
         }
         else if (data.type === 'PATCH') { // Sec Analyst 1AP
             const target = gameState.players.find(p => p.id === data.targetId);
             if (target) {
                 target.isPatched = true;
-                addLog(`セキュリティパッチ: ${player.name} が ${target.name} に防御パッチを適用しました。`, 'info');
+                addLog(`セキュリティパッチが適用されました。`, 'info', executorName);
             }
         }
         else if (data.type === 'MASKING') { // DB Eng 1AP
             gameState.maskingActiveNextTurn = true;
-            addLog(`データマスキング: ${player.name} がデータの隠蔽プロトコルを起動しました。(次回のLEAK軽減)`, 'info');
+            addLog(`データマスキング: データの隠蔽プロトコルが起動されました。(次回のLEAK軽減)`, 'info', executorName);
         }
         else if (data.type === 'TRANSFER') { // Sys Op 1AP
             if (player.transferUsedThisTurn) {
@@ -859,7 +876,7 @@ io.on('connection', (socket) => {
                 player.transferUsedThisTurn = true;
                 // ターゲットの次ターンAPを+1する（次ターン予約）
                 target.transferBonusNextTurn = (target.transferBonusNextTurn || 0) + 1;
-                addLog(`リソース・デプロイメント: ${player.name} が ${target.name} にAPリソースを提供しました。(次ターンAP +1)`, 'info');
+                addLog(`リソース・デプロイメント: APリソースが提供されました。(次ターンAP +1)`, 'info', executorName);
                 // ターゲットに通知
                 io.to(target.id).emit('private_message', {
                     senderId: 'SYSTEM',
@@ -897,21 +914,25 @@ io.on('connection', (socket) => {
                         senderName: 'SkillCopier',
                         message: `機能取得成功: [${skillInfo.label}] をレプリケートしました。このターン中使用可能です。`
                     });
-                    addLog(`レプリケーション: ${player.name} が他者の機能を一時的に複製しました。`, 'info');
+                    addLog(`レプリケーション: 機能が一時的に複製されました。`, 'info', executorName);
                 }
             }
         }
         else if (data.type === 'DEBUG') { // DevOps 1AP
             player.apSpentThisTurn = Math.max(0, player.apSpentThisTurn - 1); // 消費0にする＝自分が実質+1
-            addLog(`デバッグ作業: ${player.name} がリソースを最適化しました。`, 'info');
+            addLog(`デバッグ作業: リソースが最適化されました。`, 'info', executorName);
         }
         else if (data.type === 'PIPELINE') { // DevOps 1AP (New)
             const target = gameState.players.find(p => p.id === data.targetId);
             if (target) {
                 player.pipelineActive = true;
                 player.pipelinePartnerId = target.id;
-                // 一方通行（DevOps -> Target）の関係にする
-                addLog(`CI/CDパイプライン構築: ${player.name} が ${target.name} を接続しました。対象が証拠解析を実行するとBOT効率UP！`, 'info');
+                // HEAD の双方向接続を維持しつつ、ログメッセージを main の詳細版に合わせる
+                addLog(`CI/CDパイプライン構築: ${player.name} が ${target.name} を接続しました。両者が証拠解析を実行するとBOT効率UP！`, 'info', executorName);
+                if (target.id !== player.id) {
+                    target.pipelineActive = true;
+                    target.pipelinePartnerId = player.id;
+                }
             }
         }
 
@@ -942,13 +963,22 @@ io.on('connection', (socket) => {
             addLog(`スペックアップ: サーバーリソース増強。HP上限が120に拡張されました。(2ターン持続)`, 'info');
         }
         else if (data.type === 'DEPLOY_BOT') { // DevOps 2AP
-            if (player.deployBotUsedThisTurn) {
-                socket.emit('error', 'このスキルは1ターンに1回までしか使用できません。');
+            // 1ターンに1回までの制限 (mainの意図を尊重しつつHEADのコスト優遇を統合)
+            if (player.deployBotUsedThisTurn >= 1) {
+                socket.emit('error', '解析BOT配備は1ターンに1回までです。');
                 return;
             }
+
+            if ((player.isMurderer || player.isHacker) && player.role === 'DevOps') {
+                if (data.cost > 0) {
+                    player.apSpentThisTurn -= data.cost;
+                    gameState.totalActualAp -= data.cost;
+                    gameState.totalPublicAp -= 0;
+                }
+            }
             gameState.devOpsBots = Math.min(3, gameState.devOpsBots + 1);
-            player.deployBotUsedThisTurn = true;
-            addLog(`解析ボット配備: 現在稼働数 ${gameState.devOpsBots}台。`, 'info');
+            player.deployBotUsedThisTurn++;
+            addLog(`解析ボット配備: 現在稼働数 ${gameState.devOpsBots}台。`, 'info', executorName);
         }
 
         // 既存アクションの修正
@@ -956,6 +986,15 @@ io.on('connection', (socket) => {
             gameState.hp = Math.min(gameState.maxHp, gameState.hp + 10);
             addLog(`システムパッチ適用。HP回復。`, 'info', executorName);
         } else if (data.type === 'EXFILTRATE' || data.type === 'EXFIL') {
+            // EXFIL使用回数制限 (3回/ターン)
+            if (player.exfilUsedThisTurn >= 3) {
+                socket.emit('error', 'リミット到達: 持ち出しは1ターンに3回までです。');
+                player.apSpentThisTurn -= data.cost; // コスト返却
+                gameState.totalPublicAp -= 0; // ハッカーアクションなので公開コスト0
+                gameState.totalActualAp -= data.cost;
+                return;
+            }
+            player.exfilUsedThisTurn++;
             gameState.currentTurnAttackActions++;
             if (gameState.firewallActive) {
                 addLog(`データ持ち出し阻止。ファイアウォール作動。`, 'info', executorName);
@@ -1113,6 +1152,11 @@ io.on('connection', (socket) => {
         else if (data.type === 'PHYSICAL_DESTROY') {
             gameState.currentTurnManipActions++;
             if (player.isMurderer || player.isHacker) {
+                // 【修正】犯人（マーダー/ハッカー）かつ DevOps の場合は無料 (コスト返却)
+                if ((player.isMurderer || player.isHacker) && player.role === 'DevOps' && data.cost > 0) {
+                    player.apSpentThisTurn -= data.cost;
+                    gameState.totalActualAp -= data.cost;
+                }
                 if (gameState.devOpsBots > 0) {
                     gameState.devOpsBots--;
                     addLog(`警告: サーバー室で火災発生。解析ノードが破壊されました。`, 'critical', executorName);
@@ -1206,6 +1250,21 @@ io.on('connection', (socket) => {
 
             addLog('ANONYMOUS VOTE RECORDED.', 'system');
             io.emit('state_update', gameState);
+        }
+    });
+
+    // 投票取消
+    socket.on('cancel_vote', () => {
+        const voter = gameState.players.find(p => p.id === socket.id);
+        if (voter && gameState.isGameStarted) {
+            const previousTargetId = gameState.votedPlayers[socket.id];
+            if (previousTargetId) {
+                const prevTarget = gameState.players.find(p => p.id === previousTargetId);
+                if (prevTarget) prevTarget.votes = Math.max(0, prevTarget.votes - 1);
+                delete gameState.votedPlayers[socket.id];
+                addLog('ANONYMOUS VOTE RETRACTED.', 'system');
+                io.emit('state_update', gameState);
+            }
         }
     });
 
