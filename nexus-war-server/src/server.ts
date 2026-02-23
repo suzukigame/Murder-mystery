@@ -241,18 +241,14 @@ setInterval(() => {
     if (gameState.timeLeft <= 0) {
         // DevOps Botの処理 (ターン終了時)
         if (gameState.devOpsBots > 0) {
-            // PIPELINEボーナス判定: CONNECTした両者が共に証拠解析を実行したか
+            // PIPELINEボーナス判定: DevOpsがCONNECTした対象が証拠解析を実行したか
             let pipelineBonus = 0;
-            const pipelinePairs = gameState.players.filter(p => p.pipelineActive && p.pipelinePartnerId);
-            if (pipelinePairs.length >= 2) {
-                // 接続ペアが存在する場合、両方が解析を実行したかチェック
-                const devOps = pipelinePairs.find(p => p.pipelinePartnerId !== null);
-                if (devOps) {
-                    const partner = gameState.players.find(p => p.id === devOps.pipelinePartnerId);
-                    if (partner && devOps.analyzedThisTurn && partner.analyzedThisTurn) {
-                        pipelineBonus = 2;
-                        addLog(`CI/CDパイプラインボーナス発動: ${devOps.name}と${partner.name}の協力解析によりBOT効率が向上しました。(BOT1台あたり +${pipelineBonus}%)`, 'info');
-                    }
+            const devOps = gameState.players.find(p => p.role === 'DevOps' && p.pipelineActive && p.pipelinePartnerId);
+            if (devOps) {
+                const target = gameState.players.find(p => p.id === devOps.pipelinePartnerId);
+                if (target && target.analyzedThisTurn) {
+                    pipelineBonus = 2;
+                    addLog(`CI/CDパイプラインボーナス発動: 対象 ${target.name} の解析完了によりBOT効率が向上しました。(BOT1台あたり +${pipelineBonus}%)`, 'info');
                 }
             }
             const botProgressPerUnit = 3 + pipelineBonus;
@@ -278,13 +274,12 @@ setInterval(() => {
         // 最多得票者リストを作成
         const candidates = gameState.players.filter(p => p.votes === maxVotes && maxVotes > 0);
 
-        if (candidates.length === 1) {
-            const victim = candidates[0];
-            victim.apDebuff += 3; // -3 AP（社員は行動不能、犯人側はチャージがあれば動ける）
-            victim.isIsolated = true; // UI表示用フラグ
-            addLog(`投票結果: ${victim.name} のネットワーク権限が制限されました (-3 AP)。`, 'warn');
-        } else if (candidates.length > 1) {
-            addLog(`投票結果: 票数が拮抗しています (${maxVotes}票)。処置は見送られました。`, 'info');
+        if (candidates.length > 0) {
+            candidates.forEach(victim => {
+                victim.apDebuff += 3; // -3 AP（社員は行動不能、犯人側はチャージがあれば動ける）
+                victim.isIsolated = true; // UI表示用フラグ
+                addLog(`投票結果: ${victim.name} のネットワーク権限が制限されました (-3 AP)。`, 'warn');
+            });
         }
 
         // AP不一致のログ出力
@@ -932,9 +927,12 @@ io.on('connection', (socket) => {
             if (target) {
                 player.pipelineActive = true;
                 player.pipelinePartnerId = target.id;
-                target.pipelineActive = true;
-                target.pipelinePartnerId = player.id;
-                addLog(`CI/CDパイプライン構築: 2名を接続しました。両者が証拠解析を実行するとBOT効率UP！`, 'info', executorName);
+                // HEAD の双方向接続を維持しつつ、ログメッセージを main の詳細版に合わせる
+                addLog(`CI/CDパイプライン構築: ${player.name} が ${target.name} を接続しました。両者が証拠解析を実行するとBOT効率UP！`, 'info', executorName);
+                if (target.id !== player.id) {
+                    target.pipelineActive = true;
+                    target.pipelinePartnerId = player.id;
+                }
             }
         }
 
@@ -965,21 +963,21 @@ io.on('connection', (socket) => {
             addLog(`スペックアップ: サーバーリソース増強。HP上限が120に拡張されました。(2ターン持続)`, 'info');
         }
         else if (data.type === 'DEPLOY_BOT') { // DevOps 2AP
-            // 【再修正】犯人（マーダー/ハッカー）かつ DevOps の場合は無料 (コスト返却) + 1回/ターン制限
+            // 1ターンに1回までの制限 (mainの意図を尊重しつつHEADのコスト優遇を統合)
+            if (player.deployBotUsedThisTurn >= 1) {
+                socket.emit('error', '解析BOT配備は1ターンに1回までです。');
+                return;
+            }
+
             if ((player.isMurderer || player.isHacker) && player.role === 'DevOps') {
-                if (player.deployBotUsedThisTurn >= 1) {
-                    socket.emit('error', 'リミット到達: 犯人権限でのBOT配置は1ターンに1回までです。');
-                    player.apSpentThisTurn -= data.cost; // コスト返却
-                    return;
-                }
                 if (data.cost > 0) {
                     player.apSpentThisTurn -= data.cost;
                     gameState.totalActualAp -= data.cost;
-                    gameState.totalPublicAp -= 0; // 犯人アクションは公表コスト0
+                    gameState.totalPublicAp -= 0;
                 }
-                player.deployBotUsedThisTurn++;
             }
             gameState.devOpsBots = Math.min(3, gameState.devOpsBots + 1);
+            player.deployBotUsedThisTurn++;
             addLog(`解析ボット配備: 現在稼働数 ${gameState.devOpsBots}台。`, 'info', executorName);
         }
 

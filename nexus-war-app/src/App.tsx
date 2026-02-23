@@ -63,7 +63,6 @@ function App() {
     // 新スキル用モード
     const [isPipelineMode, setIsPipelineMode] = useState(false);
     const [isTransferMode, setIsTransferMode] = useState(false);
-    const [transferUsedThisTurn, setTransferUsedThisTurn] = useState(false);
     const [isPatchMode, setIsPatchMode] = useState(false);
     const [isIpBlockMode, setIsIpBlockMode] = useState(false);
 
@@ -119,6 +118,7 @@ function App() {
                 setIsIsolated(me.isIsolated);
                 setIsIpBlocked(me.isIpBlocked || false); // サーバーからの状態を反映
                 setChargedAp(me.chargedAp || 0); // サーバーのプレイヤーデータからチャージAPを取得
+                setDeployBotUsedThisTurn(me.deployBotUsedThisTurn || false);
                 if (me.role && me.role !== 'TBD') setMyRole(me.role);
 
                 // コピーしたスキルがあればステートに反映
@@ -1148,10 +1148,10 @@ function App() {
                                     <button
                                         onClick={() => handleAction('DEPLOY_BOT', ((isMurderer || isHacker) && myRole === 'DevOps') ? 0 : 2)}
                                         className="btn-action btn-special"
-                                        disabled={phase === 'resolve' || (!((isMurderer || isHacker) && myRole === 'DevOps') && ap < 2) || (((isMurderer || isHacker) && myRole === 'DevOps') && (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0) >= 1)}
+                                        disabled={phase === 'resolve' || (!((isMurderer || isHacker) && myRole === 'DevOps') && ap < 2) || (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0) >= 1}
                                         style={{ borderColor: '#ffff00', color: '#ffff00' }}
                                     >
-                                        <Cpu size={18} /> <span>解析BOT配備</span><span className="ap-cost" style={{ color: '#ffff00' }}>{((isMurderer || isHacker) && myRole === 'DevOps') ? `0AP (残${1 - (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0)})` : '2AP'}</span>
+                                        <Cpu size={18} /> <span>解析BOT配備</span><span className="ap-cost" style={{ color: '#ffff00' }}>{((isMurderer || isHacker) && myRole === 'DevOps') ? `0AP (残${1 - (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0)})` : `2AP (残${1 - (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0)})`}</span>
                                     </button>
                                 </>
                             )}
