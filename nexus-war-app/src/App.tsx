@@ -1030,12 +1030,12 @@ function App() {
                                         <Lock size={18} /> <span>ロックアウト</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} 行動封鎖</span>
                                     </button>
                                     <button
-                                        onClick={() => handleAction('PHYSICAL_DESTROY', (players.find(p => p.id === socket.id)?.role === 'DevOps') ? 0 : 1)}
+                                        onClick={() => handleAction('PHYSICAL_DESTROY', ((isMurderer || isHacker) && myRole === 'DevOps') ? 0 : 1)}
                                         className="btn-action btn-analyze"
-                                        disabled={phase === 'resolve' || (!(players.find(p => p.id === socket.id)?.role === 'DevOps') && ap < 1)}
+                                        disabled={phase === 'resolve' || (!((isMurderer || isHacker) && myRole === 'DevOps') && ap < 1)}
                                         style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                     >
-                                        <AlertTriangle size={18} /> <span>ノード・デストラクション</span><span className="ap-cost" style={{ color: '#ffff00' }}>{(players.find(p => p.id === socket.id)?.role === 'DevOps') ? '0AP' : '1AP'} {'->'}BOT破壊</span>
+                                        <AlertTriangle size={18} /> <span>ノード・デストラクション</span><span className="ap-cost" style={{ color: '#ffff00' }}>{((isMurderer || isHacker) && myRole === 'DevOps') ? '0AP' : '1AP'} {'->'}BOT破壊</span>
                                     </button>
                                 </>
                             )}
@@ -1145,8 +1145,13 @@ function App() {
                                     >
                                         <Cpu size={18} /> <span>CI/CDパイプライン</span><span className="ap-cost" style={{ color: '#00ffff' }}>1AP</span>
                                     </button>
-                                    <button onClick={() => handleAction('DEPLOY_BOT', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
-                                        <Cpu size={18} /> <span>解析BOT配備</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP</span>
+                                    <button
+                                        onClick={() => handleAction('DEPLOY_BOT', ((isMurderer || isHacker) && myRole === 'DevOps') ? 0 : 2)}
+                                        className="btn-action btn-special"
+                                        disabled={phase === 'resolve' || (!((isMurderer || isHacker) && myRole === 'DevOps') && ap < 2)}
+                                        style={{ borderColor: '#ffff00', color: '#ffff00' }}
+                                    >
+                                        <Cpu size={18} /> <span>解析BOT配備</span><span className="ap-cost" style={{ color: '#ffff00' }}>{((isMurderer || isHacker) && myRole === 'DevOps') ? '0AP' : '2AP'}</span>
                                     </button>
                                 </>
                             )}

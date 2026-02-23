@@ -962,7 +962,12 @@ io.on('connection', (socket) => {
             addLog(`スペックアップ: サーバーリソース増強。HP上限が120に拡張されました。(2ターン持続)`, 'info');
         }
         else if (data.type === 'DEPLOY_BOT') { // DevOps 2AP
-            // 犯人+DevOps強化としての配置無料化は撤回（2AP固定）
+            // 【再修正】犯人（マーダー/ハッカー）かつ DevOps の場合は無料 (コスト返却)
+            if ((player.isMurderer || player.isHacker) && player.role === 'DevOps' && data.cost > 0) {
+                player.apSpentThisTurn -= data.cost;
+                gameState.totalActualAp -= data.cost;
+                gameState.totalPublicAp -= 0; // 犯人アクションは公表コスト0
+            }
             gameState.devOpsBots = Math.min(3, gameState.devOpsBots + 1);
             addLog(`解析ボット配備: 現在稼働数 ${gameState.devOpsBots}台。`, 'info', executorName);
         }
@@ -1138,8 +1143,8 @@ io.on('connection', (socket) => {
         else if (data.type === 'PHYSICAL_DESTROY') {
             gameState.currentTurnManipActions++;
             if (player.isMurderer || player.isHacker) {
-                // マーダー兼DevOpsの場合は無料 (コスト返却)
-                if (player.isMurderer && player.role === 'DevOps' && data.cost > 0) {
+                // 【修正】犯人（マーダー/ハッカー）かつ DevOps の場合は無料 (コスト返却)
+                if ((player.isMurderer || player.isHacker) && player.role === 'DevOps' && data.cost > 0) {
                     player.apSpentThisTurn -= data.cost;
                     gameState.totalActualAp -= data.cost;
                 }
