@@ -18,15 +18,6 @@ interface LogEntry {
 type TurnPhase = 'discussion' | 'action' | 'resolve' | 'final_voting';
 type GameResult = 'playing' | 'hacker_win_hp' | 'hacker_win_leak' | 'defense_win' | 'murderer_found' | 'employee_perfect_win' | 'employee_win' | 'murderer_escape';
 
-// プレイヤー定義（デモ用）
-const PLAYERS = [
-    { id: 'p1', name: '一文字' },
-    { id: 'p2', name: '二瓶' },
-    { id: 'p3', name: '三和' },
-    { id: 'p4', name: '四宮' },
-    { id: 'p5', name: '五香' },
-    { id: 'p6', name: '六角' },
-];
 
 function App() {
     // --- ゲーム状態 (サーバー同期) ---
@@ -58,7 +49,6 @@ function App() {
     const [isDdosMode, setIsDdosMode] = useState(false); // DDOS target selection mode
     const [isFalseFlagMode, setIsFalseFlagMode] = useState(false); // False flag targeting mode
     const [isLockoutMode, setIsLockoutMode] = useState(false); // Lockout targeting mode
-    const [sessionToken, setSessionToken] = useState<string | null>(sessionStorage.getItem('nexus_session_token'));
 
     // 新スキル用モード
     const [isPipelineMode, setIsPipelineMode] = useState(false);
@@ -393,7 +383,6 @@ function App() {
         const handleJoinSuccess = (data: { name: string, token: string }) => {
             setIsJoined(true);
             setMyPlayerName(data.name);
-            setSessionToken(data.token);
             sessionStorage.setItem('nexus_player_name', data.name);
             sessionStorage.setItem('nexus_session_token', data.token);
             addLog(`SESSION VERIFIED: ${data.name}. ACCESS GRANTED.`, 'system');
@@ -404,7 +393,6 @@ function App() {
             if (msg.includes('認証エラー')) {
                 sessionStorage.removeItem('nexus_player_name');
                 sessionStorage.removeItem('nexus_session_token');
-                setSessionToken(null);
             }
         };
 
@@ -430,7 +418,6 @@ function App() {
         sessionStorage.removeItem('nexus_session_token');
         setIsJoined(false);
         setMyPlayerName('');
-        setSessionToken(null);
         addLog('LOGOUT: SECURITY CLEARANCE REVOKED.', 'system');
     };
 
@@ -459,34 +446,32 @@ function App() {
                         <Lock size={20} /> 認証・ログイン
                     </h2>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {PLAYERS.map(p => {
-                            const isTaken = players.some(pl => pl.name === p.name);
-                            const isMe = myPlayerName === p.name && !!sessionToken;
+                    <div className="flex flex-col items-center gap-6 py-4">
+                        <div className="w-full max-w-sm">
+                            <label className="block text-xs text-green-700 mb-2 tracking-widest">ENTER IDENTIFICATION NAME</label>
+                            <input
+                                type="text"
+                                value={myPlayerName}
+                                onChange={(e) => setMyPlayerName(e.target.value.slice(0, 12))}
+                                placeholder="USERNAME..."
+                                className="w-full bg-black border border-green-500/30 p-4 text-green-500 font-mono focus:outline-none focus:border-green-400 focus:shadow-[0_0_10px_rgba(0,255,0,0.2)] transition-all"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && myPlayerName.trim()) handleJoin(myPlayerName.trim());
+                                }}
+                            />
+                            <div className="flex justify-between mt-2">
+                                <span className="text-[10px] text-green-900 tracking-tighter">MAX 12 CHARACTERS</span>
+                                <span className="text-[10px] text-green-900 tracking-tighter">{myPlayerName.length}/12</span>
+                            </div>
+                        </div>
 
-                            return (
-                                <button
-                                    key={p.id}
-                                    onClick={() => handleJoin(p.name)}
-                                    disabled={isTaken && !isMe}
-                                    className={`group relative border p-4 text-left transition-all duration-300 overflow-hidden ${isTaken && !isMe
-                                        ? 'border-red-900 bg-red-900/10 cursor-not-allowed opacity-50'
-                                        : isMe
-                                            ? 'border-blue-500 bg-blue-500/20 hover:border-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.5)]'
-                                            : 'border-green-800 hover:border-green-400 hover:bg-green-500/10'
-                                        }`}
-                                >
-                                    <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${isTaken && !isMe ? 'bg-red-900' : isMe ? 'bg-blue-400' : 'bg-green-800 group-hover:bg-green-400'
-                                        }`}></div>
-                                    <div className={`font-bold text-lg mb-1 flex items-center justify-between gap-2 pl-2 ${isTaken && !isMe ? 'text-red-700' : isMe ? 'text-blue-400' : 'text-green-500 group-hover:text-green-300'
-                                        }`}>
-                                        <span>{p.name}</span>
-                                        {isTaken && !isMe && <span className="text-[10px] bg-red-900/30 px-2 py-0.5 rounded border border-red-900/50">IN USE</span>}
-                                        {isMe && <span className="text-[10px] bg-blue-900/30 px-2 py-0.5 rounded border border-blue-900/50">RECONNECT</span>}
-                                    </div>
-                                </button>
-                            );
-                        })}
+                        <button
+                            onClick={() => handleJoin(myPlayerName.trim())}
+                            disabled={!myPlayerName.trim()}
+                            className="bg-green-500/20 border border-green-500 text-green-400 px-12 py-3 hover:bg-green-500 hover:text-black transition-all font-bold tracking-widest disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-green-400"
+                        >
+                            ESTABLISH CONNECTION
+                        </button>
                     </div>
 
                     <div className="mt-8 text-center text-xs text-green-900 border-t border-green-900/50 pt-4">
@@ -793,12 +778,8 @@ function App() {
                         {isCopiedSkillMode && <span className="ml-2 text-purple-400 animate-pulse">[{copiedSkillLabel}: 対象を選択]</span>}
                     </div>
                     <div className="player-grid">
-                        {[...players].sort((a, b) => {
-                            const indexA = PLAYERS.findIndex(p => p.name === a.name);
-                            const indexB = PLAYERS.findIndex(p => p.name === b.name);
-                            return indexA - indexB;
-                        }).map(p => (
-                            <div key={p.id} className={`player-card ${p.isIsolated ? 'isolated' : ''}`}>
+                        {[...players].sort((a, b) => a.name.localeCompare(b.name)).map(p => (
+                            <div key={p.id} className={`player-card ${p.isIsolated ? 'isolated' : ''} ${p.id === socket.id ? 'is-me' : ''}`}>
                                 <div className="p-info">
                                     <div className="p-name">{p.name}</div>
                                     {/* <div className="p-role text-xs opacity-50">{p.role}</div> */}

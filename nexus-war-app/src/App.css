@@ -246,6 +246,12 @@
     animation: glitch-border 0.5s infinite;
 }
 
+.player-card.is-me {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+}
+
 .p-name {
     font-weight: bold;
     font-size: 0.85rem;
