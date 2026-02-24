@@ -287,7 +287,7 @@ const executePendingAction = (pa: PendingAction) => {
         if (target) {
             player.pipelineActive = true;
             player.pipelinePartnerId = target.id;
-            addLog(`CI/CDパイプライン構築: ${player.name} が ${target.name} を接続しました。両者が証拠解析を実行するとBOT効率UP！`, 'info', executorName);
+            addLog(`CI/CDパイプライン構築: ネットワークノード間の接続が確立されました。両者が証拠解析を実行するとBOT効率UP！`, 'info', executorName);
             if (target.id !== player.id) {
                 target.pipelineActive = true;
                 target.pipelinePartnerId = player.id;
@@ -298,7 +298,7 @@ const executePendingAction = (pa: PendingAction) => {
         const target = gameState.players.find(p => p.id === data.targetId);
         if (target) {
             target.isIpBlockedNextTurn = true;
-            addLog(`通信遮断(IP BLOCK): ${player.name} が ${target.name} の接続を強制切断しました。(次ターン適用)`, 'warn');
+            addLog(`通信遮断(IP BLOCK): 端末への接続が強制遮断されました。(次ターン適用)`, 'warn', executorName);
         }
     }
     else if (data.type === 'FIREWALL') {
@@ -376,7 +376,7 @@ const executePendingAction = (pa: PendingAction) => {
                 message: `[監査報告] 前サイクルにおける不正タスク: ${total}件 (侵入: ${gameState.previousTurnAttackActions}, 改ざん: ${gameState.previousTurnManipActions})`
             });
         }
-        addLog(`${executorName} がシステム監査を実行。結果はエージェントにのみ通知されました。`, 'info', executorName);
+        addLog(`システム監査が実行されました。結果はエージェントにのみ通知されました。`, 'info', executorName);
     } else if (data.type === 'COVER_TRACKS') {
         gameState.currentTurnManipActions++;
         player.performedHackerAction = false;
@@ -564,7 +564,7 @@ setInterval(() => {
                 const target = gameState.players.find(p => p.id === devOps.pipelinePartnerId);
                 if (target && target.analyzedThisTurn) {
                     pipelineBonus = 2;
-                    addLog(`CI/CDパイプラインボーナス発動: 対象 ${target.name} の解析完了によりBOT効率が向上しました。(BOT1台あたり +${pipelineBonus}%)`, 'info');
+                    addLog(`CI/CDパイプラインボーナス発動: 対象ノードの解析完了によりBOT効率が向上しました。(BOT1台あたり +${pipelineBonus}%)`, 'info');
                 }
             }
             const botProgressPerUnit = 3 + pipelineBonus;
@@ -686,10 +686,10 @@ setInterval(() => {
                     // 2. デバフを適用（投票-3AP、DDOS等）
                     // セキュリティパッチ(PATCH)がある場合は無効化
                     if (p.isPatched) {
-                        addLog(`防御発動: ${p.name} へのデバフ攻撃がパッチにより無効化されました。`, 'info');
+                        addLog(`防御発動: デバフ攻撃がパッチにより無効化されました。`, 'info');
                     } else if (p.apDebuff > 0) {
                         remaining = Math.max(0, remaining - p.apDebuff);
-                        addLog(`ネットワーク遅延: ${p.name} のリソースが制限されました (-${p.apDebuff} AP)。`, 'warn');
+                        addLog(`ネットワーク遅延: リソースが制限されました (-${p.apDebuff} AP)。`, 'warn');
                     }
 
                     // 3. 残りAPをチャージとして保存（最大3、次ターンは3+チャージ）
@@ -710,10 +710,10 @@ setInterval(() => {
                     // 社員: デバフ適用 + TRANSFERボーナス反映
                     const employeeCharge = p.transferBonusNextTurn || 0;
                     if (p.isPatched) {
-                        addLog(`防御発動: ${p.name} へのデバフ攻撃がパッチにより無効化されました。`, 'info');
+                        addLog(`防御発動: デバフ攻撃がパッチにより無効化されました。`, 'info');
                         io.to(p.id).emit('ap_debuff', { amount: 0, chargedAp: employeeCharge });
                     } else if (p.apDebuff > 0) {
-                        addLog(`ネットワーク遅延: ${p.name} のリソースが制限されました (-${p.apDebuff} AP)。`, 'warn');
+                        addLog(`ネットワーク遅延: リソースが制限されました (-${p.apDebuff} AP)。`, 'warn');
                         io.to(p.id).emit('ap_debuff', { amount: p.apDebuff, chargedAp: employeeCharge });
                     } else {
                         io.to(p.id).emit('ap_debuff', { amount: 0, chargedAp: employeeCharge });
@@ -728,7 +728,7 @@ setInterval(() => {
                 p.apDebuff = 0;
                 // PATCH適用済みプレイヤーへのIP_BLOCK予約を無効化
                 if (p.isPatched && p.isIpBlockedNextTurn) {
-                    addLog(`防御発動: ${p.name} へのIPブロックがパッチにより無効化されました。`, 'info');
+                    addLog(`防御発動: IPブロックがパッチにより無効化されました。`, 'info');
                     p.isIpBlockedNextTurn = false;
                 }
                 p.isIpBlocked = p.isIpBlockedNextTurn; // 次ターン予約を適用
