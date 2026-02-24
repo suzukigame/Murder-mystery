@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import SkillButton from './components/SkillButton';
+import GameManual from './components/GameManual';
 import './App.css';
-import { Terminal, Shield, AlertTriangle, Zap, Cpu, Eye, Skull, Lock, X, Database, Search, RotateCcw, Trophy, User, LogOut } from 'lucide-react';
+import { Terminal, Shield, AlertTriangle, Zap, Cpu, Eye, Skull, Lock, X, Database, Search, RotateCcw, Trophy, User, LogOut, HelpCircle } from 'lucide-react';
 import io from 'socket.io-client';
 
 // ソケット接続 (開発環境用URL)
@@ -61,6 +62,7 @@ function App() {
     const [copiedSkill, setCopiedSkill] = useState<string | null>(null);
     const [copiedSkillLabel, setCopiedSkillLabel] = useState<string | null>(null);
     const [isCopiedSkillMode, setIsCopiedSkillMode] = useState(false);
+    const [showManual, setShowManual] = useState(false); // マニュアル表示状態
 
     const [showHackerMenu, setShowHackerMenu] = useState(false);
     const [isAlert, setIsAlert] = useState(false);
@@ -447,6 +449,13 @@ function App() {
                         <Lock size={20} /> 認証・ログイン
                     </h2>
 
+                    <button
+                        onClick={() => setShowManual(true)}
+                        className="absolute top-4 right-4 flex items-center gap-1 text-[10px] text-green-700 hover:text-green-400 transition-colors border border-green-800/30 px-2 py-1 rounded"
+                    >
+                        <HelpCircle size={12} /> マニュアルを表示
+                    </button>
+
                     <div className="flex flex-col items-center gap-6 py-4">
                         <div className="w-full max-w-sm">
                             <label className="block text-xs text-green-700 mb-2 tracking-widest">ENTER IDENTIFICATION NAME</label>
@@ -667,7 +676,7 @@ function App() {
                 <div className="stat-item text-green-400">
                     <User size={14} /> <span className="font-bold">{myPlayerName}</span> <span className="text-xs opacity-70">[{myRole}]</span>
                 </div>
-                <div className="stat-item">
+                <div className="stat-item text-green-400" style={{ fontWeight: 'bold' }}>
                     <Cpu size={14} /> <span>HP: {maxHp > 100 ? `${systemHp}/${maxHp}` : `${systemHp}%`}</span>
                 </div>
                 <div className="stat-item ap-gauge">
@@ -676,7 +685,14 @@ function App() {
                 <div className="stat-item phase-tag">
                     <span>{getPhaseLabel()}</span>
                 </div>
-                <button onClick={handleLeave} className="stat-item hover:text-red-500 transition-colors ml-auto flex items-center gap-1">
+                <button
+                    onClick={() => setShowManual(true)}
+                    className="help-btn"
+                    style={{ marginLeft: 'auto' }}
+                >
+                    <HelpCircle size={14} /> <span>ヘルプ</span>
+                </button>
+                <button onClick={handleLeave} className="stat-item hover:text-red-500 transition-colors flex items-center gap-1">
                     <LogOut size={14} /> <span>退室</span>
                 </button>
             </header>
@@ -1635,25 +1651,29 @@ function App() {
                 gameResult !== 'playing' && (
                     <div className="modal-overlay game-over-overlay">
                         <div className="game-over-modal">
-                            <div className={`game-over-icon ${gameResult === 'employee_perfect_win' || gameResult === 'employee_win' || gameResult === 'murderer_found' ? 'win' : 'lose'
+                            <div className={`game-over-icon ${gameResult === 'employee_perfect_win' || gameResult === 'murderer_found' ? 'win' :
+                                gameResult === 'employee_win' ? 'draw' : 'lose'
                                 }`}>
-                                {(gameResult === 'employee_perfect_win' || gameResult === 'employee_win' || gameResult === 'murderer_found')
+                                {(gameResult === 'employee_perfect_win' || gameResult === 'murderer_found')
                                     ? <Trophy size={48} />
-                                    : <Skull size={48} />
+                                    : gameResult === 'employee_win'
+                                        ? <AlertTriangle size={48} />
+                                        : <Skull size={48} />
                                 }
                             </div>
-                            <h2 className={`game-over-title ${gameResult === 'employee_perfect_win' || gameResult === 'employee_win' || gameResult === 'murderer_found' ? 'win' : 'lose'
+                            <h2 className={`game-over-title ${gameResult === 'employee_perfect_win' || gameResult === 'murderer_found' ? 'win' :
+                                gameResult === 'employee_win' ? 'draw' : 'lose'
                                 }`}>
-                                {gameResult === 'employee_perfect_win' && '★ 完全勝利 ★'}
-                                {gameResult === 'employee_win' && '社員勝利'}
+                                {gameResult === 'employee_perfect_win' && '社員勝利'}
+                                {gameResult === 'employee_win' && '引き分け'}
                                 {gameResult === 'murderer_found' && '殺人犯確保'}
                                 {gameResult === 'murderer_escape' && '殺人犯逃亡'}
                                 {gameResult === 'hacker_win_hp' && 'ハッカー勝利'}
                                 {gameResult === 'hacker_win_leak' && 'ハッカー勝利'}
                             </h2>
                             <p className="game-over-sub">
-                                {gameResult === 'employee_perfect_win' && '殺人犯もハッカーも特定！完全勝利！'}
-                                {gameResult === 'employee_win' && '殺人犯を特定！しかしハッカーは逃走した...'}
+                                {gameResult === 'employee_perfect_win' && '殺人犯もハッカーも特定！社員側の勝利です。'}
+                                {gameResult === 'employee_win' && '殺人犯を特定しましたが、ハッカーの逃走を許しました。'}
                                 {gameResult === 'murderer_found' && '証拠解析完了。殺人犯を特定しました。'}
                                 {gameResult === 'murderer_escape' && '殺人犯の特定に失敗...犯人は闇に消えた。'}
                                 {gameResult === 'hacker_win_hp' && 'システムHPが0%になりました。インフラ崩壊。'}
@@ -1671,6 +1691,8 @@ function App() {
                     </div>
                 )
             }
+            {/* --- ゲームマニュアル --- */}
+            {showManual && <GameManual onClose={() => setShowManual(false)} />}
         </div >
     );
 }
