@@ -960,14 +960,16 @@ function App() {
                                     </button>
                                 </>
                             )}
-                            <button
-                                onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
-                                className="btn-action"
-                                disabled={phase === 'resolve' || ap < 1}
-                                style={{ borderColor: isMurderer ? '#cc44ff' : '#00ff88', color: isMurderer ? '#cc44ff' : '#00ff88' }}
-                            >
-                                <Eye size={18} /> <span>監査ログ</span><span className="ap-cost" style={isMurderer ? { color: '#ffff00' } : {}}>1AP</span>
-                            </button>
+                            {!isMurderer && (
+                                <button
+                                    onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
+                                    className="btn-action"
+                                    disabled={phase === 'resolve' || ap < 1}
+                                    style={{ borderColor: '#00ff88', color: '#00ff88' }}
+                                >
+                                    <Eye size={18} /> <span>監査ログ</span><span className="ap-cost">1AP</span>
+                                </button>
+                            )}
 
                             {/* --- Murderer Skill --- */}
                             {isMurderer && (
@@ -1236,13 +1238,15 @@ function App() {
                             >
                                 <AlertTriangle size={18} /> <span>偽装工作</span><span className="ap-cost">1AP {'->'} POSITIVE偽装</span>
                             </button>
-                            <button
-                                onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
-                                className="btn-action btn-hacker-action"
-                                disabled={phase === 'resolve' || ap < 1}
-                            >
-                                <Eye size={18} /> <span>監査(偽装)</span><span className="ap-cost">1AP {'->'} ログ調査(偽装)</span>
-                            </button>
+                            {!isMurderer && (
+                                <button
+                                    onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
+                                    className="btn-action btn-hacker-action"
+                                    disabled={phase === 'resolve' || ap < 1}
+                                >
+                                    <Eye size={18} /> <span>監査(偽装)</span><span className="ap-cost">1AP {'->'} ログ調査(偽装)</span>
+                                </button>
+                            )}
 
 
 

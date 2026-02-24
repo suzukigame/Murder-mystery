@@ -368,6 +368,7 @@ const executePendingAction = (pa: PendingAction) => {
         gameState.leak = Math.max(0, gameState.leak - 10);
         addLog(`データ暗号化完了。漏洩リスク低減。`, 'info', executorName);
     } else if (data.type === 'VIEW_AUDIT_LOG') {
+        if (player.isMurderer) return;
         const total = gameState.previousTurnAttackActions + gameState.previousTurnManipActions;
         if (socket) {
             socket.emit('private_message', {
