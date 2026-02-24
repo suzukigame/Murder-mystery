@@ -430,6 +430,7 @@
     from {
         opacity: 0.6;
     }
+
     to {
         opacity: 1;
     }
@@ -808,9 +809,20 @@
 }
 
 @keyframes pulse-red {
-    0% { border-color: rgba(255, 0, 68, 0.3); box-shadow: 0 0 5px rgba(255, 0, 68, 0.1); }
-    50% { border-color: rgba(255, 0, 68, 0.8); box-shadow: 0 0 15px rgba(255, 0, 68, 0.2); }
-    100% { border-color: rgba(255, 0, 68, 0.3); box-shadow: 0 0 5px rgba(255, 0, 68, 0.1); }
+    0% {
+        border-color: rgba(255, 0, 68, 0.3);
+        box-shadow: 0 0 5px rgba(255, 0, 68, 0.1);
+    }
+
+    50% {
+        border-color: rgba(255, 0, 68, 0.8);
+        box-shadow: 0 0 15px rgba(255, 0, 68, 0.2);
+    }
+
+    100% {
+        border-color: rgba(255, 0, 68, 0.3);
+        box-shadow: 0 0 5px rgba(255, 0, 68, 0.1);
+    }
 }
 
 .murderer-theme .secret-intel-box {
@@ -820,9 +832,20 @@
 }
 
 @keyframes pulse-purple {
-    0% { border-color: rgba(188, 19, 254, 0.3); box-shadow: 0 0 5px rgba(188, 19, 254, 0.1); }
-    50% { border-color: rgba(188, 19, 254, 0.8); box-shadow: 0 0 15px rgba(188, 19, 254, 0.2); }
-    100% { border-color: rgba(188, 19, 254, 0.3); box-shadow: 0 0 5px rgba(188, 19, 254, 0.1); }
+    0% {
+        border-color: rgba(188, 19, 254, 0.3);
+        box-shadow: 0 0 5px rgba(188, 19, 254, 0.1);
+    }
+
+    50% {
+        border-color: rgba(188, 19, 254, 0.8);
+        box-shadow: 0 0 15px rgba(188, 19, 254, 0.2);
+    }
+
+    100% {
+        border-color: rgba(188, 19, 254, 0.3);
+        box-shadow: 0 0 5px rgba(188, 19, 254, 0.1);
+    }
 }
 
 /* === Action Chanting & Nullify Visuals === */
@@ -835,6 +858,7 @@
         background: rgba(255, 0, 0, 0.1);
         box-shadow: 0 0 5px rgba(255, 0, 0, 0.3);
     }
+
     to {
         background: rgba(255, 0, 0, 0.4);
         box-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
@@ -846,9 +870,17 @@
 }
 
 @keyframes pulse-button {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.02); }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
 .activity-alert {
@@ -866,6 +898,65 @@
 }
 
 @keyframes blink-yellow {
-    from { opacity: 0.6; }
-    to { opacity: 1; }
+    from {
+        opacity: 0.6;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* --- スキルツールチップ --- */
+.skill-button-wrapper {
+    position: relative;
+    display: flex;
+}
+
+.skill-button-wrapper>button {
+    width: 100%;
+}
+
+.skill-tooltip {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10, 10, 30, 0.95);
+    border: 1px solid var(--accent-cyan);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 0.7rem;
+    color: #ddd;
+    white-space: pre-wrap;
+    z-index: 1000;
+    pointer-events: none;
+    animation: tooltip-fade-in 0.15s ease-out;
+    max-width: 260px;
+    min-width: 160px;
+    text-align: left;
+    line-height: 1.4;
+    box-shadow: 0 0 12px rgba(0, 255, 255, 0.15);
+}
+
+.skill-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--accent-cyan);
+}
+
+@keyframes tooltip-fade-in {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
 }
