@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import SkillButton from './components/SkillButton';
 import './App.css';
 import { Terminal, Shield, AlertTriangle, Zap, Cpu, Eye, Skull, Lock, X, Database, Search, RotateCcw, Trophy, User, LogOut } from 'lucide-react';
 import io from 'socket.io-client';
@@ -934,64 +935,70 @@ function App() {
                         <div className="action-grid">
                             {!isMurderer && (
                                 <>
-                                    <button
+                                    <SkillButton
+                                        tooltip="2AP: サーバーHPを10回復する。"
                                         onClick={() => handleAction('RESTORE_SYSTEM', 2)}
                                         className="btn-action"
                                         disabled={phase === 'resolve' || ap < 2}
                                         style={{ borderColor: '#00ff88', color: '#00ff88' }}
                                     >
                                         <Shield size={18} /> <span>システム修復</span><span className="ap-cost">2AP {'->'} HP+10</span>
-                                    </button>
-                                    <button
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="2AP: データ漏洩率を10%低減する。"
                                         onClick={() => handleAction('ENCRYPT_DATA', 2)}
                                         className="btn-action"
                                         disabled={phase === 'resolve' || ap < 2}
                                         style={{ borderColor: '#00ff88', color: '#00ff88' }}
                                     >
                                         <Lock size={18} /> <span>データ暗号化</span><span className="ap-cost">2AP {'->'} 漏洩-10%</span>
-                                    </button>
-                                    <button
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="2AP: 証拠解析を10%進行させる。殺人犯が使用した場合は進行しない。"
                                         onClick={() => handleAction('ANALYZE_EVIDENCE', 2)}
                                         className="btn-action btn-analyze"
                                         disabled={phase === 'resolve' || ap < 2}
                                         style={{ borderColor: '#00ff88', color: '#00ff88' }}
                                     >
                                         <Search size={18} /> <span>証拠解析</span><span className="ap-cost">2AP {'->'} 解析+10%</span>
-                                    </button>
+                                    </SkillButton>
                                 </>
                             )}
                             {!isMurderer && (
-                                <button
+                                <SkillButton
+                                    tooltip="1AP: 前ターンの攻撃・工作行動の件数を確認できる。結果は自分にのみ通知。"
                                     onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
                                     className="btn-action"
                                     disabled={phase === 'resolve' || ap < 1}
                                     style={{ borderColor: '#00ff88', color: '#00ff88' }}
                                 >
                                     <Eye size={18} /> <span>監査ログ</span><span className="ap-cost">1AP</span>
-                                </button>
+                                </SkillButton>
                             )}
 
                             {/* --- Murderer Skill --- */}
                             {isMurderer && (
                                 <>
-                                    <button
+                                    <SkillButton
+                                        tooltip="1AP: サーバーHPを5減少させる。FW発動時はブロックされる。痕跡が残る。"
                                         onClick={() => handleAction('SABOTAGE', 1)}
                                         className="btn-action btn-analyze"
                                         disabled={phase === 'resolve' || ap < 1}
                                         style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
-                                        title="System Sabotage (HP -5)"
                                     >
                                         <Skull size={18} /> <span>サボタージュ</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} HP-5</span>
-                                    </button>
-                                    <button
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="1AP: 証拠解析率を5%減少させる。痕跡が残る。"
                                         onClick={() => handleAction('TAMPER_EVIDENCE', 1)}
                                         className="btn-action btn-analyze"
                                         disabled={phase === 'resolve' || ap < 1}
                                         style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                     >
                                         <Database size={18} /> <span>証拠改ざん</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} 解析-5%</span>
-                                    </button>
-                                    <button
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="1AP: 対象のログ追跡結果をPOSITIVE(黒)に偽装する。"
                                         onClick={() => {
                                             setIsFalseFlagMode(!isFalseFlagMode);
                                             setIsLockoutMode(false);
@@ -1001,16 +1008,18 @@ function App() {
                                         style={isFalseFlagMode ? { backgroundColor: 'rgba(204, 68, 255, 0.2)', borderColor: '#cc44ff', color: '#cc44ff' } : { borderColor: '#cc44ff', color: '#cc44ff' }}
                                     >
                                         <Eye size={18} /> <span>偽装工作</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP {'->'} 偽装</span>
-                                    </button>
-                                    <button
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="2AP: 次ターンの議論フェーズ時間を短縮する。"
                                         onClick={() => handleAction('BLACKOUT', 2)}
                                         className="btn-action btn-analyze"
                                         disabled={phase === 'resolve' || ap < 2}
                                         style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                     >
                                         <Zap size={18} /> <span>停電工作</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} 議論短縮</span>
-                                    </button>
-                                    <button
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="2AP: 対象の次ターンAPを-3する。FW発動時はブロック。"
                                         onClick={() => {
                                             setIsLockoutMode(!isLockoutMode);
                                             setIsFalseFlagMode(false);
@@ -1020,18 +1029,20 @@ function App() {
                                         style={isLockoutMode ? { backgroundColor: 'rgba(204, 68, 255, 0.2)', borderColor: '#cc44ff', color: '#cc44ff' } : { borderColor: '#cc44ff', color: '#cc44ff' }}
                                     >
                                         <Lock size={18} /> <span>ロックアウト</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} 行動封鎖</span>
-                                    </button>
-                                    <button
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="1AP(DevOps時0AP): 稼働中の解析BOTを1台破壊する。"
                                         onClick={() => handleAction('PHYSICAL_DESTROY', ((isMurderer || isHacker) && myRole === 'DevOps') ? 0 : 1)}
                                         className="btn-action btn-analyze"
                                         disabled={phase === 'resolve' || (!((isMurderer || isHacker) && myRole === 'DevOps') && ap < 1)}
                                         style={{ borderColor: '#cc44ff', color: '#cc44ff' }}
                                     >
                                         <AlertTriangle size={18} /> <span>ノード・デストラクション</span><span className="ap-cost" style={{ color: '#ffff00' }}>{((isMurderer || isHacker) && myRole === 'DevOps') ? '0AP' : '1AP'} {'->'}BOT破壊</span>
-                                    </button>
+                                    </SkillButton>
 
                                     {/* 新機能: 無効化 (Nullify) */}
-                                    <button
+                                    <SkillButton
+                                        tooltip="0AP: 待機中のアクションを1つ無効化する。1ターン1回。"
                                         onClick={() => handleAction('NULLIFY', 0)}
                                         className={`btn-action ${hasPendingActions ? 'btn-urgent pulse' : 'btn-analyze'}`}
                                         disabled={!hasPendingActions || nullifyUsedThisTurn}
@@ -1041,7 +1052,7 @@ function App() {
                                         <span className="ap-cost" style={{ color: '#ffff00' }}>
                                             {nullifyUsedThisTurn ? '使用済' : (hasPendingActions ? '待機中アクション有' : '待機中なし')}
                                         </span>
-                                    </button>
+                                    </SkillButton>
                                 </>
                             )}
 
@@ -1050,7 +1061,8 @@ function App() {
                             {/* --- 防衛側ユニークアクション --- */}
                             {myRole === 'ネットワーク管理者' && (
                                 <>
-                                    <button
+                                    <SkillButton
+                                        tooltip="1AP: 対象が前ターンにハッカー行動をしたか調査(白/黒)。結果は自分のみ通知。"
                                         onClick={() => {
                                             setIsTraceMode(!isTraceMode);
                                             setIsIpBlockMode(false);
@@ -1060,8 +1072,9 @@ function App() {
                                         style={isTraceMode ? { backgroundColor: 'rgba(255, 255, 0, 0.2)', borderColor: '#ffff00', color: '#ffff00' } : { borderColor: '#ffff00', color: '#ffff00' }}
                                     >
                                         <Search size={18} /> <span>ログ追跡</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP</span>
-                                    </button>
-                                    <button
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="2AP: 対象の次ターンのアクションを封じる。"
                                         onClick={() => {
                                             setIsIpBlockMode(!isIpBlockMode);
                                             setIsTraceMode(false);
@@ -1071,13 +1084,14 @@ function App() {
                                         style={isIpBlockMode ? { backgroundColor: 'rgba(255, 68, 68, 0.2)', borderColor: '#ff4444', color: '#ff4444' } : { borderColor: '#ff4444', color: '#ff4444' }}
                                     >
                                         <Lock size={18} /> <span>IPブロック</span><span className="ap-cost" style={{ color: '#ff4444' }}>2AP</span>
-                                    </button>
+                                    </SkillButton>
                                 </>
                             )}
 
                             {myRole === 'セキュリティ分析官' && (
                                 <>
-                                    <button
+                                    <SkillButton
+                                        tooltip="1AP: 対象へのデバフ(DDOS等)を無効化する。"
                                         onClick={() => {
                                             setIsPatchMode(!isPatchMode);
                                         }}
@@ -1086,27 +1100,28 @@ function App() {
                                         style={isPatchMode ? { backgroundColor: 'rgba(0, 255, 136, 0.2)', borderColor: '#00ff88', color: '#00ff88' } : { borderColor: '#00ff88', color: '#00ff88' }}
                                     >
                                         <Shield size={18} /> <span>パッチ適用</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP</span>
-                                    </button>
-                                    <button onClick={() => handleAction('FIREWALL', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                    </SkillButton>
+                                    <SkillButton tooltip="2AP: 次の攻撃１回をブロックする。消費されるまで永続。" onClick={() => handleAction('FIREWALL', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
                                         <Shield size={18} /> <span>ファイアウォール</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP</span>
-                                    </button>
+                                    </SkillButton>
                                 </>
                             )}
 
                             {myRole === 'DBエンジニア' && (
                                 <>
-                                    <button onClick={() => handleAction('MASKING', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
+                                    <SkillButton tooltip="1AP: 次回のデータ持ち出し時の漏洩量を5%軽減する。" onClick={() => handleAction('MASKING', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
                                         <Database size={18} /> <span>マスキング</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP {'->'} 次LEAK-5%</span>
-                                    </button>
-                                    <button onClick={() => handleAction('HONEY_POT', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                    </SkillButton>
+                                    <SkillButton tooltip="2AP: 次のデータ持ち出し実行者の名前を特定するトラップ。" onClick={() => handleAction('HONEY_POT', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
                                         <Database size={18} /> <span>ハニーポット</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP</span>
-                                    </button>
+                                    </SkillButton>
                                 </>
                             )}
 
                             {myRole === 'システムオペレーター' && (
                                 <>
-                                    <button
+                                    <SkillButton
+                                        tooltip="1AP: 対象の次ターンAPを+1する。1ターン1回。"
                                         onClick={() => {
                                             setIsTransferMode(!isTransferMode);
                                         }}
@@ -1115,32 +1130,34 @@ function App() {
                                         style={isTransferMode ? { backgroundColor: 'rgba(136, 136, 255, 0.2)', borderColor: '#8888ff', color: '#8888ff' } : { borderColor: '#8888ff', color: '#8888ff' }}
                                     >
                                         <RotateCcw size={18} /> <span>リソース・デプロイメント</span><span className="ap-cost" style={{ color: '#8888ff' }}>1AP (残${(players.find(p => p.id === socket.id)?.transferUsedThisTurn || false) ? 0 : 1})</span>
-                                    </button>
-                                    <button
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="2AP: サーバーHP=0時に自動でHP20に復旧するプロトコルをセット。"
                                         onClick={() => handleAction('RESTORE', 2)}
                                         className="btn-action btn-special"
                                         disabled={phase === 'resolve' || ap < 2}
                                         style={{ borderColor: '#ff4444', color: '#ff4444' }}
                                     >
                                         <Zap size={18} /> <span>リストア</span><span className="ap-cost" style={{ color: '#ff4444' }}>2AP {'->'} HP0時復旧</span>
-                                    </button>
+                                    </SkillButton>
                                 </>
                             )}
 
                             {myRole === 'インフラリーダー' && (
                                 <>
-                                    <button onClick={() => handleAction('SKILL_COPY', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
+                                    <SkillButton tooltip="1AP: 他職業のスキルをランダムに1つ習得(1回限り使用可能)。" onClick={() => handleAction('SKILL_COPY', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
                                         <Cpu size={18} /> <span>レプリケーション</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP</span>
-                                    </button>
-                                    <button onClick={() => handleAction('SPEC_UP', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                    </SkillButton>
+                                    <SkillButton tooltip="2AP: サーバーHP上限を120に拡張(2ターン持続)。" onClick={() => handleAction('SPEC_UP', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
                                         <Zap size={18} /> <span>スペックアップ</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} MaxHP 120</span>
-                                    </button>
+                                    </SkillButton>
                                 </>
                             )}
 
                             {myRole === 'DevOps' && (
                                 <>
-                                    <button
+                                    <SkillButton
+                                        tooltip="1AP: 対象と接続。両者が証拠解析するとBOT効率UP。"
                                         onClick={() => {
                                             setIsPipelineMode(!isPipelineMode);
                                         }}
@@ -1149,21 +1166,23 @@ function App() {
                                         style={isPipelineMode ? { backgroundColor: 'rgba(0, 255, 255, 0.2)', borderColor: '#00ffff', color: '#00ffff' } : { borderColor: '#00ffff', color: '#00ffff' }}
                                     >
                                         <Cpu size={18} /> <span>CI/CDパイプライン</span><span className="ap-cost" style={{ color: '#00ffff' }}>1AP</span>
-                                    </button>
-                                    <button
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="2AP(犯人側DevOps時0AP): 解析BOTを1台配備(最大3)。1ターン1回。"
                                         onClick={() => handleAction('DEPLOY_BOT', ((isMurderer || isHacker) && myRole === 'DevOps') ? 0 : 2)}
                                         className="btn-action btn-special"
                                         disabled={phase === 'resolve' || (!((isMurderer || isHacker) && myRole === 'DevOps') && ap < 2) || (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0) >= 1}
                                         style={{ borderColor: '#ffff00', color: '#ffff00' }}
                                     >
                                         <Cpu size={18} /> <span>解析BOT配備</span><span className="ap-cost" style={{ color: '#ffff00' }}>{((isMurderer || isHacker) && myRole === 'DevOps') ? `0AP (残${1 - (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0)})` : `2AP (残${1 - (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0)})`}</span>
-                                    </button>
+                                    </SkillButton>
                                 </>
                             )}
 
                             {/* コピーしたスキル（レプリケーション）の起動ボタン */}
                             {copiedSkill && (
-                                <button
+                                <SkillButton
+                                    tooltip="1AP: レプリケーションで習得したスキルを使用する(1回限り)。"
                                     onClick={() => {
                                         const needsTarget = ['TRACE_LOG', 'PATCH', 'TRANSFER', 'PIPELINE', 'IP_BLOCK'].includes(copiedSkill);
                                         if (needsTarget) {
@@ -1179,10 +1198,11 @@ function App() {
                                         : { borderColor: '#bc13fe', color: '#bc13fe' }}
                                 >
                                     <Cpu size={18} /> <span>★ {copiedSkillLabel}</span><span className="ap-cost" style={{ color: '#bc13fe' }}>1AP (コピー)</span>
-                                </button>
+                                </SkillButton>
                             )}
 
-                            <button
+                            <SkillButton
+                                tooltip="現在のサーバーHP、データ漏洩率、残りAPをログに表示する。"
                                 onContextMenu={(e) => { e.preventDefault(); setIsHacker(!isHacker); }}
                                 onClick={() => {
                                     addLog(`STATUS: HP=${systemHp}% | LEAK=${dataLeak}% | AP=${ap}/3`, 'info');
@@ -1190,33 +1210,37 @@ function App() {
                                 className="btn-action btn-status"
                             >
                                 <AlertTriangle size={18} /> <span>ステータス</span>
-                            </button>
+                            </SkillButton>
                         </div>
                     ) : (
                         /* === ハッカー側ボタン === */
                         <div className="action-grid hacker-grid">
-                            <button
+                            <SkillButton
+                                tooltip="2AP: 1ターンに1回。サーバーHPを15減少またはデータ漏洩を15%増加させる(ランダム)。"
                                 onClick={() => handleAction('INJECT_MALWARE', 2)}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve' || ap < 2 || (players.find(p => p.id === socket.id)?.malwareUsedThisTurn || 0) >= 1}
                             >
                                 <Skull size={18} /> <span>マルウェア</span><span className="ap-cost">2AP (残{1 - (players.find(p => p.id === socket.id)?.malwareUsedThisTurn || 0)})</span>
-                            </button>
-                            <button
+                            </SkillButton>
+                            <SkillButton
+                                tooltip="1AP: 1ターン3回まで。データ漏洩率を15%増加させる。"
                                 onClick={() => handleAction('EXFILTRATE', 1)}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve' || ap < 1 || (players.find(p => p.id === socket.id)?.exfilUsedThisTurn || 0) >= 3}
                             >
                                 <Database size={18} /> <span>持ち出し</span><span className="ap-cost">1AP {'->'} 漏洩+15% (残{3 - (players.find(p => p.id === socket.id)?.exfilUsedThisTurn || 0)})</span>
-                            </button>
-                            <button
+                            </SkillButton>
+                            <SkillButton
+                                tooltip="1AP: 自分が残した攻撃の痕跡(NEGATIVEログ)を全て消去する。"
                                 onClick={() => handleAction('COVER_TRACKS', 1)}
                                 className="btn-action btn-hacker-action"
                                 disabled={phase === 'resolve' || ap < 1}
                             >
                                 <Lock size={18} /> <span>痕跡消去</span><span className="ap-cost">1AP {'->'} 痕跡消去</span>
-                            </button>
-                            <button
+                            </SkillButton>
+                            <SkillButton
+                                tooltip="1AP: 対象の次ターンAPを-2する。対象が「パッチ適用」されていると無効。"
                                 onClick={() => {
                                     setIsDdosMode(!isDdosMode);
                                     setIsFalseFlagMode(false);
@@ -1226,8 +1250,9 @@ function App() {
                                 style={isDdosMode ? { backgroundColor: 'rgba(255, 68, 68, 0.3)', borderColor: '#ff4444', color: '#ff4444' } : { borderColor: '#ff4444', color: '#ff4444' }}
                             >
                                 <Zap size={18} /> <span>DDOS攻撃</span><span className="ap-cost">1AP {'->'} AP-2</span>
-                            </button>
-                            <button
+                            </SkillButton>
+                            <SkillButton
+                                tooltip="1AP: 対象の次ターンのログ結果をPOSITIVE(白)に偽装する。"
                                 onClick={() => {
                                     setIsFalseFlagMode(!isFalseFlagMode);
                                     setIsDdosMode(false);
@@ -1237,15 +1262,16 @@ function App() {
                                 style={isFalseFlagMode ? { backgroundColor: 'rgba(255, 68, 68, 0.3)', borderColor: '#ff4444', color: '#ff4444' } : { borderColor: '#ff4444', color: '#ff4444' }}
                             >
                                 <AlertTriangle size={18} /> <span>偽装工作</span><span className="ap-cost">1AP {'->'} POSITIVE偽装</span>
-                            </button>
+                            </SkillButton>
                             {!isMurderer && (
-                                <button
+                                <SkillButton
+                                    tooltip="1AP: （偽装用）ログ調査を行うふりをする。痕跡として残る。"
                                     onClick={() => handleAction('VIEW_AUDIT_LOG', 1)}
                                     className="btn-action btn-hacker-action"
                                     disabled={phase === 'resolve' || ap < 1}
                                 >
                                     <Eye size={18} /> <span>監査(偽装)</span><span className="ap-cost">1AP {'->'} ログ調査(偽装)</span>
-                                </button>
+                                </SkillButton>
                             )}
 
 
@@ -1253,7 +1279,8 @@ function App() {
                             {/* --- 割り当て職業の固有スキル（偽装用） --- */}
                             {myRole === 'ネットワーク管理者' && (
                                 <>
-                                    <button
+                                    <SkillButton
+                                        tooltip="1AP: 対象が前ターンにハッカー行動をしたか調査(白/黒)。結果は自分のみ通知。"
                                         onClick={() => {
                                             setIsTraceMode(!isTraceMode);
                                             setIsIpBlockMode(false);
@@ -1263,8 +1290,9 @@ function App() {
                                         style={isTraceMode ? { backgroundColor: 'rgba(255, 255, 0, 0.2)', borderColor: '#ffff00', color: '#ffff00' } : { borderColor: '#ffff00', color: '#ffff00' }}
                                     >
                                         <Search size={18} /> <span>ログ追跡</span><span className="ap-cost" style={{ color: '#ffff00' }}>1AP</span>
-                                    </button>
-                                    <button
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="2AP: 対象の次ターンのアクションを封じる。"
                                         onClick={() => {
                                             setIsIpBlockMode(!isIpBlockMode);
                                             setIsTraceMode(false);
@@ -1274,13 +1302,14 @@ function App() {
                                         style={isIpBlockMode ? { backgroundColor: 'rgba(255, 68, 68, 0.2)', borderColor: '#ff4444', color: '#ff4444' } : { borderColor: '#ff4444', color: '#ff4444' }}
                                     >
                                         <Lock size={18} /> <span>IPブロック</span><span className="ap-cost" style={{ color: '#ff4444' }}>2AP</span>
-                                    </button>
+                                    </SkillButton>
                                 </>
                             )}
 
                             {myRole === 'セキュリティ分析官' && (
                                 <>
-                                    <button
+                                    <SkillButton
+                                        tooltip="1AP: 対象へのデバフ(DDOS等)を無効化する。"
                                         onClick={() => {
                                             setIsPatchMode(!isPatchMode);
                                         }}
@@ -1289,27 +1318,46 @@ function App() {
                                         style={isPatchMode ? { backgroundColor: 'rgba(0, 255, 136, 0.2)', borderColor: '#00ff88', color: '#00ff88' } : { borderColor: '#00ff88', color: '#00ff88' }}
                                     >
                                         <Shield size={18} /> <span>パッチ適用</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP</span>
-                                    </button>
-                                    <button onClick={() => handleAction('FIREWALL', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="2AP: 次の攻撃1回をブロックする。消費されるまで永続。"
+                                        onClick={() => handleAction('FIREWALL', 2)}
+                                        className="btn-action btn-special"
+                                        disabled={phase === 'resolve' || ap < 2}
+                                        style={{ borderColor: '#ffff00', color: '#ffff00' }}
+                                    >
                                         <Shield size={18} /> <span>ファイアウォール</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP</span>
-                                    </button>
+                                    </SkillButton>
                                 </>
                             )}
 
                             {myRole === 'DBエンジニア' && (
                                 <>
-                                    <button onClick={() => handleAction('MASKING', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
+                                    <SkillButton
+                                        tooltip="1AP: 次回のデータ持ち出し時の漏洩量を5%軽減する。"
+                                        onClick={() => handleAction('MASKING', 1)}
+                                        className="btn-action btn-special"
+                                        disabled={phase === 'resolve' || ap < 1}
+                                        style={{ borderColor: '#00ff88', color: '#00ff88' }}
+                                    >
                                         <Database size={18} /> <span>マスキング</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP {'->'} 次LEAK-5%</span>
-                                    </button>
-                                    <button onClick={() => handleAction('HONEY_POT', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="2AP: 次のデータ持ち出し実行者の名前を特定するトラップ。"
+                                        onClick={() => handleAction('HONEY_POT', 2)}
+                                        className="btn-action btn-special"
+                                        disabled={phase === 'resolve' || ap < 2}
+                                        style={{ borderColor: '#ffff00', color: '#ffff00' }}
+                                    >
                                         <Database size={18} /> <span>ハニーポット</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP</span>
-                                    </button>
+                                    </SkillButton>
                                 </>
                             )}
 
                             {myRole === 'システムオペレーター' && (
                                 <>
-                                    <button
+                                    <SkillButton
+                                        tooltip="1AP: 対象の次ターンAPを+1する。1ターン1回。"
                                         onClick={() => {
                                             setIsTransferMode(!isTransferMode);
                                         }}
@@ -1318,32 +1366,46 @@ function App() {
                                         style={isTransferMode ? { backgroundColor: 'rgba(136, 136, 255, 0.2)', borderColor: '#8888ff', color: '#8888ff' } : { borderColor: '#8888ff', color: '#8888ff' }}
                                     >
                                         <RotateCcw size={18} /> <span>リソース・デプロイメント</span><span className="ap-cost" style={{ color: '#8888ff' }}>1AP (残${(players.find(p => p.id === socket.id)?.transferUsedThisTurn || false) ? 0 : 1})</span>
-                                    </button>
-                                    <button
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="2AP: サーバーHP=0時に自動でHP20に復旧するプロトコルをセット。"
                                         onClick={() => handleAction('RESTORE', 2)}
                                         className="btn-action btn-special"
                                         disabled={phase === 'resolve' || ap < 2}
                                         style={{ borderColor: '#ff4444', color: '#ff4444' }}
                                     >
                                         <Zap size={18} /> <span>リストア</span><span className="ap-cost" style={{ color: '#ff4444' }}>2AP {'->'} HP0時復旧</span>
-                                    </button>
+                                    </SkillButton>
                                 </>
                             )}
 
                             {myRole === 'インフラリーダー' && (
                                 <>
-                                    <button onClick={() => handleAction('SKILL_COPY', 1)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 1} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
+                                    <SkillButton
+                                        tooltip="1AP: 他職業のスキルをランダムに1つ習得(1回限り使用可能)。"
+                                        onClick={() => handleAction('SKILL_COPY', 1)}
+                                        className="btn-action btn-special"
+                                        disabled={phase === 'resolve' || ap < 1}
+                                        style={{ borderColor: '#00ff88', color: '#00ff88' }}
+                                    >
                                         <Cpu size={18} /> <span>レプリケーション</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP</span>
-                                    </button>
-                                    <button onClick={() => handleAction('SPEC_UP', 2)} className="btn-action btn-special" disabled={phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="2AP: サーバーHP上限を120に拡張(2ターン持続)。"
+                                        onClick={() => handleAction('SPEC_UP', 2)}
+                                        className="btn-action btn-special"
+                                        disabled={phase === 'resolve' || ap < 2}
+                                        style={{ borderColor: '#ffff00', color: '#ffff00' }}
+                                    >
                                         <Zap size={18} /> <span>スペックアップ</span><span className="ap-cost" style={{ color: '#ffff00' }}>2AP {'->'} MaxHP 120</span>
-                                    </button>
+                                    </SkillButton>
                                 </>
                             )}
 
                             {myRole === 'DevOps' && (
                                 <>
-                                    <button
+                                    <SkillButton
+                                        tooltip="1AP: 対象と接続。両者が証拠解析するとBOT効率UP。"
                                         onClick={() => {
                                             setIsPipelineMode(!isPipelineMode);
                                         }}
@@ -1352,15 +1414,16 @@ function App() {
                                         style={isPipelineMode ? { backgroundColor: 'rgba(0, 255, 255, 0.2)', borderColor: '#00ffff', color: '#00ffff' } : { borderColor: '#00ffff', color: '#00ffff' }}
                                     >
                                         <Cpu size={18} /> <span>CI/CDパイプライン</span><span className="ap-cost" style={{ color: '#00ffff' }}>1AP</span>
-                                    </button>
-                                    <button
+                                    </SkillButton>
+                                    <SkillButton
+                                        tooltip="2AP(犯人側DevOps時0AP): 解析BOTを1台配備(最大3)。1ターン1回。"
                                         onClick={() => handleAction('DEPLOY_BOT', ((isMurderer || isHacker) && myRole === 'DevOps') ? 0 : 2)}
                                         className="btn-action btn-special"
                                         disabled={phase === 'resolve' || (!((isMurderer || isHacker) && myRole === 'DevOps') && ap < 2) || (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0) >= 1}
                                         style={{ borderColor: '#ffff00', color: '#ffff00' }}
                                     >
                                         <Cpu size={18} /> <span>解析BOT配備</span><span className="ap-cost" style={{ color: '#ffff00' }}>{((isMurderer || isHacker) && myRole === 'DevOps') ? `0AP (残${1 - (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0)})` : `2AP (残${1 - (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0)})`}</span>
-                                    </button>
+                                    </SkillButton>
                                 </>
                             )}
 
