@@ -1511,7 +1511,7 @@ function App() {
                                         >
                                             <option value="">-- 選択してください --</option>
                                             {players.filter(p => p.id !== socket.id).map(p => (
-                                                <option key={p.id} value={p.id}>{p.name} ({p.role})</option>
+                                                <option key={p.id} value={p.id}>{p.name}</option>
                                             ))}
                                         </select>
                                     </div>
@@ -1533,7 +1533,7 @@ function App() {
                                         >
                                             <option value="">-- 選択してください --</option>
                                             {players.filter(p => p.id !== socket.id).map(p => (
-                                                <option key={p.id} value={p.id}>{p.name} ({p.role})</option>
+                                                <option key={p.id} value={p.id}>{p.name}</option>
                                             ))}
                                         </select>
                                     </div>
