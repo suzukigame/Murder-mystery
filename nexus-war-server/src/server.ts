@@ -4,17 +4,17 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
 
-import { GameState, PendingAction, createDefaultPlayer } from './types';
+import { createDefaultPlayer } from './types';
 import {
-    getInitialState,
     addLog,
     executePendingAction,
-    checkWinCondition,
-    tallyFinalVotes,
     assignRoles,
     processTick,
+    tallyFinalVotes,
+    getInitialState,
     CHANT_DURATION,
 } from './gameLogic';
+import { roomManager, Room } from './RoomManager';
 
 // ----------------------------------------------------------
 // Express + Socket.io セットアップ
@@ -23,7 +23,7 @@ import {
 const app = express();
 app.use(cors());
 
-// フロントエンドのビルド成果物のパス (プロジェクト: SKY-MAGYCC JUDAS)
+// フロントエンドのビルド成果物のパス
 const clientDistPath = path.resolve(__dirname, '../../nexus-war-app/dist');
 app.use(express.static(clientDistPath));
 
@@ -36,22 +36,11 @@ const io = new Server(server, {
 });
 
 // ----------------------------------------------------------
-// ゲーム状態（グローバル — Phase 2 で RoomManager に移行予定）
+// ヘルパー: ルーム情報の配信
 // ----------------------------------------------------------
-
-let gameState: GameState = getInitialState();
-let pendingActions: PendingAction[] = [];
-
-// GM観戦者のSocket IDセット
-const spectatorIds = new Set<string>();
-
-// ----------------------------------------------------------
-// 1秒ごとのタイマー処理
-// ----------------------------------------------------------
-
-setInterval(() => {
-    pendingActions = processTick(io, gameState, pendingActions, spectatorIds);
-}, 1000);
+const broadcastRoomList = () => {
+    io.emit('room_list', roomManager.getAllRooms());
+};
 
 // ----------------------------------------------------------
 // Socket.io イベントハンドラ
@@ -60,20 +49,70 @@ setInterval(() => {
 io.on('connection', (socket) => {
     console.log('--- NEW CLIENT CONNECTED ---', socket.id);
 
-    // 初期状態送信
-    socket.emit('state_update', gameState);
-    socket.emit('log_history', gameState.logs);
+    // 接続時にルーム一覧を送信
+    socket.emit('room_list', roomManager.getAllRooms());
 
-    // ----- 参加登録 -----
+    // ----- ルーム一覧取得 -----
+    socket.on('list_rooms', () => {
+        socket.emit('room_list', roomManager.getAllRooms());
+    });
+
+    // ----- ルーム作成 -----
+    socket.on('create_room', (data: { roomId: string; name: string }) => {
+        if (!data.roomId || !data.name) {
+            socket.emit('error', 'ルームIDとルーム名を入力してください。');
+            return;
+        }
+        if (!roomManager.isIdAvailable(data.roomId)) {
+            socket.emit('error', 'そのルームIDは既に使用されています。');
+            return;
+        }
+
+        const room = roomManager.createRoom(data.roomId, data.name);
+        console.log(`Room created: ${room.name} (${room.id})`);
+
+        // タイマー開始 (ルーム単位)
+        room.timerId = setInterval(() => {
+            room.pendingActions = processTick(io, room.gameState, room.pendingActions, room.spectatorIds, room.id);
+        }, 1000);
+
+        broadcastRoomList();
+        socket.emit('create_room_success', { roomId: room.id });
+    });
+
+    // ----- ルーム参加 -----
+    socket.on('join_room', (roomId: string) => {
+        const room = roomManager.getRoom(roomId);
+        if (!room) {
+            socket.emit('error', '指定されたルームが見つかりません。');
+            return;
+        }
+
+        // Socket.ioのルームに参加
+        socket.join(roomId);
+        (socket as any).roomId = roomId; // 簡易的にソケットに保存
+
+        socket.emit('join_room_success', { roomId: room.id, roomName: room.name });
+        socket.emit('state_update', room.gameState);
+        socket.emit('log_history', room.gameState.logs);
+    });
+
+    // ----- ゲーム参加登録 (ルーム内) -----
     socket.on('join_game', (data: { name: string; role: string; token?: string }) => {
-        // 名前で既存プレイヤーを検索 (再接続対応)
+        const roomId = (socket as any).roomId;
+        const room = roomManager.getRoom(roomId);
+        if (!room) {
+            socket.emit('error', 'ルームに所属していません。');
+            return;
+        }
+
+        const gameState = room.gameState;
         const existingByName = gameState.players.find(p => p.name === data.name);
 
         if (existingByName) {
-            // トークンが一致する場合のみ再接続を許可
             if (data.token === existingByName.sessionToken) {
                 existingByName.id = socket.id;
-                addLog(io, gameState, `再接続: ${data.name} 復帰しました。`, 'system');
+                addLog(io, gameState, `再接続: ${data.name} 復帰しました。`, 'system', undefined, room.spectatorIds, roomId);
 
                 if (gameState.isGameStarted) {
                     socket.emit('role_assigned', {
@@ -85,40 +124,45 @@ io.on('connection', (socket) => {
                 }
 
                 socket.emit('join_success', { name: existingByName.name, token: existingByName.sessionToken });
-                io.emit('state_update', gameState);
+                io.to(roomId).emit('state_update', gameState);
+                broadcastRoomList();
                 return;
             }
-
-            socket.emit('error', 'このキャラクターは既に他のプレイヤーが選択しています。以前のセッション情報の復元に失敗しました。');
+            socket.emit('error', 'このキャラクターは既に他のプレイヤーが選択しています。');
             return;
         }
 
-        const existingById = gameState.players.find(p => p.id === socket.id);
-        if (!existingById) {
-            const newToken = Math.random().toString(36).substring(2, 15);
-            gameState.players.push(createDefaultPlayer(socket.id, data.name, data.role, newToken));
-            addLog(io, gameState, `新規接続: ${data.name} 確立。`, 'system');
-
-            socket.emit('join_success', { name: data.name, token: newToken });
-
-            // 6人揃っていて、かつ未開始なら役割を割り当てる
-            if (gameState.players.length === 6 && !gameState.isGameStarted) {
-                assignRoles(io, gameState, spectatorIds);
-            }
-
-            io.emit('state_update', gameState);
+        if (gameState.players.length >= 6) {
+            socket.emit('error', 'このルームは満員です。');
+            return;
         }
+
+        const newToken = Math.random().toString(36).substring(2, 15);
+        gameState.players.push(createDefaultPlayer(socket.id, data.name, data.role, newToken));
+        addLog(io, gameState, `新規接続: ${data.name} 確立。`, 'system', undefined, room.spectatorIds, roomId);
+
+        socket.emit('join_success', { name: data.name, token: newToken });
+
+        if (gameState.players.length === 6 && !gameState.isGameStarted) {
+            assignRoles(io, gameState, room.spectatorIds, roomId);
+        }
+
+        io.to(roomId).emit('state_update', gameState);
+        broadcastRoomList();
     });
 
-    // ----- GM観戦モード入室 -----
+    // ----- GM観戦モード入室 (ルーム内) -----
     socket.on('join_spectator', () => {
-        spectatorIds.add(socket.id);
-        console.log('--- NEW GM SPECTATOR CONNECTED ---', socket.id);
-        socket.emit('spectator_confirmed');
-        socket.emit('log_history', gameState.logs);
+        const roomId = (socket as any).roomId;
+        const room = roomManager.getRoom(roomId);
+        if (!room) return;
 
-        if (gameState.isGameStarted) {
-            const gmInfo = gameState.players.map(p => ({
+        room.spectatorIds.add(socket.id);
+        socket.emit('spectator_confirmed');
+        socket.emit('log_history', room.gameState.logs);
+
+        if (room.gameState.isGameStarted) {
+            const gmInfo = room.gameState.players.map(p => ({
                 id: p.id,
                 name: p.name,
                 role: p.role,
@@ -131,158 +175,110 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ----- 退室 -----
-    socket.on('leave_game', () => {
-        if (spectatorIds.has(socket.id)) {
-            spectatorIds.delete(socket.id);
-            addLog(io, gameState, '観戦者が退室しました。', 'system');
-            return;
-        }
+    // ----- ルーム退室 / ゲーム離脱 -----
+    socket.on('leave_room', () => {
+        const roomId = (socket as any).roomId;
+        const room = roomManager.getRoom(roomId);
+        if (!room) return;
 
-        const index = gameState.players.findIndex(p => p.id === socket.id);
-        if (index !== -1) {
-            const player = gameState.players[index];
-            addLog(io, gameState, `退室: ${player.name} がロビーに戻りました。`, 'system');
-            gameState.players.splice(index, 1);
+        socket.leave(roomId);
+        (socket as any).roomId = null;
 
-            // 全員退室したらゲーム状態をリセット
-            if (gameState.players.length === 0) {
-                gameState.isGameStarted = false;
-                gameState.turn = 1;
-                gameState.phase = 'discussion';
-                gameState.timeLeft = gameState.turnDuration;
-                gameState.hp = 100;
-                gameState.maxHp = 100;
-                gameState.leak = 0;
-                gameState.evidenceAnalysisProgress = 0;
-                gameState.logs = [];
-                gameState.logs.push({
-                    id: Date.now().toString(),
-                    time: new Date().toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour12: false }),
-                    level: 'system',
-                    content: '全プレイヤーが退室しました。ゲーム状態をリセットし、設定変更を受け付けます。',
-                });
-                spectatorIds.clear();
+        if (room.spectatorIds.has(socket.id)) {
+            room.spectatorIds.delete(socket.id);
+        } else {
+            const index = room.gameState.players.findIndex(p => p.id === socket.id);
+            if (index !== -1) {
+                const player = room.gameState.players[index];
+                addLog(io, room.gameState, `退室: ${player.name} がロビーに戻りました。`, 'system', undefined, room.spectatorIds, roomId);
+                room.gameState.players.splice(index, 1);
             }
-
-            io.emit('state_update', gameState);
         }
+
+        // 全員退室したらルーム削除
+        if (room.gameState.players.length === 0 && room.spectatorIds.size === 0) {
+            console.log(`Deleting empty room: ${room.id}`);
+            roomManager.deleteRoom(roomId);
+        } else {
+            io.to(roomId).emit('state_update', room.gameState);
+        }
+
+        broadcastRoomList();
+        socket.emit('leave_room_success');
     });
 
-    // ----- 設定変更 -----
+    // ----- 設定変更 (ルーム内) -----
     socket.on('update_settings', (data: { turnDuration?: number }) => {
-        if (gameState.isGameStarted) return;
+        const roomId = (socket as any).roomId;
+        const room = roomManager.getRoom(roomId);
+        if (!room || room.gameState.isGameStarted) return;
 
         if (data.turnDuration !== undefined) {
-            gameState.turnDuration = data.turnDuration;
-            gameState.timeLeft = data.turnDuration;
-            addLog(io, gameState, `システム設定変更: 1ターンの時間を ${data.turnDuration} 秒に設定しました。`, 'system');
+            room.gameState.turnDuration = data.turnDuration;
+            room.gameState.timeLeft = data.turnDuration;
+            addLog(io, room.gameState, `システム設定変更: 1ターンの時間を ${data.turnDuration} 秒に設定しました。`, 'system', undefined, room.spectatorIds, roomId);
         }
-        io.emit('state_update', gameState);
+        io.to(roomId).emit('state_update', room.gameState);
     });
 
-    // ----- アクション -----
+    // ----- アクション (ルーム内) -----
     socket.on('action', (data: { type: string; cost: number; targetId?: string }) => {
-        const player = gameState.players.find(p => p.id === socket.id);
+        const roomId = (socket as any).roomId;
+        const room = roomManager.getRoom(roomId);
+        if (!room) return;
+
+        const player = room.gameState.players.find(p => p.id === socket.id);
         if (!player) return;
 
-        // NULLIFY (無効化) アクションの即時処理
         if (data.type === 'NULLIFY') {
-            if (!player.isMurderer) {
-                socket.emit('error', 'このアクションは殺人犯専用です。');
-                return;
-            }
-            if (player.nullifyUsedThisTurn) {
-                socket.emit('error', '無効化は1ターンに1回までです。');
-                return;
-            }
-            if (pendingActions.length === 0) {
-                socket.emit('error', '現在、無効化可能なアクションはありません。');
-                return;
-            }
+            if (!player.isMurderer) { socket.emit('error', '殺人犯専用です。'); return; }
+            if (player.nullifyUsedThisTurn) { socket.emit('error', '1ターン1回までです。'); return; }
+            if (room.pendingActions.length === 0) { socket.emit('error', '無効化対象がありません。'); return; }
 
             player.nullifyUsedThisTurn = true;
-            addLog(io, gameState, `>>> 異常なパケット干渉を検知。実行中の全アクションが強制終了されました。 <<<`, 'critical', player.name, spectatorIds);
+            addLog(io, room.gameState, `パケット干渉検知。全アクション強制終了。`, 'critical', player.name, room.spectatorIds, roomId);
 
-            pendingActions.forEach(pa => clearTimeout(pa.timerId));
-            pendingActions = [];
-            gameState.hasPendingActions = false;
-            io.emit('state_update', gameState);
+            room.pendingActions.forEach(pa => clearTimeout(pa.timerId));
+            room.pendingActions = [];
+            room.gameState.hasPendingActions = false;
+            io.to(roomId).emit('state_update', room.gameState);
             return;
         }
 
-        // 投票による隔離（行動不能）のチェック
-        if (player.isIsolated) {
-            socket.emit('error', 'アクセス権限が制限されています（行動不能状態）。');
-            return;
-        }
-
-        // サーバー側での厳密なAPチェック
+        if (player.isIsolated) { socket.emit('error', '行動不能状態です。'); return; }
         const ap = 3 - player.apDebuff + player.transferBonusNextTurn + player.chargedAp - player.apSpentThisTurn;
-        if (ap < data.cost) {
-            socket.emit('error', 'AP不足です。');
-            return;
-        }
+        if (ap < data.cost) { socket.emit('error', 'AP不足。'); return; }
 
         const isHackerAction = ['INJECT_MALWARE', 'EXFILTRATE', 'EXFIL', 'TAMPER_EVIDENCE', 'DDOS', 'FALSE_FLAG', 'SABOTAGE', 'LOCKOUT', 'BLACKOUT', 'PHYSICAL_DESTROY'].includes(data.type);
         const isMurdererAction = ['TAMPER_EVIDENCE', 'SABOTAGE', 'LOCKOUT', 'FALSE_FLAG', 'BLACKOUT', 'PHYSICAL_DESTROY'].includes(data.type);
         const publicCost = isHackerAction ? 0 : data.cost;
-
-        // コピーしたスキルの使用判定
         const isUsingCopiedSkill = player.copiedSkill === data.type;
 
         if (isHackerAction && !player.isHacker && !(isMurdererAction && player.isMurderer) && !isUsingCopiedSkill) {
-            socket.emit('error', '不正アクセス: ROOT権限が必要です。');
+            socket.emit('error', 'ROOT権限が必要です。');
             return;
         }
+        if (player.isIpBlocked) { socket.emit('error', 'IPブロック中。'); return; }
 
-        // 行動阻害チェック (IP_BLOCK)
-        if (player.isIpBlocked) {
-            socket.emit('error', '通信遮断: IPブロックによりアクションが拒否されました。');
-            return;
-        }
+        // 回数制限
+        if ((data.type === 'INJECT_MALWARE' || data.type === 'INJECT') && player.malwareUsedThisTurn >= 1) { socket.emit('error', '1ターン1回まで。'); return; }
+        if ((data.type === 'EXFILTRATE' || data.type === 'EXFIL') && player.exfilUsedThisTurn >= 3) { socket.emit('error', '1ターン3回まで。'); return; }
+        if (data.type === 'TRANSFER' && player.transferUsedThisTurn) { socket.emit('error', '1ターン1回まで。'); return; }
+        if (data.type === 'DEPLOY_BOT' && player.deployBotUsedThisTurn >= 1) { socket.emit('error', '1ターン1回まで。'); return; }
 
-        // 固有スキルの回数制限チェック
-        if ((data.type === 'INJECT_MALWARE' || data.type === 'INJECT') && player.malwareUsedThisTurn >= 1) {
-            socket.emit('error', 'リミット到達: マルウェアは1ターンに1回までです。');
-            return;
-        }
-        if ((data.type === 'EXFILTRATE' || data.type === 'EXFIL') && player.exfilUsedThisTurn >= 3) {
-            socket.emit('error', 'リミット到達: 持ち出しは1ターンに3回までです。');
-            return;
-        }
-        if (data.type === 'TRANSFER' && player.transferUsedThisTurn) {
-            socket.emit('error', 'クールダウン中: リソース譲渡は1ターンに1回のみです。');
-            return;
-        }
-        if (data.type === 'DEPLOY_BOT' && player.deployBotUsedThisTurn >= 1) {
-            socket.emit('error', '解析BOT配備は1ターンに1回までです。');
-            return;
-        }
-
-        // アクションを保留キューに追加 (Action Chanting)
         player.apSpentThisTurn += data.cost;
-        gameState.totalPublicAp += publicCost;
-        gameState.totalActualAp += data.cost;
+        room.gameState.totalPublicAp += publicCost;
+        room.gameState.totalActualAp += data.cost;
+        if (isHackerAction) player.performedHackerAction = true;
+        if (isUsingCopiedSkill) { player.copiedSkill = null; player.copiedSkillLabel = null; }
 
-        if (isHackerAction) {
-            player.performedHackerAction = true;
-        }
-
-        // コピーしたスキルを消費する
-        if (isUsingCopiedSkill) {
-            player.copiedSkill = null;
-            player.copiedSkillLabel = null;
-        }
-
-        // 個別のフラグ更新
         if (data.type === 'INJECT_MALWARE' || data.type === 'INJECT') player.malwareUsedThisTurn++;
         if (data.type === 'EXFILTRATE' || data.type === 'EXFIL') player.exfilUsedThisTurn++;
         if (data.type === 'TRANSFER') player.transferUsedThisTurn = true;
         if (data.type === 'DEPLOY_BOT') player.deployBotUsedThisTurn++;
         if (data.type === 'ANALYZE_EVIDENCE') player.analyzedThisTurn = true;
 
-        const newPendingAction: PendingAction = {
+        const newPendingAction = {
             playerId: player.id,
             playerName: player.name,
             socketId: socket.id,
@@ -292,135 +288,116 @@ io.on('connection', (socket) => {
             isHackerAction,
             publicCost,
             timerId: setTimeout(() => {
-                pendingActions = executePendingAction(io, gameState, pendingActions, newPendingAction, spectatorIds);
+                room.pendingActions = executePendingAction(io, room.gameState, room.pendingActions, newPendingAction, room.spectatorIds, roomId);
             }, CHANT_DURATION),
         };
 
-        pendingActions.push(newPendingAction);
-        gameState.hasPendingActions = true;
-        io.emit('state_update', gameState);
+        room.pendingActions.push(newPendingAction);
+        room.gameState.hasPendingActions = true;
+        io.to(roomId).emit('state_update', room.gameState);
     });
 
-    // ----- チャット受信 -----
+    // ----- チャット (ルーム内) -----
     socket.on('chat_message', (data: { targetId: string; message: string; senderName: string }) => {
-        const player = gameState.players.find(p => p.id === socket.id);
+        const roomId = (socket as any).roomId;
+        const room = roomManager.getRoom(roomId);
+        if (!room) return;
+
+        const player = room.gameState.players.find(p => p.id === socket.id);
         const name = player ? player.name : data.senderName;
+        addLog(io, room.gameState, 'ENCRYPTED COMMUNICATION.', 'warn', name, room.spectatorIds, roomId);
+        io.to(data.targetId).emit('private_message', { senderId: socket.id, senderName: name, message: data.message });
+    });
 
-        addLog(io, gameState, 'ENCRYPTED COMMUNICATION DETECTED.', 'warn', name, spectatorIds);
+    // ----- 投票 (ルーム内) -----
+    socket.on('vote', (data: { targetId: string }) => {
+        const roomId = (socket as any).roomId;
+        const room = roomManager.getRoom(roomId);
+        if (!room || !room.gameState.isGameStarted) return;
 
-        io.to(data.targetId).emit('private_message', {
-            senderId: socket.id,
-            senderName: name,
-            message: data.message,
-        });
+        const voter = room.gameState.players.find(p => p.id === socket.id);
+        const target = room.gameState.players.find(p => p.id === data.targetId);
+        if (voter && target) {
+            const previousTargetId = room.gameState.votedPlayers[socket.id];
+            if (previousTargetId) {
+                const prevTarget = room.gameState.players.find(p => p.id === previousTargetId);
+                if (prevTarget) prevTarget.votes = Math.max(0, prevTarget.votes - 1);
+            }
+            room.gameState.votedPlayers[socket.id] = data.targetId;
+            target.votes++;
+            addLog(io, room.gameState, 'ANONYMOUS VOTE RECORDED.', 'system', undefined, room.spectatorIds, roomId);
+            io.to(roomId).emit('state_update', room.gameState);
+        }
+    });
+
+    // ----- 投票取消 (ルーム内) -----
+    socket.on('cancel_vote', () => {
+        const roomId = (socket as any).roomId;
+        const room = roomManager.getRoom(roomId);
+        if (!room || !room.gameState.isGameStarted) return;
+
+        const previousTargetId = room.gameState.votedPlayers[socket.id];
+        if (previousTargetId) {
+            const prevTarget = room.gameState.players.find(p => p.id === previousTargetId);
+            if (prevTarget) prevTarget.votes = Math.max(0, prevTarget.votes - 1);
+            delete room.gameState.votedPlayers[socket.id];
+            addLog(io, room.gameState, 'ANONYMOUS VOTE RETRACTED.', 'system', undefined, room.spectatorIds, roomId);
+            io.to(roomId).emit('state_update', room.gameState);
+        }
+    });
+
+    // ----- 最終投票 (ルーム内) -----
+    socket.on('final_vote', (data: { murdererVote: string; hackerVote: string }) => {
+        const roomId = (socket as any).roomId;
+        const room = roomManager.getRoom(roomId);
+        if (!room || room.gameState.phase !== 'final_voting') return;
+
+        room.gameState.finalVotesMurderer[socket.id] = data.murdererVote;
+        room.gameState.finalVotesHacker[socket.id] = data.hackerVote;
+        addLog(io, room.gameState, `FINAL IDENTIFICATION SUBMITTED.`, 'system', undefined, room.spectatorIds, roomId);
+        io.to(roomId).emit('state_update', room.gameState);
+
+        if (Object.keys(room.gameState.finalVotesMurderer).length >= room.gameState.players.length) {
+            tallyFinalVotes(io, room.gameState, room.spectatorIds, roomId);
+        }
+    });
+
+    // ----- 強制開始 / リセット (ルーム内) -----
+    socket.on('start_game_force', () => {
+        const roomId = (socket as any).roomId;
+        const room = roomManager.getRoom(roomId);
+        if (room && room.gameState.players.length > 0) {
+            assignRoles(io, room.gameState, room.spectatorIds, roomId);
+            io.to(roomId).emit('state_update', room.gameState);
+            broadcastRoomList();
+        }
+    });
+
+    socket.on('reset_game', () => {
+        const roomId = (socket as any).roomId;
+        const room = roomManager.getRoom(roomId);
+        if (!room) return;
+        const currentPlayers = room.gameState.players;
+        room.gameState = { ...getInitialState(room.gameState.turnDuration), players: currentPlayers };
+        addLog(io, room.gameState, 'SYSTEM REBOOT INITIATED.', 'system', undefined, room.spectatorIds, roomId);
+        if (room.gameState.players.length === 6) assignRoles(io, room.gameState, room.spectatorIds, roomId);
+        io.to(roomId).emit('state_update', room.gameState);
     });
 
     // ----- 切断 -----
     socket.on('disconnect', () => {
-        if (spectatorIds.has(socket.id)) {
-            spectatorIds.delete(socket.id);
-            console.log('Spectator disconnected:', socket.id);
-            return;
-        }
-        const playerIndex = gameState.players.findIndex(p => p.id === socket.id);
-        if (playerIndex !== -1) {
-            const player = gameState.players[playerIndex];
-            addLog(io, gameState, `CONNECTION SUSPENDED: ${player.name} (Wait for re-auth)`, 'warn');
-            io.emit('state_update', gameState);
+        const roomId = (socket as any).roomId;
+        const room = roomManager.getRoom(roomId);
+        if (room) {
+            if (room.spectatorIds.has(socket.id)) {
+                room.spectatorIds.delete(socket.id);
+            } else {
+                const player = room.gameState.players.find(p => p.id === socket.id);
+                if (player) addLog(io, room.gameState, `CONNECTION SUSPENDED: ${player.name}`, 'warn', undefined, room.spectatorIds, roomId);
+            }
+            io.to(roomId).emit('state_update', room.gameState);
         }
         console.log('Client disconnected:', socket.id);
-    });
-
-    // ----- ゲームリセット -----
-    socket.on('reset_game', () => {
-        const currentPlayers = gameState.players;
-        const currentDuration = gameState.turnDuration;
-        gameState = getInitialState(currentDuration);
-        gameState.players = currentPlayers;
-        addLog(io, gameState, 'SYSTEM REBOOT INITIATED... NEW SESSION STARTED.', 'system');
-
-        if (gameState.players.length === 6) {
-            assignRoles(io, gameState, spectatorIds);
-        }
-
-        io.emit('state_update', gameState);
-        io.emit('log_history', []);
-    });
-
-    // ----- プレイヤーリスト完全リセット -----
-    socket.on('clear_players', () => {
-        gameState.players = [];
-        gameState.isGameStarted = false;
-        addLog(io, gameState, 'PLAYER LIST CLEARED BY OPERATOR.', 'system');
-        io.emit('state_update', gameState);
-    });
-
-    // ----- 投票受付 -----
-    socket.on('vote', (data: { targetId: string }) => {
-        const voter = gameState.players.find(p => p.id === socket.id);
-        const target = gameState.players.find(p => p.id === data.targetId);
-
-        if (voter && target && gameState.isGameStarted) {
-            const previousTargetId = gameState.votedPlayers[socket.id];
-            if (previousTargetId) {
-                const prevTarget = gameState.players.find(p => p.id === previousTargetId);
-                if (prevTarget) prevTarget.votes = Math.max(0, prevTarget.votes - 1);
-            }
-
-            gameState.votedPlayers[socket.id] = data.targetId;
-            target.votes++;
-
-            addLog(io, gameState, 'ANONYMOUS VOTE RECORDED.', 'system');
-            io.emit('state_update', gameState);
-        }
-    });
-
-    // ----- 投票取消 -----
-    socket.on('cancel_vote', () => {
-        const voter = gameState.players.find(p => p.id === socket.id);
-        if (voter && gameState.isGameStarted) {
-            const previousTargetId = gameState.votedPlayers[socket.id];
-            if (previousTargetId) {
-                const prevTarget = gameState.players.find(p => p.id === previousTargetId);
-                if (prevTarget) prevTarget.votes = Math.max(0, prevTarget.votes - 1);
-                delete gameState.votedPlayers[socket.id];
-                addLog(io, gameState, 'ANONYMOUS VOTE RETRACTED.', 'system');
-                io.emit('state_update', gameState);
-            }
-        }
-    });
-
-    // ----- 最終投票受付 -----
-    socket.on('final_vote', (data: { murdererVote: string; hackerVote: string }) => {
-        if (gameState.phase !== 'final_voting') return;
-        const voter = gameState.players.find(p => p.id === socket.id);
-        if (!voter) return;
-
-        gameState.finalVotesMurderer[socket.id] = data.murdererVote;
-        gameState.finalVotesHacker[socket.id] = data.hackerVote;
-        addLog(io, gameState, `${voter.name} HAS SUBMITTED FINAL IDENTIFICATION.`, 'system');
-        io.emit('state_update', gameState);
-
-        const totalVoters = gameState.players.length;
-        const votedCount = Object.keys(gameState.finalVotesMurderer).length;
-        if (votedCount >= totalVoters) {
-            tallyFinalVotes(io, gameState, spectatorIds);
-        }
-    });
-
-    // ----- 最終投票集計 (GM手動トリガー) -----
-    socket.on('tally_final_votes', () => {
-        if (gameState.phase !== 'final_voting') return;
-        tallyFinalVotes(io, gameState, spectatorIds);
-    });
-
-    // ----- 強制ゲーム開始 (デバッグ用) -----
-    socket.on('start_game_force', () => {
-        if (gameState.players.length > 0) {
-            assignRoles(io, gameState, spectatorIds);
-            addLog(io, gameState, 'SYSTEM OVERRIDE: GAME STARTED BY OPERATOR.', 'system');
-            io.emit('state_update', gameState);
-        }
     });
 });
 
