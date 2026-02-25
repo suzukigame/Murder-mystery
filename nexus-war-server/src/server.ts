@@ -827,10 +827,10 @@ function tallyFinalVotes() {
 
     if (murdererCorrect && hackerCorrect) {
         gameState.finalVotingResult = 'employee_perfect_win';
-        addLog(`★★★ 完全勝利 ★★★ 裏切り者を全員特定しました！`, 'critical');
+        addLog(`★ 社員勝利 ★ 裏切り者を全員特定しました！`, 'critical');
     } else if (murdererCorrect) {
         gameState.finalVotingResult = 'employee_win';
-        addLog(`★ 社員勝利 ★ 殺人犯を特定！しかしハッカーは逃走...`, 'critical');
+        addLog(`〓 引き分け 〓 殺人犯を特定！しかしハッカーは逃走した...`, 'critical');
     } else {
         gameState.finalVotingResult = 'murderer_escape';
         addLog(`✗ 殺人犯逃亡 ✗ 犯人は闇に消えました...`, 'critical');
