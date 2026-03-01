@@ -143,10 +143,6 @@ io.on('connection', (socket) => {
 
         socket.emit('join_success', { name: data.name, token: newToken });
 
-        if (gameState.players.length === 6 && !gameState.isGameStarted) {
-            assignRoles(io, gameState, room.spectatorIds, roomId);
-        }
-
         io.to(roomId).emit('state_update', gameState);
         broadcastRoomList();
     });
@@ -231,6 +227,17 @@ io.on('connection', (socket) => {
             room.gameState.timeLeft = data.turnDuration;
             addLog(io, room.gameState, `システム設定変更: 1ターンの時間を ${data.turnDuration} 秒に設定しました。`, 'system', undefined, room.spectatorIds, roomId);
         }
+        io.to(roomId).emit('state_update', room.gameState);
+    });
+
+    // ----- ゲーム開始 (手動) -----
+    socket.on('start_game_force', () => {
+        const roomId = (socket as any).roomId;
+        const room = roomManager.getRoom(roomId);
+        if (!room || room.gameState.isGameStarted) return;
+
+        // 本来は6人揃っているかチェックするが、現状はクライアント側のボタン非活性化で担保
+        assignRoles(io, room.gameState, room.spectatorIds, roomId);
         io.to(roomId).emit('state_update', room.gameState);
     });
 

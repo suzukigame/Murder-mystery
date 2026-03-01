@@ -178,12 +178,31 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                         ))}
                     </div>
 
+                    <div className="mb-6 p-4 border border-green-500/20 bg-green-500/5 rounded">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-green-400">1ターンの時間設定</span>
+                            <select
+                                className="bg-black border border-green-500 text-green-400 p-1 text-sm outline-none"
+                                value={turnDuration}
+                                onChange={(e) => socket.emit('update_settings', { turnDuration: Number(e.target.value) })}
+                            >
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(min => (
+                                    <option key={min} value={min * 60}>{min} 分</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
                     <div className="flex gap-4">
                         <button
                             onClick={forceStart}
-                            className="flex-1 bg-green-500/20 border border-green-500 text-green-400 py-3 font-bold hover:bg-green-500 hover:text-black transition-all tracking-widest"
+                            disabled={players.length < 6}
+                            className={`flex-1 py-3 font-bold transition-all tracking-widest ${players.length === 6
+                                    ? 'bg-green-500 text-black hover:bg-green-400 shadow-[0_0_15px_rgba(0,255,0,0.5)]'
+                                    : 'bg-green-500/10 border border-green-500/30 text-green-500/50 cursor-not-allowed'
+                                }`}
                         >
-                            FORCE START
+                            {players.length === 6 ? 'START GAME' : 'WAITING FOR 6 PLAYERS...'}
                         </button>
                         <button
                             onClick={handleLeave}
