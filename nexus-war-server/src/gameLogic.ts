@@ -533,6 +533,9 @@ export function executePendingAction(
         addLog(io, gameState, `システム・リストア発動: 致命的なエラーから復旧しました。(HP 0 -> 20)`, 'system', undefined, spectatorIds, roomId);
     }
 
+    // アクション結果により決着がついたかチェック
+    checkWinCondition(io, gameState, spectatorIds, roomId);
+
     const emitTarget = roomId ? io.to(roomId) : io;
     emitTarget.emit('state_update', gameState);
 
