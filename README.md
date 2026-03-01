@@ -47,8 +47,9 @@ murder-mystery/
 ├── nexus-war-server/   # バックエンド (Node.js)
 │   ├── src/
 │   │   └── server.ts   # ゲームエンジン・通信ロジック
-└── GM/                 # ゲームマスター用資料・設定書
-    ├── GM_SCENARIO_Judas_Protocol.md  # シナリオ設定
+├── GM/                 # ゲームマスター用資料・設定書
+│   └── GM_SCENARIO_Judas_Protocol.md  # シナリオ設定
+└── ideas/              # アイデア・スキル設定案
     └── IDEA_SKILL_BRAINSTORMING.md    # スキル詳細・検証記録
 ```
 
