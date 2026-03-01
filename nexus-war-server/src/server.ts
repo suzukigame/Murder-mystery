@@ -250,6 +250,9 @@ io.on('connection', (socket) => {
         const player = room.gameState.players.find(p => p.id === socket.id);
         if (!player) return;
 
+        // 解決フェーズ中はアクション不可
+        if (room.gameState.phase === 'resolve') { socket.emit('error', '解決フェーズ中は行動できません。'); return; }
+
         if (data.type === 'NULLIFY') {
             if (!player.isMurderer) { socket.emit('error', '殺人犯専用です。'); return; }
             if (player.nullifyUsedThisTurn) { socket.emit('error', '1ターン1回までです。'); return; }
@@ -339,6 +342,9 @@ io.on('connection', (socket) => {
         const room = roomManager.getRoom(roomId);
         if (!room || !room.gameState.isGameStarted) return;
 
+        // 解決フェーズ中は投票不可
+        if (room.gameState.phase === 'resolve') { socket.emit('error', '解決フェーズ中は投票できません。'); return; }
+
         const voter = room.gameState.players.find(p => p.id === socket.id);
         const target = room.gameState.players.find(p => p.id === data.targetId);
         if (voter && target) {
@@ -359,6 +365,9 @@ io.on('connection', (socket) => {
         const roomId = (socket as any).roomId;
         const room = roomManager.getRoom(roomId);
         if (!room || !room.gameState.isGameStarted) return;
+
+        // 解決フェーズ中は投票取消不可
+        if (room.gameState.phase === 'resolve') return;
 
         const previousTargetId = room.gameState.votedPlayers[socket.id];
         if (previousTargetId) {

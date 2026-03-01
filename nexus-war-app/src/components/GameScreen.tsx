@@ -393,11 +393,11 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                             <li key={p.id} className="flex justify-between items-center px-3 py-1 text-sm bg-white/5 hover:bg-[#00ffff]/20 text-[#00ffff] rounded transition-colors whitespace-nowrap overflow-hidden text-ellipsis">
                                 <span>{p.name} {p.role && `[${p.role}]`}</span>
                                 <div className="flex gap-1">
-                                    <button onClick={() => setIsPipelineMode(false)} className="btn-vote" style={{ backgroundColor: 'rgba(255,68,68,0.15)', borderColor: '#ff4444', color: '#ff8888', fontSize: '0.7rem', padding: '2px 6px' }}>CANCEL</button>
+                                    <button onClick={() => setIsPipelineMode(false)} className="btn-vote" disabled={phase === 'resolve'} style={{ backgroundColor: 'rgba(255,68,68,0.15)', borderColor: '#ff4444', color: '#ff8888', fontSize: '0.7rem', padding: '2px 6px' }}>CANCEL</button>
                                     <button onClick={() => {
                                         handleAction('PIPELINE', 1, p.id);
                                         setIsPipelineMode(false);
-                                    }} className="btn-vote" style={{ borderColor: '#00ffff', color: '#00ffff' }}>CONNECT</button>
+                                    }} className="btn-vote" disabled={phase === 'resolve'} style={{ borderColor: '#00ffff', color: '#00ffff' }}>CONNECT</button>
                                 </div>
                             </li>
                         ))}
@@ -473,36 +473,36 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                                     <>
                                         {!isTraceMode && !isDdosMode && !isFalseFlagMode && !isLockoutMode && !isPipelineMode && !isTransferMode && !isPatchMode && !isIpBlockMode && !isCopiedSkillMode && (
                                             <div className="flex gap-1">
-                                                <button onClick={() => handleVote(p.id)} className="btn-vote">投票</button>
-                                                <button onClick={() => handleCancelVote()} className="btn-vote" style={{ backgroundColor: 'rgba(255,68,68,0.15)', borderColor: '#ff4444', color: '#ff8888', fontSize: '0.7rem', padding: '2px 6px' }}>取消</button>
+                                                <button onClick={() => handleVote(p.id)} className="btn-vote" disabled={phase === 'resolve'}>投票</button>
+                                                <button onClick={() => handleCancelVote()} className="btn-vote" disabled={phase === 'resolve'} style={{ backgroundColor: 'rgba(255,68,68,0.15)', borderColor: '#ff4444', color: '#ff8888', fontSize: '0.7rem', padding: '2px 6px' }}>取消</button>
                                             </div>
                                         )}
                                         {isTraceMode && myRole === 'ネットワーク管理者' && (
-                                            <button onClick={() => { handleAction('TRACE_LOG', 1, p.id); setIsTraceMode(false); }} className="btn-vote btn-trace" style={{ borderColor: '#ffff00', color: '#ffff00' }}>TRACE</button>
+                                            <button onClick={() => { handleAction('TRACE_LOG', 1, p.id); setIsTraceMode(false); }} className="btn-vote btn-trace" disabled={phase === 'resolve'} style={{ borderColor: '#ffff00', color: '#ffff00' }}>TRACE</button>
                                         )}
                                         {isDdosMode && isHacker && (
-                                            <button onClick={() => { handleAction('DDOS', 1, p.id); setIsDdosMode(false); }} className="btn-vote" style={{ borderColor: '#ff4444', color: '#ff4444' }}>DDOS</button>
+                                            <button onClick={() => { handleAction('DDOS', 1, p.id); setIsDdosMode(false); }} className="btn-vote" disabled={phase === 'resolve'} style={{ borderColor: '#ff4444', color: '#ff4444' }}>DDOS</button>
                                         )}
                                         {(isFalseFlagMode && (isHacker || isMurderer)) && (
-                                            <button onClick={() => { handleAction('FALSE_FLAG', 1, p.id); setIsFalseFlagMode(false); }} className="btn-vote" style={{ borderColor: '#ff00ff', color: '#ff00ff' }}>FAKE</button>
+                                            <button onClick={() => { handleAction('FALSE_FLAG', 1, p.id); setIsFalseFlagMode(false); }} className="btn-vote" disabled={phase === 'resolve'} style={{ borderColor: '#ff00ff', color: '#ff00ff' }}>FAKE</button>
                                         )}
                                         {isLockoutMode && isMurderer && (
-                                            <button onClick={() => { handleAction('LOCKOUT', 2, p.id); setIsLockoutMode(false); }} className="btn-vote" style={{ borderColor: '#ff0000', color: '#ff0000' }}>LOCK</button>
+                                            <button onClick={() => { handleAction('LOCKOUT', 2, p.id); setIsLockoutMode(false); }} className="btn-vote" disabled={phase === 'resolve'} style={{ borderColor: '#ff0000', color: '#ff0000' }}>LOCK</button>
                                         )}
                                         {isPipelineMode && myRole === 'DevOps' && (
-                                            <button onClick={() => { handleAction('PIPELINE', 1, p.id); setIsPipelineMode(false); }} className="btn-vote" style={{ borderColor: '#00ffff', color: '#00ffff' }}>CONNECT</button>
+                                            <button onClick={() => { handleAction('PIPELINE', 1, p.id); setIsPipelineMode(false); }} className="btn-vote" disabled={phase === 'resolve'} style={{ borderColor: '#00ffff', color: '#00ffff' }}>CONNECT</button>
                                         )}
                                         {isTransferMode && myRole === 'システムオペレーター' && (
-                                            <button onClick={() => { handleAction('TRANSFER', 1, p.id); setIsTransferMode(false); }} className="btn-vote" style={{ borderColor: '#8888ff', color: '#8888ff' }}>GIVE AP</button>
+                                            <button onClick={() => { handleAction('TRANSFER', 1, p.id); setIsTransferMode(false); }} className="btn-vote" disabled={phase === 'resolve'} style={{ borderColor: '#8888ff', color: '#8888ff' }}>GIVE AP</button>
                                         )}
                                         {isPatchMode && myRole === 'セキュリティ分析官' && (
-                                            <button onClick={() => { handleAction('PATCH', 1, p.id); setIsPatchMode(false); }} className="btn-vote" style={{ borderColor: '#00ff88', color: '#00ff88' }}>PATCH</button>
+                                            <button onClick={() => { handleAction('PATCH', 1, p.id); setIsPatchMode(false); }} className="btn-vote" disabled={phase === 'resolve'} style={{ borderColor: '#00ff88', color: '#00ff88' }}>PATCH</button>
                                         )}
                                         {isIpBlockMode && myRole === 'ネットワーク管理者' && (
-                                            <button onClick={() => { handleAction('IP_BLOCK', 2, p.id); setIsIpBlockMode(false); }} className="btn-vote" style={{ borderColor: '#ff4444', color: '#ff4444' }}>BLOCK</button>
+                                            <button onClick={() => { handleAction('IP_BLOCK', 2, p.id); setIsIpBlockMode(false); }} className="btn-vote" disabled={phase === 'resolve'} style={{ borderColor: '#ff4444', color: '#ff4444' }}>BLOCK</button>
                                         )}
                                         {isCopiedSkillMode && copiedSkill && (
-                                            <button onClick={() => { handleAction(copiedSkill, 1, p.id); setIsCopiedSkillMode(false); }} className="btn-vote" style={{ borderColor: '#bc13fe', color: '#bc13fe' }}>USE SKILL</button>
+                                            <button onClick={() => { handleAction(copiedSkill, 1, p.id); setIsCopiedSkillMode(false); }} className="btn-vote" disabled={phase === 'resolve'} style={{ borderColor: '#bc13fe', color: '#bc13fe' }}>USE SKILL</button>
                                         )}
                                     </>
                                 )}
