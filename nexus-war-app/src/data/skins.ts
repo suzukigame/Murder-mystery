@@ -24,8 +24,8 @@ export const AVAILABLE_SKINS: ISkinData[] = [
     // 実績などで解放されるシークレットキャラクター
     {
         id: 'chibigirl',
-        name: 'chibigirl',
-        imagePath: '/assets/avatars/chibigirl.png',
+        name: 'イリス・ナイト',
+        imagePath: '/assets/avatars/イリス・ナイト.png',
         isSecret: true,
         unlockCondition: 'win_hacker_1',
         unlockHint: 'ハッカー陣営として1回勝利する'
@@ -48,7 +48,7 @@ export const AVAILABLE_SKINS: ISkinData[] = [
     },
     {
         id: 'ore_chan_doji',
-        name: '俺ちゃん童貞',
+        name: '俺ちゃんどーじ',
         imagePath: '/assets/avatars/俺ちゃんどーじ.png',
         isSecret: true,
         unlockCondition: 'win_murderer_1',
@@ -77,6 +77,30 @@ export const AVAILABLE_SKINS: ISkinData[] = [
         isSecret: true,
         unlockCondition: 'first_death',
         unlockHint: '最初のターンで死亡する'
+    },
+    {
+        id: 'spike_law',
+        name: 'スパイク・ロー',
+        imagePath: '/assets/avatars/スパイク・ロー.png',
+        isSecret: true,
+        unlockCondition: 'win_hacker_3',
+        unlockHint: 'ハッカー陣営として累計3回勝利する'
+    },
+    {
+        id: 'chibigirl_real',
+        name: 'チビガール',
+        imagePath: '/assets/avatars/チビガール.png',
+        isSecret: true,
+        unlockCondition: 'win_employee_5',
+        unlockHint: '社員陣営として累計5回勝利する'
+    },
+    {
+        id: 'wraith_hunter',
+        name: 'レイス・ハンター',
+        imagePath: '/assets/avatars/レイス・ハンター.png',
+        isSecret: true,
+        unlockCondition: 'win_murderer_3',
+        unlockHint: '殺人犯陣営として累計3回勝利する'
     },
 ];
 

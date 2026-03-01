@@ -138,12 +138,19 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                 newlyUnlocked.push('play_game_5');
             }
 
-            // win_hacker_1: ハッカーとして勝利
+            // win_hacker_1 & win_hacker_3: ハッカーとして勝利（回数カウント）
             if (myStats.faction === 'hacker' && myStats.won) {
                 newlyUnlocked.push('win_hacker_1');
+
+                const hackerWinKey = 'nexus_war_hacker_wins';
+                const hackerWins = parseInt(localStorage.getItem(hackerWinKey) || '0', 10) + 1;
+                localStorage.setItem(hackerWinKey, String(hackerWins));
+                if (hackerWins >= 3) {
+                    newlyUnlocked.push('win_hacker_3');
+                }
             }
 
-            // win_employee_3: 社員として勝利（回数カウント）
+            // win_employee_3 & win_employee_5: 社員として勝利（回数カウント）
             if (myStats.faction === 'employee' && myStats.won) {
                 const empWinKey = 'nexus_war_employee_wins';
                 const empWins = parseInt(localStorage.getItem(empWinKey) || '0', 10) + 1;
@@ -151,11 +158,21 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                 if (empWins >= 3) {
                     newlyUnlocked.push('win_employee_3');
                 }
+                if (empWins >= 5) {
+                    newlyUnlocked.push('win_employee_5');
+                }
             }
 
-            // win_murderer_1: 殺人犯として勝利
+            // win_murderer_1 & win_murderer_3: 殺人犯として勝利（回数カウント）
             if (myStats.faction === 'murderer' && myStats.won) {
                 newlyUnlocked.push('win_murderer_1');
+
+                const murdererWinKey = 'nexus_war_murderer_wins';
+                const murdererWins = parseInt(localStorage.getItem(murdererWinKey) || '0', 10) + 1;
+                localStorage.setItem(murdererWinKey, String(murdererWins));
+                if (murdererWins >= 3) {
+                    newlyUnlocked.push('win_murderer_3');
+                }
             }
 
             // perfect_win_murderer: 殺人犯として誰にも投票されずに勝利
