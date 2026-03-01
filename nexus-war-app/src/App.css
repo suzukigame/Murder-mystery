@@ -1312,3 +1312,138 @@
     color: #ccc;
     text-align: center;
 }
+
+/* === Refined Lobby UI === */
+.lobby-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.lobby-card {
+    position: relative;
+    aspect-ratio: 3/4;
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+    cursor: default;
+    transition: all 0.3s ease;
+}
+
+.lobby-card.is-me {
+    cursor: pointer;
+    border-color: rgba(160, 100, 255, 0.5);
+    background: rgba(160, 100, 255, 0.05);
+}
+
+.lobby-card.is-me:hover {
+    border-color: #a064ff;
+    box-shadow: 0 0 15px rgba(160, 100, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.lobby-card.empty {
+    border: 1px dashed rgba(0, 255, 136, 0.1);
+    background: rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lobby-card-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+.lobby-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+.lobby-card:hover .lobby-avatar-img {
+    opacity: 0.9;
+}
+
+.lobby-card-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+    z-index: 2;
+}
+
+.lobby-player-name {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lobby-player-status {
+    font-size: 0.6rem;
+    color: var(--green-glow, #00ff88);
+    letter-spacing: 1px;
+}
+
+.lobby-card.is-me .lobby-player-status {
+    color: #a064ff;
+}
+
+.lobby-you-tag {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #a064ff;
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    z-index: 3;
+    box-shadow: 0 0 10px rgba(160, 100, 255, 0.5);
+}
+
+.lobby-card-empty-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: rgba(0, 255, 136, 0.2);
+    font-size: 0.65rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.pulse-border {
+    animation: pulse-purple 2s infinite;
+}
+
+@keyframes pulse-purple {
+    0% {
+        border-color: rgba(160, 100, 255, 0.3);
+    }
+
+    50% {
+        border-color: rgba(160, 100, 255, 0.8);
+    }
+
+    100% {
+        border-color: rgba(160, 100, 255, 0.3);
+    }
+}
+
+@media (max-width: 640px) {
+    .lobby-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

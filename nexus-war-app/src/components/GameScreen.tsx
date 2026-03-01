@@ -144,30 +144,41 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                         <div className="text-xs text-green-700">{players.length} / 6 ONLINE</div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mb-8">
+                    <div className="lobby-grid mb-8">
                         {players.map(p => (
-                            <div key={p.id} className="p-3 border border-green-500/20 bg-green-500/5 rounded flex justify-between items-center">
-                                <div className="flex items-center gap-2">
-                                    <img src={getSkinImagePath(p.skinId)} alt="avatar" className="avatar-icon-small" />
-                                    <span className="text-sm">{p.name}</span>
+                            <div
+                                key={p.id}
+                                className={`lobby-card ${p.id === socket.id ? 'is-me pulse-border' : ''}`}
+                                onClick={() => p.id === socket.id && setShowSkinSelector(true)}
+                            >
+                                <div className="lobby-card-bg">
+                                    <img src={getSkinImagePath(p.skinId)} alt="avatar" className="lobby-avatar-img" />
                                 </div>
-                                {p.id === socket.id && <span className="text-[8px] bg-green-500 text-black px-1 rounded">YOU</span>}
+                                <div className="lobby-card-info">
+                                    <div className="flex items-center gap-1">
+                                        {p.id === socket.id && <Zap size={10} className="text-yellow-400" />}
+                                        <span className="lobby-player-name">{p.name}</span>
+                                    </div>
+                                    <div className="lobby-player-status">
+                                        {p.id === socket.id ? 'CLICK TO CHANGE' : 'READY'}
+                                    </div>
+                                </div>
+                                {p.id === socket.id && (
+                                    <div className="lobby-you-tag">YOU</div>
+                                )}
                             </div>
                         ))}
                         {Array.from({ length: 6 - players.length }).map((_, i) => (
-                            <div key={`empty-${i}`} className="p-3 border border-dashed border-green-900/30 rounded text-green-900 text-xs text-center">
-                                WAITING...
+                            <div key={`empty-${i}`} className="lobby-card empty">
+                                <div className="lobby-card-empty-content">
+                                    <User size={24} className="opacity-20 mb-1" />
+                                    <span>WAITING...</span>
+                                </div>
                             </div>
                         ))}
                     </div>
 
                     <div className="flex gap-4">
-                        <button
-                            onClick={() => setShowSkinSelector(true)}
-                            className="flex-1 bg-purple-500/20 border border-purple-500 text-purple-400 py-3 font-bold hover:bg-purple-500 hover:text-black transition-all tracking-widest"
-                        >
-                            AVATAR CHANGE
-                        </button>
                         <button
                             onClick={forceStart}
                             className="flex-1 bg-green-500/20 border border-green-500 text-green-400 py-3 font-bold hover:bg-green-500 hover:text-black transition-all tracking-widest"
