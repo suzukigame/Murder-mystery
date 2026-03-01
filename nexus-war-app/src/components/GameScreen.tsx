@@ -123,6 +123,7 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                 role: string;
                 wasVotedAsMurderer: boolean;
                 turn: number;
+                firstTurnIsolated: boolean;
             }>;
         }) => {
             const myStats = data.playerStats.find(s => s.playerId === socket.id);
@@ -180,7 +181,11 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                 newlyUnlocked.push('perfect_win_murderer');
             }
 
-            // first_death: ターン1で死亡した場合（将来的に拡張）
+            // first_death: ターン1で判定されて隔離された場合
+            if (myStats.firstTurnIsolated) {
+                newlyUnlocked.push('first_death');
+            }
+
             // prevent_hack_3: 1ゲーム中にハッカーの攻撃を3回防いだ場合（将来的に拡張）
 
 

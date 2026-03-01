@@ -52,6 +52,7 @@ export interface Player {
   nullifyUsedThisTurn: boolean;    // 無効化使用済みフラグ（Murderer用）
   sessionToken: string;            // 再接続認証用トークン
   skinId: string;                  // アバタースキンID
+  firstTurnIsolated: boolean;      // ターン1で隔離(死亡)されたか
 }
 
 /** ゲーム全体の状態 */
@@ -146,5 +147,6 @@ export function createDefaultPlayer(id: string, name: string, role: string, sess
     nullifyUsedThisTurn: false,
     sessionToken,
     skinId: 'default_01',
+    firstTurnIsolated: false,
   };
 }

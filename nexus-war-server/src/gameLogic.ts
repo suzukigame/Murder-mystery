@@ -151,6 +151,7 @@ function emitGameEndStats(
             role: p.role,
             wasVotedAsMurderer: murdererVoteCount > 0,
             turn: gameState.turn,
+            firstTurnIsolated: p.firstTurnIsolated,
         };
     });
 
@@ -815,6 +816,9 @@ export function processEndOfTurn(
         const victim = candidates[0];
         victim.apDebuff += 3;
         victim.isIsolated = true;
+        if (gameState.turn === 1) {
+            victim.firstTurnIsolated = true;
+        }
         addLog(io, gameState, `投票結果: ${victim.name} のネットワーク権限が制限されました (-3 AP)。`, 'warn', undefined, spectatorIds, roomId);
     } else if (candidates.length > 1) {
         addLog(io, gameState, `投票結果: 最多得票が同数のため、権限制限は見送られました。`, 'info', undefined, spectatorIds, roomId);
