@@ -92,22 +92,97 @@ const GameManual: React.FC<IGameManualProps> = ({ onClose }) => {
                         </table>
                     </section>
 
-                    {/* 陣営の役割 */}
+                    {/* 陣営の役割とスキル */}
                     <section className="manual-section">
-                        <h3><Skull size={16} /> 役割と能力</h3>
-                        <div className="role-summary">
-                            <div className="role-box defense">
-                                <strong>社員 (4名)</strong>
-                                <p>システムを守るエンジニア。システム修復や暗号化、ログ調査による犯人特定。職業ごとに強力な固有スキルを持ちます。</p>
-                            </div>
-                            <div className="role-box hacker">
-                                <strong>ハッカー (1名)</strong>
-                                <p>攻撃のプロ。社員の中に1人潜んでいます。偽装工作で社員を装いつつ、秘密裏にサーバーを破壊またはデータを窃取します。</p>
-                            </div>
-                            <div className="role-box murderer">
-                                <strong>殺人犯 (1名)</strong>
-                                <p>混乱の源。社員の中に1人潜んでいます。ハッカーの攻撃に乗じてシステムの破壊を加速させたり、調査を妨害したりします。</p>
-                            </div>
+                        <h3><Skull size={16} /> 役割と固有スキル</h3>
+
+                        <div className="role-skill-container">
+                            <h4 className="role-header defense">社員側 (Employee Roles)</h4>
+                            <table className="skill-table">
+                                <thead>
+                                    <tr>
+                                        <th>役職</th>
+                                        <th>1AP スキル (汎用)</th>
+                                        <th>2AP スキル (必殺)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td className="job-name">ネットワーク管理者</td>
+                                        <td><strong>ログ追跡</strong>: 現ターンのハッカー行動調査</td>
+                                        <td><strong>IPブロック</strong>: 次ターンの全行動を封鎖</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="job-name">セキュリティ分析官</td>
+                                        <td><strong>パッチ適用</strong>: DDOS/ロックアウトを無効化</td>
+                                        <td><strong>ファイアウォール</strong>: 次のダメージを1回防ぐ</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="job-name">DBエンジニア</td>
+                                        <td><strong>マスキング</strong>: 次のデータ漏洩量を軽減</td>
+                                        <td><strong>ハニーポット</strong>: データ持出人の名前を検知</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="job-name">システムオペレーター</td>
+                                        <td><strong>リソース譲渡</strong>: 味方の次ターンAP+1</td>
+                                        <td><strong>リストア</strong>: HP0時に自動で20回復</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="job-name">インフラリーダー</td>
+                                        <td><strong>レプリケーション</strong>: 他者の1APスキルをコピー</td>
+                                        <td><strong>スペックアップ</strong>: HP上限を120に拡張</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="job-name">DevOps</td>
+                                        <td><strong>パイプライン</strong>: 証拠解析時のBOT効率向上</td>
+                                        <td><strong>BOT配備</strong>: 自動解析BOTを設置(最大3)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <h4 className="role-header hacker" style={{ marginTop: '1.5rem' }}>ハッカー (Hacker)</h4>
+                            <table className="skill-table">
+                                <tbody>
+                                    <tr>
+                                        <td style={{ width: '30%' }}><strong>マルウェア (2AP)</strong></td>
+                                        <td>システムHPを大幅減少。ターン回数制限あり。</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>持ち出し (1AP)</strong></td>
+                                        <td>データ漏洩率(LEAK)を上昇。ターン3回まで。</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>DDOS攻撃 (1AP)</strong></td>
+                                        <td>対象の次ターンのAPを-2する。</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>痕跡消去 (1AP)</strong></td>
+                                        <td>自身のハッカー行動ログの痕跡を抹消。</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <h4 className="role-header murderer" style={{ marginTop: '1.5rem' }}>殺人犯 (Murderer)</h4>
+                            <table className="skill-table">
+                                <tbody>
+                                    <tr>
+                                        <td style={{ width: '30%' }}><strong>ロックアウト (2AP)</strong></td>
+                                        <td>対象の次ターンのAPを-3(封鎖)する。</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>証拠改ざん (1AP)</strong></td>
+                                        <td>証拠解析(ANALYSIS)の進捗を減少させる。</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>停電工作 (2AP)</strong></td>
+                                        <td>次ターンの議論フェーズ時間を半減させる。</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>物理破壊 (2AP/0AP)</strong></td>
+                                        <td>解析BOTを破壊。DevOps時はコスト0。</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </section>
 

@@ -803,6 +803,71 @@
     font-family: var(--font-mono);
 }
 
+.debug-btn:hover {
+    color: #fff;
+    border-color: #fff;
+}
+
+/* === Game Manual Role Skills === */
+.role-skill-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.role-header {
+    font-size: 0.9rem;
+    padding: 4px 8px;
+    border-left: 4px solid;
+    background: rgba(255, 255, 255, 0.05);
+    margin-bottom: 4px;
+}
+
+.role-header.defense {
+    border-color: #00ff88 !important;
+    color: #00ff88 !important;
+}
+
+.role-header.hacker {
+    border-color: #ff4444 !important;
+    color: #ff4444 !important;
+}
+
+.role-header.murderer {
+    border-color: #bc13fe !important;
+    color: #bc13fe !important;
+}
+
+.skill-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+    margin-bottom: 8px;
+}
+
+.skill-table th, .skill-table td {
+    padding: 6px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: left;
+}
+
+.skill-table th {
+    background: rgba(255, 255, 255, 0.1);
+    color: #888;
+    font-weight: normal;
+    font-size: 0.65rem;
+}
+
+.skill-table .job-name {
+    color: #00ffff;
+    font-weight: bold;
+    width: 25%;
+}
+
+.skill-table strong {
+    color: #fff;
+}
+
 .debug-btn.active {
     background: var(--text-dim);
     color: black;
