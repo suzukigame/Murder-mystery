@@ -14,7 +14,12 @@ export const AVAILABLE_SKINS: ISkinData[] = [
     { id: 'skin_02', name: 'Agent Sigma', imagePath: '/assets/avatars/skin_02.png' },
     { id: 'skin_03', name: 'Shadow', imagePath: '/assets/avatars/skin_03.png' },
     { id: 'chibigirl', name: 'chibigirl', imagePath: '/assets/avatars/chibigirl.png' },
-    { id: 'gocho', name: 'gocho', imagePath: '/assets/avatars/gocho.png' },
+    { id: 'gocho', name: 'HIPHOP伍長', imagePath: '/assets/avatars/HIPHOP伍長.png' },
+    { id: 'gocho_surprise', name: 'びっくり伍長', imagePath: '/assets/avatars/びっくり伍長.png' },
+    { id: 'ore_chan_doji', name: '俺ちゃん童貞', imagePath: '/assets/avatars/俺ちゃんどーじ.png' },
+    { id: 'gocho_howling', name: '吠える伍長', imagePath: '/assets/avatars/吠える伍長.png' },
+    { id: 'maou', name: '魔王', imagePath: '/assets/avatars/魔王.png' },
+    { id: 'gocho_sulking', name: '拗ね伍長', imagePath: '/assets/avatars/拗ね伍長.png' },
 ];
 
 /**
