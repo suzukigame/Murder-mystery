@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Terminal, Shield, AlertTriangle, Zap, Cpu, Eye, Skull, Lock, X, Users,
     Database, Search, RotateCcw, User, LogOut, HelpCircle
 } from 'lucide-react';
 import { Socket } from 'socket.io-client';
 import SkillButton from './SkillButton';
+import SkinSelectorModal from './SkinSelectorModal';
+import { getSkinImagePath } from '../data/skins';
 import { LogEntry, TurnPhase, GameResult } from '../types';
 
 interface GameScreenProps {
@@ -96,6 +98,15 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
         return '';
     };
 
+    // --- Avatar Skin ---
+    const [showSkinSelector, setShowSkinSelector] = useState(false);
+    const myPlayer = players.find(p => p.id === socket.id);
+    const mySkinId = myPlayer?.skinId || 'default_01';
+
+    const handleChangeSkin = (skinId: string) => {
+        socket.emit('change_skin', { skinId });
+    };
+
     // --- Helper for Game Over Display ---
     const getGameOverDisplay = (result: GameResult | 'playing') => {
         switch (result) {
@@ -136,7 +147,10 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                     <div className="grid grid-cols-2 gap-4 mb-8">
                         {players.map(p => (
                             <div key={p.id} className="p-3 border border-green-500/20 bg-green-500/5 rounded flex justify-between items-center">
-                                <span className="text-sm">{p.name}</span>
+                                <div className="flex items-center gap-2">
+                                    <img src={getSkinImagePath(p.skinId)} alt="avatar" className="avatar-icon-small" />
+                                    <span className="text-sm">{p.name}</span>
+                                </div>
                                 {p.id === socket.id && <span className="text-[8px] bg-green-500 text-black px-1 rounded">YOU</span>}
                             </div>
                         ))}
@@ -148,6 +162,12 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                     </div>
 
                     <div className="flex gap-4">
+                        <button
+                            onClick={() => setShowSkinSelector(true)}
+                            className="flex-1 bg-purple-500/20 border border-purple-500 text-purple-400 py-3 font-bold hover:bg-purple-500 hover:text-black transition-all tracking-widest"
+                        >
+                            AVATAR CHANGE
+                        </button>
                         <button
                             onClick={forceStart}
                             className="flex-1 bg-green-500/20 border border-green-500 text-green-400 py-3 font-bold hover:bg-green-500 hover:text-black transition-all tracking-widest"
@@ -315,8 +335,11 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                         {[...players].sort((a, b) => a.name.localeCompare(b.name)).map(p => (
                             <div key={p.id} className={`player-card ${p.isIsolated ? 'isolated' : ''} ${p.id === socket.id ? 'is-me' : ''}`}>
                                 <div className="p-info">
-                                    <div className="p-name">{p.name}</div>
-                                    {p.votes > 0 && <div className="p-votes">疑惑度: {p.votes}</div>}
+                                    <img src={getSkinImagePath(p.skinId)} alt="avatar" className="avatar-icon" />
+                                    <div>
+                                        <div className="p-name">{p.name}</div>
+                                        {p.votes > 0 && <div className="p-votes">疑惑度: {p.votes}</div>}
+                                    </div>
                                 </div>
                                 {p.id !== socket.id && (
                                     <>
@@ -670,6 +693,13 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                     </div>
                 )
             }
+            {showSkinSelector && (
+                <SkinSelectorModal
+                    currentSkinId={mySkinId}
+                    onSelect={handleChangeSkin}
+                    onClose={() => setShowSkinSelector(false)}
+                />
+            )}
         </div >
     );
 };

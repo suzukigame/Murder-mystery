@@ -845,7 +845,8 @@
     margin-bottom: 8px;
 }
 
-.skill-table th, .skill-table td {
+.skill-table th,
+.skill-table td {
     padding: 6px 8px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     text-align: left;
@@ -1229,4 +1230,85 @@
     .manual-table th {
         width: 100px;
     }
+}
+
+/* === Avatar Icons === */
+.avatar-icon-small {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.avatar-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 255, 136, 0.4);
+    object-fit: cover;
+    flex-shrink: 0;
+    margin-right: 8px;
+}
+
+.p-info {
+    display: flex;
+    align-items: center;
+}
+
+/* === Skin Selector Modal === */
+.skin-selector-modal {
+    background: var(--terminal-bg, #0a0a0a);
+    border: 1px solid rgba(160, 100, 255, 0.5);
+    border-radius: 8px;
+    padding: 0;
+    max-width: 460px;
+    width: 90%;
+    box-shadow: 0 0 30px rgba(160, 100, 255, 0.2);
+}
+
+.skin-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    padding: 16px;
+}
+
+.skin-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.skin-card:hover {
+    border-color: rgba(160, 100, 255, 0.6);
+    background: rgba(160, 100, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.skin-card.selected {
+    border-color: #a064ff;
+    background: rgba(160, 100, 255, 0.15);
+    box-shadow: 0 0 12px rgba(160, 100, 255, 0.3);
+}
+
+.skin-thumbnail {
+    width: 80px;
+    height: 80px;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.skin-name {
+    font-size: 0.7rem;
+    color: #ccc;
+    text-align: center;
 }

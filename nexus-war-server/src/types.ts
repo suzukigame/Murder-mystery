@@ -51,6 +51,7 @@ export interface Player {
   deployBotUsedThisTurn: number;   // 解析BOT配置使用回数（犯人×DevOps用）
   nullifyUsedThisTurn: boolean;    // 無効化使用済みフラグ（Murderer用）
   sessionToken: string;            // 再接続認証用トークン
+  skinId: string;                  // アバタースキンID
 }
 
 /** ゲーム全体の状態 */
@@ -143,6 +144,7 @@ export function createDefaultPlayer(id: string, name: string, role: string, sess
     copiedSkillLabel: null,
     deployBotUsedThisTurn: 0,
     nullifyUsedThisTurn: false,
-    sessionToken
+    sessionToken,
+    skinId: 'default_01',
   };
 }

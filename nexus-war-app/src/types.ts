@@ -25,6 +25,7 @@ export interface Player {
     votes: number;
     isHacker?: boolean;
     isMurderer?: boolean;
+    skinId?: string;
 }
 
 export interface Room {

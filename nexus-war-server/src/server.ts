@@ -207,6 +207,19 @@ io.on('connection', (socket) => {
         socket.emit('leave_room_success');
     });
 
+    // ----- スキン変更 (ルーム内) -----
+    socket.on('change_skin', (data: { skinId: string }) => {
+        const roomId = (socket as any).roomId;
+        const room = roomManager.getRoom(roomId);
+        if (!room) return;
+
+        const player = room.gameState.players.find(p => p.id === socket.id);
+        if (player && data.skinId) {
+            player.skinId = data.skinId;
+            io.to(roomId).emit('state_update', room.gameState);
+        }
+    });
+
     // ----- 設定変更 (ルーム内) -----
     socket.on('update_settings', (data: { turnDuration?: number }) => {
         const roomId = (socket as any).roomId;
