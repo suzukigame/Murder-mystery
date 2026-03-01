@@ -125,8 +125,14 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                 turn: number;
             }>;
         }) => {
+            console.log('[ACHIEVEMENT] game_end_stats received:', data);
+            console.log('[ACHIEVEMENT] My socket.id:', socket.id);
             const myStats = data.playerStats.find(s => s.playerId === socket.id);
-            if (!myStats) return;
+            console.log('[ACHIEVEMENT] My stats:', myStats);
+            if (!myStats) {
+                console.warn('[ACHIEVEMENT] Could not find my player in stats! Player IDs:', data.playerStats.map(s => s.playerId));
+                return;
+            }
 
             const newlyUnlocked: string[] = [];
 
@@ -166,8 +172,12 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
             // first_death: ターン1で死亡した場合（将来的に拡張）
             // prevent_hack_3: 1ゲーム中にハッカーの攻撃を3回防いだ場合（将来的に拡張）
 
+            console.log('[ACHIEVEMENT] Newly unlocked conditions:', newlyUnlocked);
+            console.log('[ACHIEVEMENT] Already unlocked:', unlockedAchievements);
+
             // 新規解放の処理
             const actuallyNew = newlyUnlocked.filter(id => !unlockedAchievements.includes(id));
+            console.log('[ACHIEVEMENT] Actually new:', actuallyNew);
             actuallyNew.forEach(id => unlockAchievement(id));
 
             if (actuallyNew.length > 0) {

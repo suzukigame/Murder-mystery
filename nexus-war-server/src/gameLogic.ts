@@ -579,6 +579,7 @@ export function tallyFinalVotes(
     });
 
     const emitTarget = roomId ? io.to(roomId) : io;
+    console.log('[DEBUG] Emitting game_end_stats:', JSON.stringify({ result, playerStats: playerStats.map(s => ({ id: s.playerId, faction: s.faction, won: s.won })) }));
     emitTarget.emit('game_end_stats', {
         result,
         turn: gameState.turn,
