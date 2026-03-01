@@ -246,7 +246,11 @@ io.on('connection', (socket) => {
         }
 
         if (player.isIsolated) { socket.emit('error', '行動不能状態です。'); return; }
-        const ap = 3 - player.apDebuff + player.transferBonusNextTurn + player.chargedAp - player.apSpentThisTurn;
+        const baseAp = 3;
+        const limit = (player.isHacker || player.isMurderer) ? 6 : Math.max(3, 3 + (player.chargedAp || 0));
+        const calculatedAp = Math.min(limit, Math.max(0, baseAp + (player.chargedAp || 0) - player.apDebuff));
+        const ap = calculatedAp - (player.apSpentThisTurn || 0);
+
         if (ap < data.cost) { socket.emit('error', 'AP不足。'); return; }
 
         const isHackerAction = ['INJECT_MALWARE', 'EXFILTRATE', 'EXFIL', 'TAMPER_EVIDENCE', 'DDOS', 'FALSE_FLAG', 'SABOTAGE', 'LOCKOUT', 'BLACKOUT', 'PHYSICAL_DESTROY'].includes(data.type);

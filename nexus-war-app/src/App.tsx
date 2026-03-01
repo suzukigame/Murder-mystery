@@ -99,6 +99,15 @@ function App() {
         }
     };
 
+    // --- ターン更新時のAP処理(デバフ・チャージ適用) ---
+    useEffect(() => {
+        let baseAp = 3;
+        const maxAp = baseAp + chargedAp;
+        const limit = (isHacker || isMurderer) ? Math.max(6, 6 + chargedAp) : Math.max(3, 3 + chargedAp);
+        setAp(Math.min(limit, Math.max(0, maxAp - nextTurnDebuff)));
+        setNextTurnDebuff(0); // 適用したらリセット
+    }, [turn, chargedAp, isHacker, isMurderer]);
+
     // --- Socket.io イベント ---
     useEffect(() => {
         socket.on('room_list', (roomList: Room[]) => setRooms(roomList));
@@ -109,6 +118,17 @@ function App() {
             sessionStorage.setItem('nexus_player_name', data.name);
             sessionStorage.setItem('nexus_session_token', data.token);
             addLog(`ACCESS GRANTED: ROOM ${data.roomId} VERIFIED.`, 'system');
+        });
+
+        socket.on('private_message', (msg: { senderId: string, senderName: string, message: string }) => {
+            const senderPrefix = msg.senderName ? `[${msg.senderName}] ` : '[SECRET] ';
+            const newLog: LogEntry = {
+                id: Math.random().toString(36).substring(2, 11),
+                time: new Date().toLocaleTimeString('ja-JP', { hour12: false }),
+                content: `${senderPrefix}${msg.message}`,
+                level: 'warn',
+            };
+            setLogs(prev => [newLog, ...prev].slice(0, 100));
         });
 
         socket.on('state_update', (newState) => {
@@ -203,13 +223,10 @@ function App() {
             }
         });
 
-        // ターン更新時のAP処理
-        setAp(Math.min(6, Math.max(0, (isHacker || isMurderer ? 6 : 3) + chargedAp - nextTurnDebuff)));
-        setNextTurnDebuff(0);
-
         return () => {
             socket.off('room_list');
             socket.off('join_success');
+            socket.off('private_message');
             socket.off('state_update');
             socket.off('log_update');
             socket.off('log_history');
@@ -220,7 +237,7 @@ function App() {
             socket.off('gm_log_update');
             socket.off('error');
         };
-    }, [turn, chargedAp, nextTurnDebuff, isHacker, isMurderer]);
+    }, []);
 
     // --- ハンドラー ---
     const handleLogin = (name: string) => {
@@ -230,7 +247,11 @@ function App() {
     };
 
     const handleJoin = (roomId: string) => {
-        socket.emit('join_room', { roomId, name: myPlayerName });
+        setIsJoined(true);
+        addLog(`ROOM JOINED: ${roomId}`, 'system');
+        // ルーム参加後、自動的にゲームにプレイヤーとして登録
+        const token = sessionStorage.getItem('nexus_session_token') || undefined;
+        socket.emit('join_game', { name: myPlayerName, role: '', token });
     };
 
     const handleAction = (name: string, cost: number, targetId?: string) => {
@@ -337,6 +358,7 @@ function App() {
                 isHacker={isHacker}
                 isMurderer={isMurderer}
                 isIsolated={isIsolated}
+                isIpBlocked={isIpBlocked}
                 players={players}
                 logs={logs}
                 hasPendingActions={hasPendingActions}
