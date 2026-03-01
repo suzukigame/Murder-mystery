@@ -193,6 +193,13 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                         </button>
                     </div>
                 </div>
+                {showSkinSelector && (
+                    <SkinSelectorModal
+                        currentSkinId={mySkinId}
+                        onSelect={handleChangeSkin}
+                        onClose={() => setShowSkinSelector(false)}
+                    />
+                )}
             </div>
         );
     }
