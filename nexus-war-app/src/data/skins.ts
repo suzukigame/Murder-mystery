@@ -76,7 +76,7 @@ export const AVAILABLE_SKINS: ISkinData[] = [
         imagePath: '/assets/avatars/拗ね伍長.png',
         isSecret: true,
         unlockCondition: 'first_death',
-        unlockHint: '最初のターンで死亡する'
+        unlockHint: '最初のターンで最多得票で隔離される'
     },
     {
         id: 'spike_law',
