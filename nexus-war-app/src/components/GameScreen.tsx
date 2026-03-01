@@ -96,6 +96,26 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
         return '';
     };
 
+    // --- Helper for Game Over Display ---
+    const getGameOverDisplay = (result: GameResult | 'playing') => {
+        switch (result) {
+            case 'employee_perfect_win':
+                return { text: '社員完全勝利', className: 'win' };
+            case 'employee_win':
+                return { text: '引き分け (業務継続不可)', className: 'draw' };
+            case 'murderer_escape':
+                return { text: '殺人犯逃走 (社員敗北)', className: 'lose' };
+            case 'hacker_win_hp':
+                return { text: 'システムダウン (ハッカー勝利)', className: 'lose' };
+            case 'hacker_win_leak':
+                return { text: 'データ全漏洩 (ハッカー勝利)', className: 'lose' };
+            default:
+                return { text: result, className: '' };
+        }
+    };
+
+    const gameOverDisplay = getGameOverDisplay(gameResult);
+
     // ゲーム開始前のロビー表示
     if (!myRole && gameResult === 'playing') {
         return (
@@ -639,7 +659,7 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                 gameResult !== 'playing' && (
                     <div className="modal-overlay game-over-overlay">
                         <div className="game-over-modal">
-                            <h2 className="game-over-title">{gameResult}</h2>
+                            <h2 className={`game-over-title ${gameOverDisplay.className}`}>{gameOverDisplay.text}</h2>
                             <div className="game-over-stats px-8 py-4">
                                 <div className="flex justify-between"><span>HP:</span><span>{systemHp}%</span></div>
                                 <div className="flex justify-between"><span>LEAK:</span><span>{dataLeak}%</span></div>
