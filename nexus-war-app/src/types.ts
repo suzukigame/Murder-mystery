@@ -8,7 +8,8 @@ export type GameResult =
     | 'murderer_found'
     | 'employee_perfect_win'
     | 'employee_win'
-    | 'murderer_escape';
+    | 'murderer_escape'
+    | 'hacker_win';
 
 export interface LogEntry {
     id: string;

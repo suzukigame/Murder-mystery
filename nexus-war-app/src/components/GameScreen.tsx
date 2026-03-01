@@ -199,10 +199,8 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                 return { text: '引き分け (業務継続不可)', className: 'draw' };
             case 'murderer_escape':
                 return { text: '殺人犯逃走 (社員敗北)', className: 'lose' };
-            case 'hacker_win_hp':
+            case 'hacker_win':
                 return { text: 'システムダウン (ハッカー勝利)', className: 'lose' };
-            case 'hacker_win_leak':
-                return { text: 'データ全漏洩 (ハッカー勝利)', className: 'lose' };
             default:
                 return { text: result, className: '' };
         }

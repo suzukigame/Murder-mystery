@@ -88,7 +88,7 @@ export interface GameState {
   finalVotesMurderer: { [voterId: string]: string };
   finalVotesHacker: { [voterId: string]: string };
   finalVotingComplete: boolean;
-  finalVotingResult: 'none' | 'employee_perfect_win' | 'employee_win' | 'murderer_escape';
+  finalVotingResult: 'none' | 'employee_perfect_win' | 'employee_win' | 'murderer_escape' | 'hacker_win';
   revealedMurdererName: string | null;
   turnDuration: number;
   hasPendingActions: boolean;

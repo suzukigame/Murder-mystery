@@ -113,6 +113,57 @@ export function addLog(
 }
 
 // ----------------------------------------------------------
+// 実績・結果送信ヘルパー
+// ----------------------------------------------------------
+
+/**
+ * ゲーム終了時に全プレイヤーの勝敗・実績用データをクライアントに送信する
+ */
+function emitGameEndStats(
+    io: Server,
+    gameState: GameState,
+    result: string,
+    roomId?: string
+) {
+    const playerStats = gameState.players.map(p => {
+        let faction: 'employee' | 'hacker' | 'murderer' = 'employee';
+        if (p.isHacker) faction = 'hacker';
+        if (p.isMurderer) faction = 'murderer';
+
+        let won = false;
+        if (faction === 'employee' && (result === 'employee_perfect_win' || result === 'employee_win')) won = true;
+
+        // ハッカーは殺人犯が逃げた場合も、社員が殺人犯だけ当てた場合も勝ち
+        // さらにシステムダウン（HP0）やデータ漏洩（Leak100）によるハッカー勝利も追加
+        if (faction === 'hacker' && (result === 'murderer_escape' || result === 'employee_win' || result === 'hacker_win')) won = true;
+
+        // 殺人犯は自分が逃げた場合のみ勝利
+        if (faction === 'murderer' && result === 'murderer_escape') won = true;
+
+        // 殺人犯の完全勝利判定：誰にも投票されなかった
+        const murdererVoteCount = Object.values(gameState.finalVotesMurderer)
+            .filter(targetId => targetId === p.id).length;
+
+        return {
+            playerId: p.id,
+            faction,
+            won,
+            role: p.role,
+            wasVotedAsMurderer: murdererVoteCount > 0,
+            turn: gameState.turn,
+        };
+    });
+
+    const emitTarget = roomId ? io.to(roomId) : io;
+    console.log('[DEBUG] Emitting game_end_stats:', JSON.stringify({ result, playerStats: playerStats.map(s => ({ id: s.playerId, faction: s.faction, won: s.won })) }));
+    emitTarget.emit('game_end_stats', {
+        result,
+        turn: gameState.turn,
+        playerStats,
+    });
+}
+
+// ----------------------------------------------------------
 // 勝利判定
 // ----------------------------------------------------------
 
@@ -131,12 +182,20 @@ export function checkWinCondition(
         gameState.revealedMurdererName = name;
         addLog(io, gameState, `!!! 証拠解析コンプリート !!! 殺人犯が判明しました: ${name}`, 'critical', undefined, spectatorIds, roomId);
     }
+
+    // すでにリザルトが決まっている場合は処理しない
+    if (gameState.finalVotingResult && gameState.finalVotingResult !== 'none') return;
+
     if (gameState.leak >= 100) {
+        gameState.finalVotingResult = 'hacker_win' as any;
         addLog(io, gameState, `!!! データ漏洩 100% !!! ハッカーの勝利。システムは陥落しました。`, 'critical', undefined, spectatorIds, roomId);
+        emitGameEndStats(io, gameState, 'hacker_win', roomId);
         gameState.isPaused = true;
     }
-    if (gameState.hp <= 0) {
+    else if (gameState.hp <= 0) {
+        gameState.finalVotingResult = 'hacker_win' as any;
         addLog(io, gameState, `!!! システムダウン !!! ハッカーの勝利。メインコア破壊。`, 'critical', undefined, spectatorIds, roomId);
+        emitGameEndStats(io, gameState, 'hacker_win', roomId);
         gameState.isPaused = true;
     }
 }
@@ -549,44 +608,11 @@ export function tallyFinalVotes(
         gameState.finalVotingResult = 'murderer_escape';
         addLog(io, gameState, `✗ 殺人犯逃亡 ✗ 犯人は闇に消えました...`, 'critical', undefined, spectatorIds, roomId);
     }
-
     // --- 実績判定用データの送信 ---
-    // クライアント側で実績解除を判定するために、各プレイヤーの結果統計を送信する
-    const result = gameState.finalVotingResult;
-    const playerStats = gameState.players.map(p => {
-        let faction: 'employee' | 'hacker' | 'murderer' = 'employee';
-        if (p.isHacker) faction = 'hacker';
-        if (p.isMurderer) faction = 'murderer';
-
-        let won = false;
-        if (faction === 'employee' && (result === 'employee_perfect_win' || result === 'employee_win')) won = true;
-        if (faction === 'hacker' && (result === 'murderer_escape' || result === 'employee_win')) won = true;
-        // ハッカーは殺人犯が逃げた場合も、社員が殺人犯だけ当てた場合も勝ち
-        if (faction === 'murderer' && result === 'murderer_escape') won = true;
-
-        // 殺人犯の完全勝利判定：誰にも投票されなかった
-        const murdererVoteCount = Object.values(gameState.finalVotesMurderer)
-            .filter(targetId => targetId === p.id).length;
-
-        return {
-            playerId: p.id,
-            faction,
-            won,
-            role: p.role,
-            wasVotedAsMurderer: murdererVoteCount > 0,
-            turn: gameState.turn,
-        };
-    });
-
-    const emitTarget = roomId ? io.to(roomId) : io;
-    console.log('[DEBUG] Emitting game_end_stats:', JSON.stringify({ result, playerStats: playerStats.map(s => ({ id: s.playerId, faction: s.faction, won: s.won })) }));
-    emitTarget.emit('game_end_stats', {
-        result,
-        turn: gameState.turn,
-        playerStats,
-    });
+    emitGameEndStats(io, gameState, gameState.finalVotingResult, roomId);
 
     gameState.isPaused = true;
+    const emitTarget = roomId ? io.to(roomId) : io;
     emitTarget.emit('state_update', gameState);
 }
 
