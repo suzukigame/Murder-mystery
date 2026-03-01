@@ -13,6 +13,8 @@ export const AVAILABLE_SKINS: ISkinData[] = [
     { id: 'default_01', name: 'Agent Alpha', imagePath: '/assets/avatars/default_01.png' },
     { id: 'skin_02', name: 'Agent Sigma', imagePath: '/assets/avatars/skin_02.png' },
     { id: 'skin_03', name: 'Shadow', imagePath: '/assets/avatars/skin_03.png' },
+    { id: 'chibigirl', name: 'chibigirl', imagePath: '/assets/avatars/chibigirl.png' },
+    { id: 'gocho', name: 'gocho', imagePath: '/assets/avatars/gocho.png' },
 ];
 
 /**

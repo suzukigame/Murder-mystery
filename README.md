@@ -112,5 +112,27 @@ Windows環境でサーバーが異常終了した場合、ポート3000が残留
 taskkill /F /IM node.exe
 ```
 
+## 7. 再起動手順 (開発時)
+
+修正を加えた後、すべての開発サーバーをリセットしてやり直したい場合は以下の手順で実行してください。
+
+1. **すべてのサーバープロセスを停止**
+   ターミナルが開いている場合は `Ctrl + C` で停止しますが、ポートが解放されない場合は、以下のコマンドで Node プロセスを一括終了できます（Windows推奨）。
+   ```powershell
+   taskkill /F /IM node.exe
+   ```
+
+2. **バックエンドサーバーの再起動 (3000ポート)**
+   ```bash
+   cd nexus-war-server
+   npm run dev
+   ```
+
+3. **フロントエンドサーバーの再起動 (5173ポート)**
+   ```bash
+   cd nexus-war-app
+   npm run dev
+   ```
+
 ---
 Created by **Team SKY-MAGYCC**  for SKY-MAGYCC JUDAS project.
