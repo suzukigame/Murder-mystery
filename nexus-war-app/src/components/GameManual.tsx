@@ -109,33 +109,33 @@ const GameManual: React.FC<IGameManualProps> = ({ onClose }) => {
                                 <tbody>
                                     <tr>
                                         <td className="job-name">ネットワーク管理者</td>
-                                        <td><strong>ログ追跡</strong>: 現ターンのハッカー行動調査</td>
-                                        <td><strong>IPブロック</strong>: 次ターンの全行動を封鎖</td>
+                                        <td><strong>ログ追跡</strong>: 指定した対象の「現ターンのハッカー行動」調査</td>
+                                        <td><strong>IPブロック</strong>: 指定対象1名の、次ターンの全行動を封鎖</td>
                                     </tr>
                                     <tr>
                                         <td className="job-name">セキュリティ分析官</td>
-                                        <td><strong>パッチ適用</strong>: DDOS/ロックアウトを無効化</td>
-                                        <td><strong>ファイアウォール</strong>: 次のダメージを1回防ぐ</td>
+                                        <td><strong>パッチ適用</strong>: 対象への次ターンデバフ(IPブロック等)を無効化</td>
+                                        <td><strong>ファイアウォール</strong>: 次のダメージ/漏洩/ロックアウトを防ぐ</td>
                                     </tr>
                                     <tr>
                                         <td className="job-name">DBエンジニア</td>
-                                        <td><strong>マスキング</strong>: 次のデータ漏洩量を軽減</td>
-                                        <td><strong>ハニーポット</strong>: データ持出人の名前を検知</td>
+                                        <td><strong>マスキング</strong>: 次のデータ漏洩量(LEAK)を一度だけ軽減</td>
+                                        <td><strong>ハニーポット</strong>: 罠を張り、データ持出人の名前を特定</td>
                                     </tr>
                                     <tr>
                                         <td className="job-name">システムオペレーター</td>
-                                        <td><strong>リソース譲渡</strong>: 味方の次ターンAP+1</td>
-                                        <td><strong>リストア</strong>: HP0時に自動で20回復</td>
+                                        <td><strong>リソース譲渡</strong>: 指定した味方1名の次ターンAPを+1 (毎順1回)</td>
+                                        <td><strong>リストア</strong>: そのターン中、HP0時に自動で20回復</td>
                                     </tr>
                                     <tr>
                                         <td className="job-name">インフラリーダー</td>
-                                        <td><strong>レプリケーション</strong>: 他者の1APスキルをコピー</td>
-                                        <td><strong>スペックアップ</strong>: HP上限を120に拡張</td>
+                                        <td><strong>レプリケーション</strong>: 他者の1APスキルをランダムにコピー</td>
+                                        <td><strong>スペックアップ</strong>: HP上限を120に拡張 (2ターン持続)</td>
                                     </tr>
                                     <tr>
                                         <td className="job-name">DevOps</td>
-                                        <td><strong>パイプライン</strong>: 証拠解析時のBOT効率向上</td>
-                                        <td><strong>BOT配備</strong>: 自動解析BOTを設置(最大3)</td>
+                                        <td><strong>パイプライン</strong>: 指定対象が証拠解析を行うとBOT効率UP</td>
+                                        <td><strong>BOT配備</strong>: 自動解析BOTを設置(最大3)　※毎順1回制限</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -145,19 +145,23 @@ const GameManual: React.FC<IGameManualProps> = ({ onClose }) => {
                                 <tbody>
                                     <tr>
                                         <td style={{ width: '30%' }}><strong>マルウェア (2AP)</strong></td>
-                                        <td>システムHPを大幅減少。ターン回数制限あり。</td>
+                                        <td>システムHPを-40減少。毎順1回制限。</td>
                                     </tr>
                                     <tr>
                                         <td><strong>持ち出し (1AP)</strong></td>
-                                        <td>データ漏洩率(LEAK)を上昇。ターン3回まで。</td>
+                                        <td>データ漏洩率(LEAK)を+15%上昇。毎順3回まで。</td>
                                     </tr>
                                     <tr>
                                         <td><strong>DDOS攻撃 (1AP)</strong></td>
-                                        <td>対象の次ターンのAPを-2する。</td>
+                                        <td>対象の次ターンのAPを-2させる。</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>偽装工作 (1AP)</strong></td>
+                                        <td>対象を「ハッカー行動あり」の状態に誤認させる。</td>
                                     </tr>
                                     <tr>
                                         <td><strong>痕跡消去 (1AP)</strong></td>
-                                        <td>自身のハッカー行動ログの痕跡を抹消。</td>
+                                        <td>自身のハッカー行動フラグを抹消する。</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -167,19 +171,27 @@ const GameManual: React.FC<IGameManualProps> = ({ onClose }) => {
                                 <tbody>
                                     <tr>
                                         <td style={{ width: '30%' }}><strong>ロックアウト (2AP)</strong></td>
-                                        <td>対象の次ターンのAPを-3(封鎖)する。</td>
+                                        <td>対象の次ターンのAPを-3(封鎖)させる。</td>
                                     </tr>
                                     <tr>
                                         <td><strong>証拠改ざん (1AP)</strong></td>
-                                        <td>証拠解析(ANALYSIS)の進捗を減少させる。</td>
+                                        <td>証拠解析(ANALYSIS)の進捗を-5%減少。</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>サボタージュ (1AP)</strong></td>
+                                        <td>システムHPを-5減少させる。</td>
                                     </tr>
                                     <tr>
                                         <td><strong>停電工作 (2AP)</strong></td>
                                         <td>次ターンの議論フェーズ時間を半減させる。</td>
                                     </tr>
                                     <tr>
-                                        <td><strong>物理破壊 (2AP/0AP)</strong></td>
-                                        <td>解析BOTを破壊。DevOps時はコスト0。</td>
+                                        <td><strong>物理破壊 (1AP/0AP)</strong></td>
+                                        <td>解析BOTを1台破壊。DevOps時はコスト0。</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>偽装工作 (1AP)</strong></td>
+                                        <td>対象を「ハッカー行動あり」の状態に誤認させる。</td>
                                     </tr>
                                 </tbody>
                             </table>
