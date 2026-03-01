@@ -6,20 +6,78 @@ export interface ISkinData {
     id: string;
     name: string;
     imagePath: string;
+    /** シークレットキャラクターかどうか（未解放時にシルエットになるか） */
+    isSecret?: boolean;
+    /** キャラクターを解放するための実績IDや条件文字列 */
+    unlockCondition?: string;
+    /** UI等で提示する解放条件のヒントテキスト */
+    unlockHint?: string;
 }
 
 /** 利用可能なスキン一覧 */
 export const AVAILABLE_SKINS: ISkinData[] = [
+    // 初期から選択可能なキャラクター
     { id: 'default_01', name: 'Agent Alpha', imagePath: '/assets/avatars/default_01.png' },
     { id: 'skin_02', name: 'Agent Sigma', imagePath: '/assets/avatars/skin_02.png' },
     { id: 'skin_03', name: 'Shadow', imagePath: '/assets/avatars/skin_03.png' },
-    { id: 'chibigirl', name: 'chibigirl', imagePath: '/assets/avatars/chibigirl.png' },
-    { id: 'gocho', name: 'HIPHOP伍長', imagePath: '/assets/avatars/HIPHOP伍長.png' },
-    { id: 'gocho_surprise', name: 'びっくり伍長', imagePath: '/assets/avatars/びっくり伍長.png' },
-    { id: 'ore_chan_doji', name: '俺ちゃん童貞', imagePath: '/assets/avatars/俺ちゃんどーじ.png' },
-    { id: 'gocho_howling', name: '吠える伍長', imagePath: '/assets/avatars/吠える伍長.png' },
-    { id: 'maou', name: '魔王', imagePath: '/assets/avatars/魔王.png' },
-    { id: 'gocho_sulking', name: '拗ね伍長', imagePath: '/assets/avatars/拗ね伍長.png' },
+
+    // 実績などで解放されるシークレットキャラクター
+    {
+        id: 'chibigirl',
+        name: 'chibigirl',
+        imagePath: '/assets/avatars/chibigirl.png',
+        isSecret: true,
+        unlockCondition: 'win_hacker_1',
+        unlockHint: 'ハッカー陣営として1回勝利する'
+    },
+    {
+        id: 'gocho',
+        name: 'HIPHOP伍長',
+        imagePath: '/assets/avatars/HIPHOP伍長.png',
+        isSecret: true,
+        unlockCondition: 'win_employee_3',
+        unlockHint: '社員陣営として3回勝利する'
+    },
+    {
+        id: 'gocho_surprise',
+        name: 'びっくり伍長',
+        imagePath: '/assets/avatars/びっくり伍長.png',
+        isSecret: true,
+        unlockCondition: 'play_game_5',
+        unlockHint: 'ゲームを累計5回プレイする'
+    },
+    {
+        id: 'ore_chan_doji',
+        name: '俺ちゃん童貞',
+        imagePath: '/assets/avatars/俺ちゃんどーじ.png',
+        isSecret: true,
+        unlockCondition: 'win_murderer_1',
+        unlockHint: '殺人犯陣営として1回勝利する'
+    },
+    {
+        id: 'gocho_howling',
+        name: '吠える伍長',
+        imagePath: '/assets/avatars/吠える伍長.png',
+        isSecret: true,
+        unlockCondition: 'prevent_hack_3',
+        unlockHint: '1ゲーム中にハッカーの攻撃を3回防ぐ'
+    },
+    {
+        id: 'maou',
+        name: '魔王',
+        imagePath: '/assets/avatars/魔王.png',
+        isSecret: true,
+        unlockCondition: 'perfect_win_murderer',
+        unlockHint: '殺人犯として誰にも疑われずに完全勝利する'
+    },
+    {
+        id: 'gocho_sulking',
+        name: '拗ね伍長',
+        imagePath: '/assets/avatars/拗ね伍長.png',
+        isSecret: true,
+        unlockCondition: 'first_death',
+        unlockHint: '最初のターンで死亡する'
+    },
 ];
 
 /**

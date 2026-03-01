@@ -1313,6 +1313,105 @@
     text-align: center;
 }
 
+/* --- シークレットキャラクター（ロック状態）--- */
+.skin-card.locked {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.skin-card.locked:hover {
+    border-color: rgba(255, 80, 80, 0.4);
+    background: rgba(255, 80, 80, 0.05);
+    transform: none;
+}
+
+.skin-thumbnail.silhouette {
+    filter: brightness(0);
+}
+
+.lock-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 255, 255, 0.6);
+    pointer-events: none;
+}
+
+.skin-card {
+    position: relative;
+}
+
+.unlock-hint-banner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: rgba(255, 180, 0, 0.15);
+    border-bottom: 1px solid rgba(255, 180, 0, 0.3);
+    color: #ffb400;
+    font-size: 0.8rem;
+    animation: fadeInHint 0.3s ease;
+}
+
+@keyframes fadeInHint {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- アンロック通知トースト --- */
+.unlock-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, rgba(160, 100, 255, 0.9), rgba(100, 200, 255, 0.9));
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(160, 100, 255, 0.5);
+    z-index: 9999;
+    animation: slideUpToast 0.5s ease;
+    color: #fff;
+}
+
+.unlock-toast-icon {
+    font-size: 2rem;
+}
+
+.unlock-toast-text {
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.unlock-toast-text strong {
+    display: block;
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+    margin-bottom: 2px;
+}
+
+@keyframes slideUpToast {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
 /* === Refined Lobby UI === */
 .lobby-grid {
     display: grid;

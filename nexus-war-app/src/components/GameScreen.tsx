@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Terminal, Shield, AlertTriangle, Zap, Cpu, Eye, Skull, Lock, X, Users,
     Database, Search, RotateCcw, User, LogOut, HelpCircle
@@ -6,7 +6,8 @@ import {
 import { Socket } from 'socket.io-client';
 import SkillButton from './SkillButton';
 import SkinSelectorModal from './SkinSelectorModal';
-import { getSkinImagePath } from '../data/skins';
+import { getSkinImagePath, AVAILABLE_SKINS } from '../data/skins';
+import { useAchievements } from '../hooks/useAchievements';
 import { LogEntry, TurnPhase, GameResult } from '../types';
 
 interface GameScreenProps {
@@ -107,6 +108,78 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
         socket.emit('change_skin', { skinId });
     };
 
+    // --- 実績解放管理 ---
+    const { unlockedAchievements, unlockAchievement } = useAchievements();
+    const [newUnlocks, setNewUnlocks] = useState<string[]>([]);
+
+    useEffect(() => {
+        const handleGameEndStats = (data: {
+            result: string;
+            turn: number;
+            playerStats: Array<{
+                playerId: string;
+                faction: string;
+                won: boolean;
+                role: string;
+                wasVotedAsMurderer: boolean;
+                turn: number;
+            }>;
+        }) => {
+            const myStats = data.playerStats.find(s => s.playerId === socket.id);
+            if (!myStats) return;
+
+            const newlyUnlocked: string[] = [];
+
+            // play_game_5: ゲーム回数のカウント（LocalStorageで管理）
+            const gameCountKey = 'nexus_war_game_count';
+            const currentCount = parseInt(localStorage.getItem(gameCountKey) || '0', 10) + 1;
+            localStorage.setItem(gameCountKey, String(currentCount));
+            if (currentCount >= 5) {
+                newlyUnlocked.push('play_game_5');
+            }
+
+            // win_hacker_1: ハッカーとして勝利
+            if (myStats.faction === 'hacker' && myStats.won) {
+                newlyUnlocked.push('win_hacker_1');
+            }
+
+            // win_employee_3: 社員として勝利（回数カウント）
+            if (myStats.faction === 'employee' && myStats.won) {
+                const empWinKey = 'nexus_war_employee_wins';
+                const empWins = parseInt(localStorage.getItem(empWinKey) || '0', 10) + 1;
+                localStorage.setItem(empWinKey, String(empWins));
+                if (empWins >= 3) {
+                    newlyUnlocked.push('win_employee_3');
+                }
+            }
+
+            // win_murderer_1: 殺人犯として勝利
+            if (myStats.faction === 'murderer' && myStats.won) {
+                newlyUnlocked.push('win_murderer_1');
+            }
+
+            // perfect_win_murderer: 殺人犯として誰にも投票されずに勝利
+            if (myStats.faction === 'murderer' && myStats.won && !myStats.wasVotedAsMurderer) {
+                newlyUnlocked.push('perfect_win_murderer');
+            }
+
+            // first_death: ターン1で死亡した場合（将来的に拡張）
+            // prevent_hack_3: 1ゲーム中にハッカーの攻撃を3回防いだ場合（将来的に拡張）
+
+            // 新規解放の処理
+            const actuallyNew = newlyUnlocked.filter(id => !unlockedAchievements.includes(id));
+            actuallyNew.forEach(id => unlockAchievement(id));
+
+            if (actuallyNew.length > 0) {
+                setNewUnlocks(actuallyNew);
+                setTimeout(() => setNewUnlocks([]), 5000);
+            }
+        };
+
+        socket.on('game_end_stats', handleGameEndStats);
+        return () => { socket.off('game_end_stats', handleGameEndStats); };
+    }, [socket, unlockedAchievements, unlockAchievement]);
+
     // --- Helper for Game Over Display ---
     const getGameOverDisplay = (result: GameResult | 'playing') => {
         switch (result) {
@@ -198,8 +271,8 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                             onClick={forceStart}
                             disabled={players.length < 6}
                             className={`flex-1 py-3 font-bold transition-all tracking-widest ${players.length === 6
-                                    ? 'bg-green-500 text-black hover:bg-green-400 shadow-[0_0_15px_rgba(0,255,0,0.5)]'
-                                    : 'bg-green-500/10 border border-green-500/30 text-green-500/50 cursor-not-allowed'
+                                ? 'bg-green-500 text-black hover:bg-green-400 shadow-[0_0_15px_rgba(0,255,0,0.5)]'
+                                : 'bg-green-500/10 border border-green-500/30 text-green-500/50 cursor-not-allowed'
                                 }`}
                         >
                             {players.length === 6 ? 'START GAME' : 'WAITING FOR 6 PLAYERS...'}
@@ -215,6 +288,7 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                 {showSkinSelector && (
                     <SkinSelectorModal
                         currentSkinId={mySkinId}
+                        unlockedAchievements={unlockedAchievements}
                         onSelect={handleChangeSkin}
                         onClose={() => setShowSkinSelector(false)}
                     />
@@ -733,9 +807,22 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
             {showSkinSelector && (
                 <SkinSelectorModal
                     currentSkinId={mySkinId}
+                    unlockedAchievements={unlockedAchievements}
                     onSelect={handleChangeSkin}
                     onClose={() => setShowSkinSelector(false)}
                 />
+            )}
+            {newUnlocks.length > 0 && (
+                <div className="unlock-toast">
+                    <div className="unlock-toast-icon">🔓</div>
+                    <div className="unlock-toast-text">
+                        <strong>NEW CHARACTER UNLOCKED!</strong>
+                        {newUnlocks.map(condId => {
+                            const skin = AVAILABLE_SKINS.find(s => s.unlockCondition === condId);
+                            return <div key={condId}>{skin ? skin.name : condId}</div>;
+                        })}
+                    </div>
+                </div>
             )}
         </div >
     );
