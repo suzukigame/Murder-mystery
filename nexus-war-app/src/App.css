@@ -1317,18 +1317,21 @@
 .lobby-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    gap: 10px;
+    max-width: 480px;
+    margin: 0 auto;
 }
 
 .lobby-card {
     position: relative;
-    aspect-ratio: 3/4;
+    aspect-ratio: 4/5;
     border: 1px solid rgba(0, 255, 136, 0.2);
-    border-radius: 8px;
+    border-radius: 6px;
     background: rgba(0, 0, 0, 0.6);
     overflow: hidden;
     cursor: default;
     transition: all 0.3s ease;
+    max-height: 180px;
 }
 
 .lobby-card.is-me {
@@ -1444,6 +1447,25 @@
 
 @media (max-width: 640px) {
     .lobby-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        max-width: 100%;
+    }
+
+    .lobby-card {
+        max-height: 140px;
+    }
+
+    .lobby-player-name {
+        font-size: 0.65rem;
+    }
+
+    .lobby-player-status {
+        font-size: 0.5rem;
+    }
+
+    .lobby-you-tag {
+        font-size: 0.5rem;
+        padding: 1px 4px;
     }
 }
