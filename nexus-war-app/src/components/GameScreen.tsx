@@ -594,7 +594,7 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                             )}
                             {myRole === 'DBエンジニア' && (
                                 <>
-                                    <SkillButton tooltip="1AP: 次回のデータ持ち出し時の漏洩量を5%軽減する。" onClick={() => handleAction('MASKING', 1)} className="btn-action btn-special" disabled={isIsolated || isIpBlocked || phase === 'resolve' || ap < 1} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
+                                    <SkillButton tooltip="1AP: 次回のデータ持ち出し時の漏洩量を5%軽減する。(1ターン1回)" onClick={() => handleAction('MASKING', 1)} className="btn-action btn-special" disabled={isIsolated || isIpBlocked || phase === 'resolve' || ap < 1 || (players.find(p => p.id === socket.id)?.maskingUsedThisTurn || false)} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
                                         <Database size={18} /> <span>マスキング</span><span className="ap-cost" style={{ color: '#00ff88' }}>1AP {'->'} 次LEAK-5%</span>
                                     </SkillButton>
                                     <SkillButton tooltip="2AP: 次のデータ持ち出し実行者の名前を特定するトラップ。" onClick={() => handleAction('HONEY_POT', 2)} className="btn-action btn-special" disabled={isIsolated || isIpBlocked || phase === 'resolve' || ap < 2} style={{ borderColor: '#ffff00', color: '#ffff00' }}>
@@ -607,7 +607,7 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                                     <SkillButton tooltip="1AP: 対象の次ターンAPを+1する。ターン1回。" onClick={() => setIsTransferMode(!isTransferMode)} className="btn-action btn-special" disabled={isIsolated || isIpBlocked || phase === 'resolve' || ap < 1 || (players.find(p => p.id === socket.id)?.transferUsedThisTurn || false)} style={isTransferMode ? { backgroundColor: 'rgba(136, 136, 255, 0.2)', borderColor: '#8888ff', color: '#8888ff' } : { borderColor: '#8888ff', color: '#8888ff' }}>
                                         <RotateCcw size={18} /> <span>リソース・デプロイメント</span><span className="ap-cost" style={{ color: '#8888ff' }}>1AP (残:{(players.find(p => p.id === socket.id)?.transferUsedThisTurn || false) ? 0 : 1})</span>
                                     </SkillButton>
-                                    <SkillButton tooltip="2AP: サーバーHP=0時に自動でHP20に復旧するプロトコルをセット。" onClick={() => handleAction('RESTORE', 2)} className="btn-action btn-special" disabled={isIsolated || isIpBlocked || phase === 'resolve' || ap < 2} style={{ borderColor: '#ff4444', color: '#ff4444' }}>
+                                    <SkillButton tooltip="2AP: そのターン中にHP=0になった場合、自動でHP20に復旧する。(使用ターンのみ有効、ターン終了時に消滅)" onClick={() => handleAction('RESTORE', 2)} className="btn-action btn-special" disabled={isIsolated || isIpBlocked || phase === 'resolve' || ap < 2} style={{ borderColor: '#ff4444', color: '#ff4444' }}>
                                         <Zap size={18} /> <span>リストア</span><span className="ap-cost" style={{ color: '#ff4444' }}>2AP {'->'} HP0時復旧</span>
                                     </SkillButton>
                                 </>
@@ -694,7 +694,7 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                             )}
                             {myRole === 'DBエンジニア' && (
                                 <>
-                                    <SkillButton tooltip="1AP: 次回のデータ持ち出し時の漏洩量を5%軽減する。" onClick={() => handleAction('MASKING', 1)} className="btn-action btn-special" disabled={isIsolated || isIpBlocked || phase === 'resolve' || ap < 1}>
+                                    <SkillButton tooltip="1AP: 次回のデータ持ち出し時の漏洩量を5%軽減する。(1ターン1回)" onClick={() => handleAction('MASKING', 1)} className="btn-action btn-special" disabled={isIsolated || isIpBlocked || phase === 'resolve' || ap < 1 || (players.find(p => p.id === socket.id)?.maskingUsedThisTurn || false)}>
                                         <Database size={18} /> <span>マスキング</span><span className="ap-cost">1AP {'->'} 次LEAK-5%</span>
                                     </SkillButton>
                                     <SkillButton tooltip="2AP: 次のデータ持ち出し実行者の名前を特定するトラップ。" onClick={() => handleAction('HONEY_POT', 2)} className="btn-action btn-special" disabled={isIsolated || isIpBlocked || phase === 'resolve' || ap < 2}>
@@ -707,7 +707,7 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                                     <SkillButton tooltip="1AP: 対象の次ターンAPを+1する。ターン1回。" onClick={() => setIsTransferMode(!isTransferMode)} className="btn-action btn-special" disabled={isIsolated || isIpBlocked || phase === 'resolve' || ap < 1 || (players.find(p => p.id === socket.id)?.transferUsedThisTurn || false)} style={isTransferMode ? { backgroundColor: 'rgba(255, 255, 0, 0.2)' } : {}}>
                                         <RotateCcw size={18} /> <span>リソース・デプロイメント</span><span className="ap-cost">1AP</span>
                                     </SkillButton>
-                                    <SkillButton tooltip="2AP: サーバーHP=0時に自動でHP20に復旧するプロトコルをセット。" onClick={() => handleAction('RESTORE', 2)} className="btn-action btn-special" disabled={isIsolated || isIpBlocked || phase === 'resolve' || ap < 2}>
+                                    <SkillButton tooltip="2AP: そのターン中にHP=0になった場合、自動でHP20に復旧する。(使用ターンのみ有効、ターン終了時に消滅)" onClick={() => handleAction('RESTORE', 2)} className="btn-action btn-special" disabled={isIsolated || isIpBlocked || phase === 'resolve' || ap < 2}>
                                         <Zap size={18} /> <span>リストア</span><span className="ap-cost">2AP {'->'} HP0時復旧</span>
                                     </SkillButton>
                                 </>
@@ -724,7 +724,7 @@ const GameScreen: React.FC<GameScreenProps> = (props) => {
                             )}
                             {myRole === 'DevOps' && (
                                 <>
-                                    <SkillButton tooltip="1AP: (偽装用)パイプライン構築のふりをする。対象を選ぶ。" onClick={() => setIsPipelineMode(!isPipelineMode)} className="btn-action btn-hacker-action btn-special" disabled={isIsolated || isIpBlocked || phase === 'resolve' || ap < 1} style={isPipelineMode ? { backgroundColor: 'rgba(255, 255, 0, 0.2)' } : {}}>
+                                    <SkillButton tooltip="1AP: (偽装用)パイプライン構築のふりをする。対象を選ぶ。" onClick={() => setIsPipelineMode(!isPipelineMode)} className="btn-action btn-special" disabled={isIsolated || isIpBlocked || phase === 'resolve' || ap < 1} style={isPipelineMode ? { backgroundColor: 'rgba(0, 255, 255, 0.2)', borderColor: '#00ffff', color: '#00ffff' } : { borderColor: '#00ffff', color: '#00ffff' }}>
                                         <Cpu size={18} /> <span>CI/CDパイプライン偽装</span><span className="ap-cost">1AP</span>
                                     </SkillButton>
                                     <SkillButton tooltip="2AP(犯人側DevOps時0AP): 解析BOTを1台配備(最大3)。ターン1回。" onClick={() => handleAction('DEPLOY_BOT', ((isMurderer || isHacker) && myRole === 'DevOps') ? 0 : 2)} className="btn-action btn-special" disabled={isIsolated || isIpBlocked || phase === 'resolve' || (!((isMurderer || isHacker) && myRole === 'DevOps') && ap < 2) || (players.find(p => p.id === socket.id)?.deployBotUsedThisTurn || 0) >= 1}>

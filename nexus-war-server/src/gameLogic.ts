@@ -952,6 +952,7 @@ export function processEndOfTurn(
         p.isFalseFlagged = false;
         p.transferBonusNextTurn = 0;
         p.nullifyUsedThisTurn = false;
+        p.maskingUsedThisTurn = false;
     });
 
     // 詠唱待機中のアクションを全て破棄 (ターン跨ぎ実行防止)

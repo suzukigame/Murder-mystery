@@ -292,6 +292,7 @@ io.on('connection', (socket) => {
         if ((data.type === 'EXFILTRATE' || data.type === 'EXFIL') && player.exfilUsedThisTurn >= 3) { socket.emit('error', '1ターン3回まで。'); return; }
         if (data.type === 'TRANSFER' && player.transferUsedThisTurn) { socket.emit('error', '1ターン1回まで。'); return; }
         if (data.type === 'DEPLOY_BOT' && player.deployBotUsedThisTurn >= 1) { socket.emit('error', '1ターン1回まで。'); return; }
+        if (data.type === 'MASKING' && player.maskingUsedThisTurn) { socket.emit('error', '1ターン1回まで。'); return; }
 
         player.apSpentThisTurn += data.cost;
         room.gameState.totalPublicAp += publicCost;
@@ -303,6 +304,7 @@ io.on('connection', (socket) => {
         if (data.type === 'EXFILTRATE' || data.type === 'EXFIL') player.exfilUsedThisTurn++;
         if (data.type === 'TRANSFER') player.transferUsedThisTurn = true;
         if (data.type === 'DEPLOY_BOT') player.deployBotUsedThisTurn++;
+        if (data.type === 'MASKING') player.maskingUsedThisTurn = true;
         if (data.type === 'ANALYZE_EVIDENCE') player.analyzedThisTurn = true;
 
         const newPendingAction = {

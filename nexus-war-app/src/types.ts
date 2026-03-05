@@ -5,7 +5,6 @@ export type GameResult =
     | 'hacker_win_hp'
     | 'hacker_win_leak'
     | 'defense_win'
-    | 'murderer_found'
     | 'employee_perfect_win'
     | 'employee_win'
     | 'murderer_escape'

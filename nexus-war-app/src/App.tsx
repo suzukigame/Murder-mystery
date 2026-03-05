@@ -151,8 +151,6 @@ function App() {
                 setGameResult('hacker_win_hp');
             } else if (newState.leak >= 100) {
                 setGameResult('hacker_win_leak');
-            } else if (newState.evidenceAnalysisProgress >= 100) {
-                setGameResult('murderer_found');
             } else {
                 setGameResult('playing');
             }

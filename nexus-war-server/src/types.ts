@@ -50,6 +50,7 @@ export interface Player {
   copiedSkillLabel: string | null; // UI表示用のスキル名
   deployBotUsedThisTurn: number;   // 解析BOT配置使用回数（犯人×DevOps用）
   nullifyUsedThisTurn: boolean;    // 無効化使用済みフラグ（Murderer用）
+  maskingUsedThisTurn: boolean;    // マスキング使用済みフラグ（1ターン1回）
   sessionToken: string;            // 再接続認証用トークン
   skinId: string;                  // アバタースキンID
   firstTurnIsolated: boolean;      // ターン1で隔離(死亡)されたか
@@ -145,6 +146,7 @@ export function createDefaultPlayer(id: string, name: string, role: string, sess
     copiedSkillLabel: null,
     deployBotUsedThisTurn: 0,
     nullifyUsedThisTurn: false,
+    maskingUsedThisTurn: false,
     sessionToken,
     skinId: 'default_01',
     firstTurnIsolated: false,
