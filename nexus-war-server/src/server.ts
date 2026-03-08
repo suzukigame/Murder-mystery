@@ -3,6 +3,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 
 import { createDefaultPlayer } from './types';
 import {
@@ -19,6 +20,9 @@ import { roomManager, Room } from './RoomManager';
 // ----------------------------------------------------------
 // Express + Socket.io セットアップ
 // ----------------------------------------------------------
+
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8'));
+const SERVER_VERSION = packageJson.version;
 
 const app = express();
 app.use(cors());
@@ -49,7 +53,8 @@ const broadcastRoomList = () => {
 io.on('connection', (socket) => {
     console.log('--- NEW CLIENT CONNECTED ---', socket.id);
 
-    // 接続時にルーム一覧を送信
+    // 接続時にサーバーバージョンとルーム一覧を送信
+    socket.emit('server_info', { version: SERVER_VERSION });
     socket.emit('room_list', roomManager.getAllRooms());
 
     // ----- ルーム一覧取得 -----

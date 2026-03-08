@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import io from 'socket.io-client';
 import { invoke } from '@tauri-apps/api/core';
+import packageJson from '../package.json';
 
 // コンポーネント
 import LoginScreen from './components/LoginScreen';
@@ -27,6 +28,7 @@ function App() {
     const [rooms, setRooms] = useState<Room[]>([]);
     const [showManual, setShowManual] = useState(false);
     const [isSteamAuthenticating, setIsSteamAuthenticating] = useState(false);
+    const [isVersionMismatch, setIsVersionMismatch] = useState(false);
 
     // --- Steam API連携 (Appマウント時) ---
     useEffect(() => {
@@ -137,6 +139,12 @@ function App() {
 
     // --- Socket.io イベント ---
     useEffect(() => {
+        socket.on('server_info', (data: { version: string }) => {
+            if (data.version !== packageJson.version) {
+                setIsVersionMismatch(true);
+            }
+        });
+
         socket.on('room_list', (roomList: Room[]) => setRooms(roomList));
 
         socket.on('join_success', (data: { roomId: string, name: string, token: string }) => {
@@ -249,6 +257,7 @@ function App() {
         });
 
         return () => {
+            socket.off('server_info');
             socket.off('room_list');
             socket.off('join_success');
             socket.off('private_message');
@@ -325,6 +334,23 @@ function App() {
     };
 
     // --- レンダリング ---
+    if (isVersionMismatch) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-black text-green-500 font-mono p-4">
+                <h1 className="text-3xl font-bold mb-4 text-red-500">SYSTEM VERSION MISMATCH</h1>
+                <p className="mb-2">サーバーとクライアントのバージョンが異なります。</p>
+                <p className="mb-6 opacity-70">Client: v{packageJson.version} / Server: 最新版</p>
+                <p className="mb-6 text-yellow-400">ゲームをプレイするには、最新版をダウンロードするかブラウザを更新してください。</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-6 py-2 border border-green-500 hover:bg-green-500 hover:text-black transition-colors"
+                >
+                    SYSTEM RELOAD
+                </button>
+            </div>
+        );
+    }
+
     if (!isLoggedIn) {
         return <LoginScreen onLogin={handleLogin} defaultName={myPlayerName} isLoading={isSteamAuthenticating} />;
     }
