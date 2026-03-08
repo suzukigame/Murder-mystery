@@ -129,8 +129,14 @@ const RoomLobby: React.FC<RoomLobbyProps> = ({ socket, onJoin, rooms }) => {
 
                 <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                     {rooms.length === 0 ? (
-                        <div className="text-center py-12 text-green-900 border border-dashed border-green-900/50 rounded">
-                            NO ACTIVE ROOMS DETECTED. CREATE ONE TO START.
+                        <div className="text-center py-12 text-green-900 border border-dashed border-green-900/50 rounded flex flex-col items-center gap-4">
+                            <span>NO ACTIVE ROOMS DETECTED. CREATE ONE TO START.</span>
+                            <button
+                                onClick={() => socket.emit('list_rooms')}
+                                className="px-4 py-2 border border-green-700 text-green-500 hover:bg-green-500/10 transition-colors text-xs"
+                            >
+                                UPDATE LIST
+                            </button>
                         </div>
                     ) : (
                         rooms.map((room) => (
@@ -162,8 +168,16 @@ const RoomLobby: React.FC<RoomLobbyProps> = ({ socket, onJoin, rooms }) => {
                     )}
                 </div>
 
-                <div className="mt-8 text-center text-[10px] text-green-900 border-t border-green-900/50 pt-4 tracking-widest">
-                    SECURE CONNECTION :: UNAUTHORIZED ACCESS PROHIBITED :: SYSTEM LOG: {new Date().toISOString()}
+                <div className="mt-8 flex justify-between items-center text-[10px] text-green-900 border-t border-green-900/50 pt-4 tracking-widest">
+                    <span>SECURE CONNECTION :: UNAUTHORIZED ACCESS PROHIBITED :: SYSTEM LOG: {new Date().toISOString()}</span>
+                    {rooms.length > 0 && (
+                        <button
+                            onClick={() => socket.emit('list_rooms')}
+                            className="hover:text-green-500 transition-colors flex items-center gap-1"
+                        >
+                            <Zap size={10} /> REFRESH
+                        </button>
+                    )}
                 </div>
             </div>
 

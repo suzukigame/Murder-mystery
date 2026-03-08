@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import io from 'socket.io-client';
+import { invoke } from '@tauri-apps/api/core';
 
 // コンポーネント
 import LoginScreen from './components/LoginScreen';
@@ -25,6 +26,31 @@ function App() {
     const [myPlayerName, setMyPlayerName] = useState(sessionStorage.getItem('nexus_player_name') || '');
     const [rooms, setRooms] = useState<Room[]>([]);
     const [showManual, setShowManual] = useState(false);
+    const [isSteamAuthenticating, setIsSteamAuthenticating] = useState(false);
+    const [steamError, setSteamError] = useState<string | null>(null);
+
+    // --- Steam API連携 (Appマウント時) ---
+    useEffect(() => {
+        const trySteamLogin = async () => {
+            if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__ !== undefined) {
+                setIsSteamAuthenticating(true);
+                try {
+                    const steamName = await invoke<string>('init_steam');
+                    if (steamName) {
+                        setMyPlayerName(steamName);
+                        setIsLoggedIn(true);
+                        socket.emit('list_rooms');
+                    }
+                } catch (e) {
+                    console.error("Steam API Initialization failed or not running via Steam:", e);
+                    setSteamError(String(e));
+                } finally {
+                    setIsSteamAuthenticating(false);
+                }
+            }
+        };
+        trySteamLogin();
+    }, []);
 
     // --- ゲーム状態 (サーバー同期) ---
     const [ap, setAp] = useState(3);
@@ -301,7 +327,7 @@ function App() {
 
     // --- レンダリング ---
     if (!isLoggedIn) {
-        return <LoginScreen onLogin={handleLogin} defaultName={myPlayerName} />;
+        return <LoginScreen onLogin={handleLogin} defaultName={myPlayerName} isLoading={isSteamAuthenticating} error={steamError} />;
     }
 
     if (!isJoined) {
