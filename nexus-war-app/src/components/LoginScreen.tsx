@@ -5,9 +5,10 @@ interface LoginScreenProps {
     onLogin: (name: string) => void;
     defaultName: string;
     isLoading?: boolean;
+    error?: string | null;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, defaultName, isLoading = false }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, defaultName, isLoading = false, error = null }) => {
     const [name, setName] = useState(defaultName);
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -75,6 +76,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, defaultName, isLoadi
                     >
                         ENTER SYSTEM
                     </button>
+                    {error && (
+                        <div className="mt-2 text-[10px] text-red-500 text-center font-bold">
+                            AUTH ERROR: {error}
+                        </div>
+                    )}
                 </form>
             </div>
 

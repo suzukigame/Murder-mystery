@@ -21,9 +21,7 @@
         "fullscreen": false
       }
     ],
-    "security": {
-      "csp": "default-src 'self'; connect-src 'self' http://localhost:* https://localhost:* ws://localhost:* wss://localhost:* http://*.onrender.com https://*.onrender.com ws://*.onrender.com wss://*.onrender.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: asset: https://asset.localhost"
-    }
+    "security": {}
   },
   "bundle": {
     "active": true,

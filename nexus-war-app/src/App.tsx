@@ -27,11 +27,12 @@ function App() {
     const [rooms, setRooms] = useState<Room[]>([]);
     const [showManual, setShowManual] = useState(false);
     const [isSteamAuthenticating, setIsSteamAuthenticating] = useState(false);
+    const [steamError, setSteamError] = useState<string | null>(null);
 
     // --- Steam API連携 (Appマウント時) ---
     useEffect(() => {
         const trySteamLogin = async () => {
-            if (window.__TAURI__) {
+            if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__ !== undefined) {
                 setIsSteamAuthenticating(true);
                 try {
                     const steamName = await invoke<string>('init_steam');
@@ -42,6 +43,7 @@ function App() {
                     }
                 } catch (e) {
                     console.error("Steam API Initialization failed or not running via Steam:", e);
+                    setSteamError(String(e));
                 } finally {
                     setIsSteamAuthenticating(false);
                 }
@@ -325,7 +327,7 @@ function App() {
 
     // --- レンダリング ---
     if (!isLoggedIn) {
-        return <LoginScreen onLogin={handleLogin} defaultName={myPlayerName} isLoading={isSteamAuthenticating} />;
+        return <LoginScreen onLogin={handleLogin} defaultName={myPlayerName} isLoading={isSteamAuthenticating} error={steamError} />;
     }
 
     if (!isJoined) {
