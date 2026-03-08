@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { User, Zap } from 'lucide-react';
+import { User, Zap, Loader2 } from 'lucide-react';
 
 interface LoginScreenProps {
     onLogin: (name: string) => void;
     defaultName: string;
+    isLoading?: boolean;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, defaultName }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, defaultName, isLoading = false }) => {
     const [name, setName] = useState(defaultName);
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -15,6 +16,28 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, defaultName }) => {
             onLogin(name.trim());
         }
     };
+
+    if (isLoading) {
+        return (
+            <div className="terminal-screen flex flex-col items-center justify-center min-h-screen w-screen p-4 bg-black text-green-500 font-mono">
+                <div className="mb-12 text-center">
+                    <h1 className="text-5xl font-bold mb-2 tracking-tighter text-shadow-green uppercase">SKY-MAGYCC JUDAS</h1>
+                    <p className="text-green-700 tracking-widest text-sm animate-pulse">STEAM NETWORK INITIALIZATION IN PROGRESS...</p>
+                </div>
+                <div className="border border-green-500/50 p-12 rounded bg-black max-w-sm w-full shadow-[0_0_20px_rgba(0,255,0,0.2)] flex flex-col items-center justify-center gap-6">
+                    <Loader2 className="animate-spin text-green-500" size={48} />
+                    <div className="text-center">
+                        <p className="text-green-400 font-bold tracking-widest text-sm mb-1">AUTHENTICATING</p>
+                        <p className="text-green-800 text-[10px] uppercase">Retrieving user credentials from Steam client</p>
+                    </div>
+                </div>
+                <div className="mt-8 text-[10px] text-green-900 tracking-widest">
+                    <Zap size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} />
+                    PLEASE CONNECT TO SECURE NETWORK
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="terminal-screen flex flex-col items-center justify-center min-h-screen w-screen p-4 bg-black text-green-500 font-mono">
