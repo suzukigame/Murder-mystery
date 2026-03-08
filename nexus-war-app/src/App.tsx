@@ -13,7 +13,9 @@ import GameManual from './components/GameManual';
 import { LogEntry, TurnPhase, GameResult, Room } from './types';
 
 // ソケット接続
-const socket = io(import.meta.env.MODE === 'production' ? '/' : 'http://localhost:3000');
+// VITE_SOCKET_URL が設定されている場合はそれを使用（Tauri等のデスクトップアプリ用）
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (import.meta.env.MODE === 'production' ? '/' : 'http://localhost:3000');
+const socket = io(SOCKET_URL);
 
 function App() {
     // --- システム状態 ---
